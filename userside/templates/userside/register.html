@@ -1,0 +1,763 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register - Velora</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --primary-black: #000000;
+            --primary-white: #ffffff;
+            --gray-50: #f8f9fa;
+            --gray-100: #e9ecef;
+            --gray-200: #dee2e6;
+            --gray-300: #ced4da;
+            --gray-600: #6c757d;
+            --gray-700: #495057;
+            --gray-800: #343a40;
+            --gray-900: #212529;
+            --success-color: #28a745;
+            --warning-color: #ffc107;
+            --danger-color: #dc3545;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, var(--gray-50) 0%, var(--gray-100) 100%);
+            height: 100%;
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        .register-container {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+
+        .register-card {
+            background: var(--primary-white);
+            border-radius: 24px;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15);
+            overflow: hidden;
+            max-width: 1400px;
+            width: 100%;
+            border: 1px solid var(--gray-200);
+        }
+
+        /* Image Section */
+        .image-section {
+            background: linear-gradient(135deg, var(--primary-black) 0%, var(--gray-800) 100%);
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+        }
+
+        .image-placeholder {
+            width: 100%;
+            height: 100%;
+            background: url('/placeholder.svg?height=700&width=600') center center no-repeat;
+            background-size: cover;
+            position: relative;
+        }
+
+        .image-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, rgba(0, 0, 0, 0.7) 0%, rgba(0, 0, 0, 0.5) 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: var(--primary-white);
+            text-align: center;
+            padding: 2rem;
+        }
+
+        .brand-logo {
+            font-size: 3.5rem;
+            font-weight: 800;
+            letter-spacing: 3px;
+            text-transform: lowercase;
+            margin-bottom: 1rem;
+            color: var(--primary-white);
+        }
+
+        .brand-tagline {
+            font-size: 1.25rem;
+            font-weight: 300;
+            opacity: 0.9;
+            max-width: 400px;
+            line-height: 1.6;
+        }
+
+        /* Form Section */
+        .form-section {
+            background: var(--primary-white);
+            padding: 2rem 2.5rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            height: 100%;
+        }
+
+        .register-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .register-title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--primary-black);
+            margin-bottom: 0.5rem;
+            letter-spacing: 1px;
+        }
+
+        .register-subtitle {
+            color: var(--gray-600);
+            font-size: 1rem;
+            font-weight: 400;
+        }
+
+        /* Form Styling */
+        .form-group {
+            margin-bottom: 1.25rem;
+            position: relative;
+        }
+
+        .form-label {
+            font-weight: 600;
+            font-size: 0.875rem;
+            margin-bottom: 0.5rem;
+            color: var(--gray-700);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .form-label i {
+            font-size: 1rem;
+            color: var(--gray-600);
+        }
+
+        .form-control {
+            background-color: var(--gray-50);
+            border: 2px solid var(--gray-200);
+            border-radius: 12px;
+            padding: 1rem 1.25rem;
+            font-size: 1rem;
+            color: var(--gray-900);
+            transition: all 0.3s ease;
+            width: 100%;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .form-control:focus {
+            background-color: var(--primary-white);
+            border-color: var(--primary-black);
+            box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.1);
+            outline: none;
+        }
+
+        .form-control::placeholder {
+            color: var(--gray-600);
+            font-weight: 400;
+        }
+
+        /* Row spacing for name fields */
+        .name-row .col-md-6:first-child {
+            padding-right: 0.5rem;
+        }
+
+        .name-row .col-md-6:last-child {
+            padding-left: 0.5rem;
+        }
+
+        /* Submit Button */
+        .submit-btn {
+            background: var(--primary-black);
+            color: var(--primary-white);
+            border: none;
+            border-radius: 12px;
+            padding: 1rem 2rem;
+            font-weight: 700;
+            font-size: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: all 0.3s ease;
+            width: 100%;
+            margin: 1.25rem 0;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .submit-btn:hover {
+            background: var(--gray-800);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+        }
+
+        .submit-btn:active {
+            transform: translateY(0);
+        }
+
+        /* Divider */
+        .divider {
+            text-align: center;
+            margin: 1.5rem 0;
+            position: relative;
+        }
+
+        .divider::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: var(--gray-300);
+        }
+
+        .divider span {
+            background: var(--primary-white);
+            padding: 0 1.5rem;
+            font-weight: 600;
+            font-size: 0.875rem;
+            color: var(--gray-600);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* Social Login */
+        .social-login {
+            margin-bottom: 1.5rem;
+        }
+
+        .google-btn {
+            background: var(--primary-white);
+            color: var(--gray-700);
+            border: 2px solid var(--gray-200);
+            border-radius: 12px;
+            padding: 1rem 1.5rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.75rem;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            width: 100%;
+            font-size: 1rem;
+        }
+
+        .google-btn:hover {
+            background: var(--gray-50);
+            border-color: var(--gray-300);
+            color: var(--gray-700);
+            text-decoration: none;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .google-icon {
+            width: 20px;
+            height: 20px;
+            background: url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTIyLjU2IDEyLjI1QzIyLjU2IDExLjQ3IDIyLjQ5IDEwLjcyIDIyLjM2IDEwSDEyVjE0LjI2SDE3LjkyQzE3LjY2IDE1LjYgMTYuOTIgMTYuNzQgMTUuODQgMTcuNVYyMC4yNkgxOS4zNkMyMS4wOSAxOC43IDIyLjU2IDE1LjcgMjIuNTYgMTIuMjVaIiBmaWxsPSIjNDI4NUY0Ii8+CjxwYXRoIGQ9Ik0xMiAyM0M5LjI0IDIzIDYuODggMjEuOTIgNS4yNyAyMC4yNkw4Ljc3IDE3LjVDOS44NyAxOC4yNCAxMS4zMSAxOC43NSAxMiAxOC43NUMxNC43NiAxOC43NSAxNy4wNSAxNi45MiAxNy45MiAxNC4yNkgxNy45MlYxNC4yNkgxMlYxMEgyMi4zNkMyMi40OSAxMC43MiAyMi41NiAxMS40NyAyMi41NiAxMi4yNUMyMi41NiAxNS43IDIxLjA5IDE4LjcgMTkuMzYgMjAuMjZMMTUuODQgMTcuNUMxNi45MiAxNi43NCAxNy42NiAxNS42IDE3LjkyIDE0LjI2SDE3LjkyWiIgZmlsbD0iIzM0QTg1MyIvPgo8cGF0aCBkPSJNNS4yNyAyMC4yNkMyLjkxIDE4LjEzIDEuNSAxNS4xMyAxLjUgMTJDMS41IDguODcgMi45MSA1Ljg3IDUuMjcgMy43NEw4Ljc3IDYuNUM3LjY5IDcuMjQgNi45NyA4LjQzIDYuOTcgOS43NUg2Ljk3VjkuNzVINi45N0M2Ljk3IDEwLjU3IDcuMjQgMTEuMzQgNy43MyAxMS45NUw1LjI3IDMuNzRDMi45MSA1Ljg3IDEuNSA4Ljg3IDEuNSAxMkMxLjUgMTUuMTMgMi45MSAxOC4xMyA1LjI3IDIwLjI2TDguNzcgMTcuNUM3LjY5IDE2Ljc2IDYuOTcgMTUuNTcgNi45NyAxNC4yNUg2Ljk3VjE0LjI1SDYuOTdDNi45NyAxMy40MyA3LjI0IDEyLjY2IDcuNzMgMTIuMDVMNS4yNyAyMC4yNloiIGZpbGw9IiNGQkJDMDQiLz4KPHN2Zz4K') center center no-repeat;
+            background-size: contain;
+            flex-shrink: 0;
+        }
+
+        /* Login Link */
+        .login-link {
+            text-align: center;
+            margin-top: 1rem;
+        }
+
+        .login-link p {
+            color: var(--gray-600);
+            font-size: 0.95rem;
+            margin: 0;
+        }
+
+        .login-link a {
+            color: var(--primary-black);
+            text-decoration: none;
+            font-weight: 600;
+            border-bottom: 2px solid transparent;
+            transition: all 0.3s ease;
+        }
+
+        .login-link a:hover {
+            border-bottom-color: var(--primary-black);
+            color: var(--primary-black);
+        }
+
+        /* Error Messages */
+        .error-message {
+            background: rgba(220, 53, 69, 0.1);
+            border: 1px solid var(--danger-color);
+            color: var(--danger-color);
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            margin-top: 0.5rem;
+            font-size: 0.875rem;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .alert-messages {
+            margin-bottom: 1.5rem;
+        }
+
+        .alert-messages .error-message {
+            margin-top: 0;
+            margin-bottom: 0.5rem;
+        }
+
+        .alert-messages .error-message:last-child {
+            margin-bottom: 0;
+        }
+
+        /* Input Icons */
+        .input-group {
+            position: relative;
+        }
+
+        .input-icon {
+            position: absolute;
+            right: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--gray-600);
+            font-size: 1.1rem;
+            pointer-events: none;
+            z-index: 2;
+        }
+
+        .form-control.with-icon {
+            padding-right: 3rem;
+        }
+
+        /* Password Toggle */
+        .password-toggle {
+            position: absolute;
+            right: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: var(--gray-600);
+            cursor: pointer;
+            font-size: 1.1rem;
+            z-index: 2;
+            padding: 0.25rem;
+        }
+
+        .password-toggle:hover {
+            color: var(--gray-800);
+        }
+
+        /* Loading State */
+        .submit-btn:disabled {
+            background: var(--gray-400);
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .submit-btn.loading {
+            position: relative;
+            color: transparent;
+        }
+
+        .submit-btn.loading::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 20px;
+            height: 20px;
+            border: 2px solid transparent;
+            border-top: 2px solid var(--primary-white);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: translate(-50%, -50%) rotate(0deg); }
+            100% { transform: translate(-50%, -50%) rotate(360deg); }
+        }
+
+        /* Responsive Design */
+        @media (max-width: 992px) {
+            .register-card {
+                margin: 0.5rem;
+                border-radius: 20px;
+            }
+
+            .image-section {
+                height: 300px;
+                order: 2;
+            }
+
+            .form-section {
+                padding: 2rem 1.5rem;
+                height: auto;
+                order: 1;
+            }
+
+            .brand-logo {
+                font-size: 2.5rem;
+            }
+
+            .brand-tagline {
+                font-size: 1rem;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .register-container {
+                padding: 0.5rem;
+            }
+
+            .register-card {
+                border-radius: 16px;
+            }
+
+            .form-section {
+                padding: 1.5rem 1rem;
+            }
+
+            .register-title {
+                font-size: 2rem;
+                margin-bottom: 0.5rem;
+            }
+
+            .name-row .col-md-6 {
+                padding-left: 0;
+                padding-right: 0;
+                margin-bottom: 1rem;
+            }
+
+            .name-row .col-md-6:last-child {
+                margin-bottom: 0;
+            }
+
+            .image-section {
+                height: 250px;
+            }
+
+            .brand-logo {
+                font-size: 2rem;
+            }
+        }
+
+        @media (max-width: 576px) {
+            .register-title {
+                font-size: 1.75rem;
+            }
+
+            .form-control {
+                padding: 0.875rem 1rem;
+            }
+
+            .submit-btn {
+                padding: 0.875rem 1.5rem;
+            }
+
+            .google-btn {
+                padding: 0.875rem 1rem;
+            }
+        }
+
+        /* Focus States for Accessibility */
+        .form-control:focus,
+        .submit-btn:focus,
+        .google-btn:focus {
+            outline: 2px solid var(--primary-black);
+            outline-offset: 2px;
+        }
+
+        /* High Contrast Mode Support */
+        @media (prefers-contrast: high) {
+            .form-control {
+                border-width: 3px;
+            }
+            
+            .submit-btn,
+            .google-btn {
+                border: 2px solid var(--primary-black);
+            }
+        }
+
+        /* Reduced Motion Support */
+        @media (prefers-reduced-motion: reduce) {
+            * {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="register-container">
+        <div class="register-card">
+            <div class="row g-0 h-100">
+                <!-- Image Section -->
+                <div class="col-lg-6 d-none d-lg-block">
+                    <div class="image-section">
+                        <div class="image-placeholder"></div>
+                        <div class="image-overlay">
+                            <div class="brand-logo">velora</div>
+                            <p class="brand-tagline">
+                                Join our fashion community and discover your unique style with curated collections
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Form Section -->
+                <div class="col-lg-6">
+                    <div class="form-section">
+                        <div class="register-header">
+                            <h2 class="register-title">Create Account</h2>
+                            <p class="register-subtitle">Join Velora and start your fashion journey</p>
+                        </div>
+
+                        <form method="post" id="registerForm">
+                            {% csrf_token %}
+
+                            <!-- Error Messages -->
+                            {% if messages %}
+                                <div class="alert-messages">
+                                    {% for message in messages %}
+                                        <div class="error-message">
+                                            <i class="bi bi-exclamation-triangle"></i>{{ message }}
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+
+                            <!-- Name Fields -->
+                            <div class="row name-row">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label class="form-label" for="id_first_name">
+                                            <i class="bi bi-person"></i>First Name
+                                        </label>
+                                        <div class="input-group">
+                                            {{ form.first_name }}
+                                        </div>
+                                        {% for error in form.first_name.errors %}
+                                            <div class="error-message">{{ error }}</div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label class="form-label" for="id_last_name">
+                                            <i class="bi bi-person"></i>Last Name (Optional)
+                                        </label>
+                                        <div class="input-group">
+                                            {{ form.last_name }}
+                                        </div>
+                                        {% for error in form.last_name.errors %}
+                                            <div class="error-message">{{ error }}</div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Email Field -->
+                            <div class="form-group">
+                                <label class="form-label" for="id_email">
+                                    <i class="bi bi-envelope"></i>Email Address
+                                </label>
+                                <div class="input-group">
+                                    {{ form.email }}
+                                    <i class="bi bi-envelope input-icon"></i>
+                                </div>
+                                {% for error in form.email.errors %}
+                                    <div class="error-message">{{ error }}</div>
+                                {% endfor %}
+                            </div>
+
+                            <!-- Phone Field -->
+                            <div class="form-group">
+                                <label class="form-label" for="id_phone_number">
+                                    <i class="bi bi-telephone"></i>Phone Number
+                                </label>
+                                <div class="input-group">
+                                    {{ form.phone_number }}
+                                    <i class="bi bi-telephone input-icon"></i>
+                                </div>
+                                {% for error in form.phone_number.errors %}
+                                    <div class="error-message">{{ error }}</div>
+                                {% endfor %}
+                            </div>
+
+                            <!-- Password Fields -->
+                            <div class="form-group">
+                                <label class="form-label" for="id_password1">
+                                    <i class="bi bi-lock"></i>Password
+                                </label>
+                                <div class="input-group">
+                                    {{ form.password1 }}
+                                    <button type="button" class="password-toggle" onclick="togglePassword('id_password1', this)">
+                                        <i class="bi bi-eye"></i>
+                                    </button>
+                                </div>
+                                {% for error in form.password1.errors %}
+                                    <div class="error-message">{{ error }}</div>
+                                {% endfor %}
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label" for="id_password2">
+                                    <i class="bi bi-lock"></i>Confirm Password
+                                </label>
+                                <div class="input-group">
+                                    {{ form.password2 }}
+                                    <button type="button" class="password-toggle" onclick="togglePassword('id_password2', this)">
+                                        <i class="bi bi-eye"></i>
+                                    </button>
+                                </div>
+                                {% for error in form.password2.errors %}
+                                    <div class="error-message">{{ error }}</div>
+                                {% endfor %}
+                            </div>
+
+                            {% if form.non_field_errors %}
+                                <div class="error-message">
+                                    {% for error in form.non_field_errors %}
+                                        <div><i class="bi bi-exclamation-triangle"></i>{{ error }}</div>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+
+                            <!-- Submit Button -->
+                            <button type="submit" class="submit-btn" id="submitBtn">
+                                <i class="bi bi-person-plus"></i>Create Account
+                            </button>
+
+                            <!-- Divider -->
+                            <div class="divider">
+                                <span>or continue with</span>
+                            </div>
+
+                            <!-- Social Login -->
+                            <div class="social-login">
+                                <a href="{% url 'social:begin' 'google-oauth2' %}?next={{ request.path }}" class="google-btn">
+                                    <div class="google-icon"></div>
+                                    Continue with Google
+                                </a>
+                            </div>
+
+                            <!-- Login Link -->
+                            <div class="login-link">
+                                <p>Already have an account? <a href="{% url 'userside:login' %}">Sign in here</a></p>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        // Password toggle functionality
+        function togglePassword(fieldId, button) {
+            const field = document.getElementById(fieldId);
+            const icon = button.querySelector('i');
+            
+            if (field.type === 'password') {
+                field.type = 'text';
+                icon.className = 'bi bi-eye-slash';
+            } else {
+                field.type = 'password';
+                icon.className = 'bi bi-eye';
+            }
+        }
+
+        // Form submission with loading state
+        document.getElementById('registerForm').addEventListener('submit', function(e) {
+            const submitBtn = document.getElementById('submitBtn');
+            submitBtn.classList.add('loading');
+            submitBtn.disabled = true;
+        });
+
+        // Add form validation feedback
+        document.addEventListener('DOMContentLoaded', function() {
+            const formControls = document.querySelectorAll('.form-control');
+            
+            formControls.forEach(function(control) {
+                // Add placeholder attributes based on field names
+                if (control.name === 'first_name') {
+                    control.placeholder = 'Enter your first name';
+                } else if (control.name === 'last_name') {
+                    control.placeholder = 'Enter your last name (optional)';
+                } else if (control.name === 'email') {
+                    control.placeholder = 'Enter your email address';
+                    control.classList.add('with-icon');
+                } else if (control.name === 'phone_number') {
+                    control.placeholder = 'Enter your phone number';
+                    control.classList.add('with-icon');
+                } else if (control.name === 'password1') {
+                    control.placeholder = 'Create a strong password';
+                } else if (control.name === 'password2') {
+                    control.placeholder = 'Confirm your password';
+                }
+
+                // Add real-time validation feedback
+                control.addEventListener('blur', function() {
+                    if (this.value.trim() !== '') {
+                        this.style.borderColor = 'var(--success-color)';
+                    } else if (this.required) {
+                        this.style.borderColor = 'var(--danger-color)';
+                    }
+                });
+
+                control.addEventListener('focus', function() {
+                    this.style.borderColor = 'var(--primary-black)';
+                });
+            });
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,489 @@
+{% extends "base.html" %}
+
+{% block extra_head %}
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
+    <!-- Google Fonts: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-black: #000000;
+            --primary-white: #ffffff;
+            --gray-50: #f9fafb;
+            --gray-100: #f3f4f6;
+            --gray-200: #e5e7eb;
+            --gray-300: #d1d5db;
+            --gray-400: #9ca3af;
+            --gray-500: #6b7280;
+            --gray-600: #4b5563;
+            --gray-700: #374151;
+            --gray-800: #1f2937;
+            --gray-900: #111827;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--gray-50);
+            color: var(--gray-900);
+        }
+        /* Page Header */
+        .page-header {
+            background: linear-gradient(135deg, var(--primary-black) 0%, #1a3c34 100%);
+            color: var(--primary-white);
+            padding: 4rem 0 2rem;
+            margin-bottom: 0;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+        }
+        .page-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" preserveAspectRatio="none"><path fill="rgba(255,255,255,0.05)" d="M0,0 Q50,20 100,0 Q50,20 0,0 Z" /></svg>') repeat-x bottom;
+            opacity: 0.3;
+            z-index: 1;
+        }
+        .page-header .container {
+            position: relative;
+            z-index: 2;
+        }
+        .page-title {
+            font-size: 3.75rem;
+            font-weight: 900;
+            text-align: center;
+            margin-bottom: 1.25rem;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            color: var(--primary-white);
+            text-shadow: 2px 2px 6px rgba(0, 0, 0, 0.3);
+            animation: fadeInUp 1s ease-out;
+        }
+        .page-title:hover {
+            transform: scale(1.03);
+            transition: transform 0.3s ease;
+        }
+        .page-subtitle {
+            text-align: center;
+            font-size: 1.3rem;
+            font-weight: 400;
+            color: var(--gray-200);
+            max-width: 700px;
+            margin: 0 auto;
+            line-height: 1.8;
+            animation: fadeInUp 1.2s ease-out 0.2s;
+            animation-fill-mode: both;
+        }
+        /* Animation Keyframes */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        /* Cart Section */
+        .cart-section {
+            padding: 2rem 0;
+        }
+        .card {
+            border-radius: 1rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+            border: 1px solid var(--gray-200);
+        }
+        .product-image-container {
+            position: relative;
+            width: 8rem;
+            height: 8rem;
+            flex-shrink: 0;
+            border-radius: 0.5rem;
+            overflow: hidden;
+            background-color: var(--gray-100);
+        }
+        .product-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.3s ease;
+        }
+        .product-image-container:hover .product-image {
+            transform: scale(1.05);
+        }
+        .quantity-control .btn {
+            width: 2rem;
+            height: 2rem;
+            border-radius: 50%;
+            border: 1px solid var(--gray-300);
+            color: var(--gray-700);
+            background-color: var(--primary-white);
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .quantity-control .btn:hover {
+            background-color: var(--gray-100);
+            color: var(--primary-black);
+        }
+        .quantity-control .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .remove-btn {
+            color: var(--gray-400);
+            transition: all 0.3s ease;
+        }
+        .remove-btn:hover {
+            color: #dc3545;
+            background-color: rgba(220, 53, 69, 0.1);
+        }
+        .btn-primary-black {
+            background-color: var(--primary-black);
+            color: var(--primary-white);
+            padding: 1rem 2rem;
+            border-radius: 50px;
+            font-weight: 600;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            border: none;
+        }
+        .btn-primary-black:hover {
+            background-color: var(--gray-800);
+            color: var(--primary-white);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 4rem 2rem;
+            background: var(--primary-white);
+            border-radius: 1rem;
+            border: 1px solid var(--gray-200);
+        }
+        .empty-icon {
+            font-size: 4rem;
+            color: var(--gray-400);
+            margin-bottom: 1.5rem;
+        }
+        .empty-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--gray-900);
+            margin-bottom: 0.5rem;
+        }
+        .empty-description {
+            color: var(--gray-600);
+            margin-bottom: 2rem;
+            font-size: 1.1rem;
+        }
+        /* Toast Styles */
+        .toast {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            z-index: 1050;
+            min-width: 250px;
+            background-color: #333;
+            color: white;
+            border-radius: 0.25rem;
+            padding: 0.75rem 1rem;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+            display: none;
+        }
+        .toast.show {
+            display: block;
+            animation: slideIn 0.3s ease-out, fadeOut 0.3s ease-out 2.5s forwards;
+        }
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        @keyframes fadeOut {
+            to { opacity: 0; }
+        }
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .page-title {
+                font-size: 2rem;
+            }
+            .product-image-container {
+                width: 6rem;
+                height: 6rem;
+            }
+            .cart-item-grid {
+                grid-template-columns: 1fr !important;
+                text-align: center;
+            }
+            .cart-item-grid > div:nth-child(2),
+            .cart-item-grid > div:nth-child(3) {
+                justify-content: center !important;
+                align-items: center !important;
+            }
+            .cart-item-grid > div:nth-child(1) {
+                text-align: center;
+            }
+            .cart-item-card {
+                flex-direction: column;
+                align-items: center;
+                text-align: center;
+            }
+            .cart-item-card .product-info {
+                margin-left: 0;
+                margin-top: 1rem;
+            }
+            .cart-item-card .remove-btn {
+                margin-left: 0;
+                margin-top: 1rem;
+            }
+        }
+        @media (max-width: 576px) {
+            .page-header {
+                padding: 2rem 0 1rem;
+            }
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <!-- Page Header -->
+    <div class="page-header">
+        <div class="container">
+            <h1 class="page-title">Your Shopping Cart</h1>
+            <p class="page-subtitle">Review your selected items and proceed to checkout.</p>
+        </div>
+    </div>
+
+    <!-- Cart Section -->
+    <section class="cart-section">
+        <div class="container">
+            {% if cart_items %}
+                <div class="row">
+                    <!-- Cart Items List -->
+                    <div class="col-lg-8">
+                        <div class="space-y-6">
+                            {% for item in cart_items %}
+                                <div class="card d-flex flex-column flex-md-row align-items-center p-4 p-md-6 mb-4 cart-item-card" data-item-id="{{ item.id }}">
+                                    <div class="product-image-container me-md-4 me-lg-6 mb-3 mb-md-0">
+                                        <img src="{% if item.product.get_primary_image %}{{ item.product.get_primary_image }}{% else %}https://via.placeholder.com/300x300/f3f4f6/9ca3af?text=Product{% endif %}"
+                                             alt="{{ item.product.name }}" class="product-image">
+                                    </div>
+                                    <div class="flex-grow-1 w-100 w-md-auto grid gap-2 gap-md-4 align-items-center cart-item-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));">
+                                        <div class="col-span-1 product-info">
+                                            <h3 class="font-semibold fs-5 text-primaryBlack lh-sm mb-1">{{ item.product.name }}</h3>
+                                            <p class="text-sm text-gray-600">Color: {{ item.color_name|default:"N/A" }}</p>
+                                            <p class="text-sm text-gray-600">Size: {{ item.size|default:"N/A" }}</p>
+                                            <p class="text-sm text-gray-600">Description: {{ item.product.description|default:"No description" }}</p>
+                                            <p class="text-sm text-gray-600">Material: {{ item.product.materials|default:"No material info" }}</p>
+                                        </div>
+                                        <div class="d-flex align-items-center justify-content-start justify-content-md-center gap-2 col-span-1 quantity-control">
+                                            <!-- Quantity controls with increment/decrement -->
+                                            <form id="quantityForm_{{ item.id }}" action="{% url 'userside:update_cart_quantity' item.id 'update' %}" method="POST" style="display: inline-flex; align-items: center; gap: 0.5rem;">
+                                                {% csrf_token %}
+                                                <button type="button" class="btn" onclick="changeQuantity({{ item.id }}, 'decrement', {{ item.stock|default:0 }})">-</button>
+                                                <span class="quantity-display" id="quantity_{{ item.id }}">{{ item.quantity }}</span>
+                                                <button type="button" class="btn" onclick="changeQuantity({{ item.id }}, 'increment', {{ item.stock|default:0 }})">+</button>
+                                            </form>
+                                        </div>
+                                        <div class="d-flex flex-column align-items-start align-items-md-end col-span-1">
+                                            <p class="fs-5 fw-bold text-primaryBlack">₹<span id="subtotal_{{ item.id }}">{{ item.subtotal|floatformat:2 }}</span></p>
+                                            <p class="text-sm text-gray-500" data-price="{{ item.product.price|floatformat:2 }}">₹{{ item.product.price|floatformat:2 }} each</p>
+                                            <p class="text-sm text-gray-600">Stock Limit: {{ item.stock|default:"N/A" }}</p>
+                                        </div>
+                                    </div>
+                                    <a href="{% url 'userside:remove_from_cart' item.id %}" class="btn btn-link remove-btn ms-md-4 ms-lg-6 mt-3 mt-md-0">
+                                        <i class="bi bi-trash2 fs-5"></i>
+                                    </a>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <!-- Cart Summary -->
+                    <div class="col-lg-4">
+                        <div class="card p-4 p-md-6 sticky-top" style="top: 2rem;">
+                            <h2 class="fs-4 fw-bold text-primaryBlack mb-4 border-bottom pb-4">Order Summary</h2>
+                            <div class="space-y-4 mb-4">
+                                <div class="d-flex justify-content-between align-items-center text-gray-700">
+                                    <span>Subtotal ({{ cart_items|length }} items)</span>
+                                    <span class="fw-semibold" id="subtotal">₹{{ total|floatformat:2 }}</span>
+                                </div>
+                                <div class="d-flex justify-content-between align-items-center text-gray-700">
+                                    <span>Shipping</span>
+                                    <span class="fw-semibold">Free</span>
+                                </div>
+                                <div class="d-flex justify-content-between align-items-center text-gray-700">
+                                    <span>Tax</span>
+                                    <span class="fw-semibold">₹0.00</span>
+                                </div>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center fs-5 fw-bold text-primaryBlack border-top pt-4">
+                                <span>Total</span>
+                                <span class="fw-semibold" id="total">₹{{ total|floatformat:2 }}</span>
+                            </div>
+                            <a href="{% url 'userside:checkout' %}" class="btn-primary-black w-100 mt-4">
+                                Proceed to Checkout
+                                <i class="bi bi-arrow-right ms-2"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            {% else %}
+                <!-- No Products Found -->
+                <div class="empty-state">
+                    <div class="empty-icon">
+                        <i class="bi bi-cart"></i>
+                    </div>
+                    <h3 class="empty-title">Your cart is empty</h3>
+                    <p class="empty-description">
+                        Looks like you haven't added anything to your cart yet. Start exploring our collection!
+                    </p>
+                    <a href="{% url 'userside:product_list' %}" class="btn-primary-black">
+                        <i class="bi bi-search me-2"></i>Browse Products
+                    </a>
+                </div>
+            {% endif %}
+        </div>
+    </section>
+
+    <!-- Toast Container -->
+    <div id="toast" class="toast"></div>
+
+    <!-- Bootstrap JS (Bundle includes Popper) -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function showToast(message, type = 'warning') {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = 'toast';
+            if (type === 'error') {
+                toast.style.backgroundColor = '#dc3545'; // Red for stock limit
+            } else if (type === 'warning') {
+                toast.style.backgroundColor = '#ffc107'; // Yellow for max limit
+            }
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+
+        function changeQuantity(itemId, action, stockLimit) {
+            const quantityDisplay = document.getElementById(`quantity_${itemId}`);
+            let currentQuantity = parseInt(quantityDisplay.textContent, 10);
+            let newQuantity = currentQuantity;
+
+            if (action === 'increment') {
+                if (currentQuantity >= 5) {
+                    showToast('Maximum limit is 5 items per product.', 'warning');
+                    return;
+                }
+                if (currentQuantity >= stockLimit) {
+                    showToast(`Cannot exceed available stock of ${stockLimit}.`, 'error');
+                    return;
+                }
+                newQuantity = currentQuantity + 1;
+            } else if (action === 'decrement') {
+                if (currentQuantity <= 1) {
+                    showToast('Minimum quantity is 1.', 'warning');
+                    return;
+                }
+                newQuantity = currentQuantity - 1;
+            }
+
+            // Update via AJAX using the form's action URL
+            const form = document.getElementById(`quantityForm_${itemId}`);
+            const formData = new FormData(form);
+            formData.append('quantity', newQuantity);
+
+            fetch(form.action, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}'
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    quantityDisplay.textContent = data.new_quantity;
+                    updateItemSubtotal(itemId, data.new_quantity);
+                    updateCartTotals();
+                    showToast(data.message);
+                    console.log(`Updated quantity for item ${itemId} to ${data.new_quantity}, triggering updates`);
+                } else {
+                    showToast(data.message || 'Failed to update quantity.', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error updating quantity:', error);
+                showToast('An error occurred while updating quantity.', 'error');
+            });
+        }
+
+        function updateItemSubtotal(itemId, quantity) {
+            const card = document.querySelector(`.cart-item-card[data-item-id="${itemId}"]`);
+            if (!card) {
+                console.error(`Card not found for item ${itemId}`);
+                return;
+            }
+            const priceElement = card.querySelector('[data-price]');
+            if (!priceElement) {
+                console.error(`Price element not found for item ${itemId}`);
+                return;
+            }
+            const price = parseFloat(priceElement.getAttribute('data-price'));
+            if (isNaN(price)) {
+                console.error(`Invalid price for item ${itemId}: ${priceElement.getAttribute('data-price')}`);
+                return;
+            }
+            const subtotal = price * quantity;
+            const subtotalDisplay = card.querySelector(`#subtotal_${itemId}`);
+            if (subtotalDisplay) {
+                subtotalDisplay.textContent = subtotal.toFixed(2);
+                console.log(`Updated subtotal for item ${itemId} to ₹${subtotal.toFixed(2)}`);
+            } else {
+                console.error(`Subtotal display not found for item ${itemId}`);
+            }
+        }
+
+        function updateCartTotals() {
+            let subtotal = 0;
+            document.querySelectorAll('.cart-item-card').forEach(card => {
+                const subtotalElement = card.querySelector('[id^="subtotal_"]');
+                if (subtotalElement) {
+                    const value = parseFloat(subtotalElement.textContent) || 0;
+                    if (isNaN(value)) {
+                        console.error(`Invalid subtotal value for card: ${subtotalElement.textContent}`);
+                    } else {
+                        subtotal += value;
+                    }
+                }
+            });
+            const subtotalDisplay = document.getElementById('subtotal');
+            const totalDisplay = document.getElementById('total');
+            if (subtotalDisplay && totalDisplay) {
+                subtotalDisplay.textContent = `₹${subtotal.toFixed(2)}`;
+                totalDisplay.textContent = `₹${subtotal.toFixed(2)}`; // Assuming no tax/shipping changes
+                console.log(`Updated totals: Subtotal ₹${subtotal.toFixed(2)}, Total ₹${subtotal.toFixed(2)}`);
+            } else {
+                console.error('Subtotal or total display elements not found');
+            }
+        }
+
+        // Initialize totals on page load
+        document.addEventListener('DOMContentLoaded', updateCartTotals);
+    </script>
+{% endblock %}

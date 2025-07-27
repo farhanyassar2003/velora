@@ -1,0 +1,9 @@
+<div class="delete-category-page">
+    <h2>Delete Category</h2>
+    <p>Are you sure you want to delete "{{ category.name }}"?</p>
+    <form method="POST" action="{% url 'adminside:delete_category' category.id %}">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-primary">Confirm Delete</button>
+        <a href="{% url 'adminside:category_list' %}" class="btn btn-secondary">Cancel</a>
+    </form>
+</div>

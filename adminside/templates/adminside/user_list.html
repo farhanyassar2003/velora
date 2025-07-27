@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Velora - User Management</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+{% extends 'adminside/base.html' %}
+
+{% block content %}
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8f9fa;
+            color: #212529;
+        }
+
+        /* Main Content */
+        .main-content {
+            margin-left: 280px;
+            min-height: 100vh;
+            background: #f8f9fa;
+        }
+
+        .top-bar {
+            background: white;
+            padding: 20px 30px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .page-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #212529;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .page-title i {
+            color: #000;
+        }
+
+        .page-subtitle {
+            color: #6c757d;
+            font-size: 0.95rem;
+            margin-top: 5px;
+        }
+
+        .content-area {
+            padding: 30px;
+        }
+
+        /* Filter Section */
+        .filter-container {
+            background: white;
+            padding: 25px 30px;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+            border: 1px solid #e9ecef;
+            margin-bottom: 30px;
+        }
+
+        .filter-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #212529;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .filter-form {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .filter-input {
+            min-width: 250px;
+            padding: 12px 16px;
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            background: #f8f9fa;
+            color: #495057;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .filter-input:focus {
+            border-color: #000;
+            box-shadow: 0 0 0 0.2rem rgba(0, 0, 0, 0.1);
+            background: white;
+            outline: none;
+        }
+
+        .filter-btn {
+            background: #000;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 10px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-size: 0.9rem;
+        }
+
+        .filter-btn:hover {
+            background: #333;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .clear-btn {
+            background: #f8f9fa;
+            color: #495057;
+            border: 2px solid #e9ecef;
+            padding: 10px 20px;
+            border-radius: 10px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .clear-btn:hover {
+            background: #e9ecef;
+            border-color: #000;
+            color: #000;
+        }
+
+        /* Users Table */
+        .users-container {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+            border: 1px solid #e9ecef;
+            overflow: hidden;
+        }
+
+        .table-header {
+            padding: 25px 30px;
+            border-bottom: 1px solid #e9ecef;
+            background: #f8f9fa;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .table-title {
+            font-size: 1.4rem;
+            font-weight: 600;
+            color: #212529;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .users-count {
+            background: #000;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .users-table {
+            margin: 0;
+            border: none;
+            width: 100%;
+        }
+
+        .users-table thead th {
+            background: #000;
+            color: white;
+            border: none;
+            padding: 20px 25px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-size: 0.85rem;
+            text-align: center;
+        }
+
+        .users-table tbody td {
+            padding: 20px 25px;
+            border-top: 1px solid #e9ecef;
+            border-bottom: none;
+            vertical-align: middle;
+            text-align: center;
+        }
+
+        .users-table tbody tr:hover {
+            background: #f8f9fa;
+        }
+
+        /* User Info */
+        .user-id {
+            background: #000;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.85rem;
+            display: inline-block;
+        }
+
+        .user-name {
+            font-weight: 600;
+            color: #212529;
+            font-size: 1rem;
+        }
+
+        .user-email {
+            color: #6c757d;
+            font-size: 0.9rem;
+        }
+
+        .user-mobile {
+            font-weight: 500;
+            color: #495057;
+        }
+
+        /* Action Buttons */
+        .action-buttons {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+        }
+
+        .action-btn {
+            padding: 8px 16px;
+            border-radius: 8px;
+            border: none;
+            font-weight: 600;
+            font-size: 0.85rem;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .block-btn {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .block-btn:hover:not(:disabled) {
+            background: #dc3545;
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(220, 53, 69, 0.3);
+        }
+
+        .unblock-btn {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .unblock-btn:hover:not(:disabled) {
+            background: #28a745;
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(40, 167, 69, 0.3);
+        }
+
+        .action-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+            box-shadow: none !important;
+        }
+
+        /* Status Badge */
+        .status-badge {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .status-active {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status-blocked {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 60px 30px;
+            color: #6c757d;
+        }
+
+        .empty-state i {
+            font-size: 4rem;
+            color: #dee2e6;
+            margin-bottom: 20px;
+        }
+
+        .empty-state h3 {
+            color: #495057;
+            margin-bottom: 10px;
+        }
+
+        /* Mobile Sidebar Toggle */
+        .sidebar-toggle {
+            display: none;
+            background: #000;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 5px;
+            margin-right: 15px;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .sidebar-toggle {
+                display: inline-block;
+            }
+
+            .sidebar {
+                transform: translateX(-100%);
+            }
+
+            .sidebar.show {
+                transform: translateX(0);
+            }
+
+            .main-content {
+                margin-left: 0;
+            }
+
+            .content-area {
+                padding: 20px 15px;
+            }
+
+            .top-bar {
+                padding: 15px 20px;
+            }
+
+            .page-title {
+                font-size: 1.5rem;
+            }
+
+            .filter-form {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .filter-input {
+                min-width: auto;
+                width: 100%;
+            }
+
+            .users-table thead th,
+            .users-table tbody td {
+                padding: 15px 10px;
+                font-size: 0.85rem;
+            }
+
+            .action-buttons {
+                flex-direction: column;
+            }
+
+            .table-header {
+                flex-direction: column;
+                gap: 15px;
+                text-align: center;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Top Bar -->
+        <div class="top-bar d-flex align-items-center">
+            <button class="sidebar-toggle" onclick="toggleSidebar()">
+                <i class="bi bi-list"></i>
+            </button>
+            <div>
+                <h1 class="page-title">
+                    <i class="bi bi-people"></i>
+                    User Management
+                </h1>
+                <p class="page-subtitle">Manage user accounts, permissions, and access control</p>
+            </div>
+        </div>
+
+        <!-- Content Area -->
+        <div class="content-area">
+            <!-- Filter Section -->
+            {% if form %}
+            <div class="filter-container">
+                <div class="filter-title">
+                    <i class="bi bi-funnel"></i>
+                    Search & Filter Users
+                </div>
+                <form method="get" action="{% url 'adminside:user_list' %}" class="filter-form">
+                    {{ form.as_p }}
+                    <button type="submit" class="filter-btn">
+                        <i class="bi bi-search"></i>
+                        Search
+                    </button>
+                    <button type="button" class="clear-btn" onclick="clearSearch()">
+                        <i class="bi bi-x-circle"></i>
+                        Clear
+                    </button>
+                </form>
+            </div>
+            {% else %}
+            <div class="filter-container">
+                <div class="empty-state">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    <h5>Filter Not Available</h5>
+                    <p>No filter form is currently available.</p>
+                </div>
+            </div>
+            {% endif %}
+
+
+
+            <!-- Users Table -->
+            <div class="users-container">
+                <div class="table-header">
+                    <h3 class="table-title">
+                        <i class="bi bi-list-ul"></i>
+                        User List
+                    </h3>
+                    {% if users %}
+                        <span class="users-count">{{ users|length }} Users</span>
+                    {% endif %}
+                </div>
+                
+
+
+                 {% if users %}
+                    <div class="table-responsive">
+                        <table class="table users-table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>User Info</th>
+                                    <th>Email</th>
+                                    <th>Mobile</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for user in users %}
+                                    <tr>
+                                        <td>
+                                            <span class="user-id">#{{ user.id|default:"N/A" }}</span>
+                                        </td>
+                                        <td>
+                                            <div class="user-name">{{ user.username|default:"N/A" }}</div>
+                                            <div class="user-email">{{ user.first_name|default:"" }} {{ user.user.last_name|default:"" }}</div>
+                                        </td>
+                                        <td>
+                                            <div class="user-email">{{ user.email|default:"N/A" }}</div>
+                                        </td>
+                                        <td>
+                                            <div class="user-mobile">{{ user.phone_number|default:"N/A" }}</div>
+                                        </td>
+                                        <td>
+                                            <span id="status-{{ user.id }}" class="status-badge {% if user.status == 'active' %}status-active{% else %}status-blocked{% endif %}">
+                                                {{ user.status|default:"active" }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            {% csrf_token %}
+                                            <div class="action-buttons">
+                                                <button type="button" class="action-btn block-btn toggle-user-btn"
+                                                        data-user-id="{{ user.id }}"
+                                                        data-action="block"
+                                                        {% if user.status == 'blocked' %}disabled{% endif %}>
+                                                    <i class="bi bi-ban"></i> Block
+                                                </button>
+                                                <button type="button" class="action-btn unblock-btn toggle-user-btn"
+                                                        data-user-id="{{ user.id }}"
+                                                        data-action="unblock"
+                                                        {% if user.status == 'active' %}disabled{% endif %}>
+                                                    <i class="bi bi-check-circle"></i> Unblock
+                                                </button>
+                                            </div>
+                
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="empty-state">
+                        <i class="bi bi-people"></i>
+                        <h3>No Users Found</h3>
+                        <p>No users match your current search criteria.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+    function toggleSidebar() {
+        const sidebar = document.getElementById('sidebar');
+        sidebar.classList.toggle('show');
+    }
+
+    // Close sidebar when clicking outside on mobile
+    document.addEventListener('click', function(event) {
+        const sidebar = document.getElementById('sidebar');
+        const toggle = document.querySelector('.sidebar-toggle');
+        
+        if (window.innerWidth <= 768) {
+            if (!sidebar.contains(event.target) && !toggle.contains(event.target)) {
+                sidebar.classList.remove('show');
+            }
+        }
+    });
+
+    // Handle window resize
+    window.addEventListener('resize', function() {
+        const sidebar = document.getElementById('sidebar');
+        if (window.innerWidth > 768) {
+            sidebar.classList.remove('show');
+        }
+    });
+
+    function clearSearch() {
+        const form = document.querySelector('.filter-form');
+        if (!form) return;
+
+        form.querySelector('input[name="search"]').value = '';
+        form.querySelector('select[name="status"]').value = 'all';
+        form.submit();
+    }
+
+    function confirmAction(form, currentStatus) {
+        const action = form.querySelector('button:not([disabled])').value;
+        const actionText = action === 'block' ? 'block' : 'unblock';
+        return confirm(`Are you sure you want to ${actionText} this user?`);
+    }
+
+    // Add classes to form fields
+    document.addEventListener('DOMContentLoaded', function() {
+        const formFields = document.querySelectorAll('input, select, textarea');
+        formFields.forEach(field => {
+            field.classList.add('filter-input');
+        });
+    });
+
+    // AJAX block/unblock user toggle with SweetAlert
+    $(document).ready(function () {
+        $('.toggle-user-btn').click(function (e) {
+            e.preventDefault();
+            const button = $(this);
+            const userId = button.data('user-id');
+            const action = button.data('action');
+
+            Swal.fire({
+                title: action === 'block' ? 'Block User?' : 'Unblock User?',
+                text: `Are you sure you want to ${action} this user?`,
+                icon: action === 'block' ? 'warning' : 'question',
+                showCancelButton: true,
+                confirmButtonColor: action === 'block' ? '#d33' : '#3085d6',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: action === 'block' ? 'Yes, block them' : 'Yes, unblock them'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    $.ajax({
+                        url: `/adminside/users/toggle_status/${userId}/`,
+                        method: 'POST',
+                        headers: {
+                            'X-CSRFToken': '{{ csrf_token }}',
+                        },
+                        data: { action: action },
+                        success: function (response) {
+                            if (response.success) {
+                                const statusSpan = $(`#status-${userId}`);
+                                const blockBtn = $(`button[data-user-id="${userId}"][data-action="block"]`);
+                                const unblockBtn = $(`button[data-user-id="${userId}"][data-action="unblock"]`);
+
+                                if (response.status === 'active') {
+                                    statusSpan.text('active').removeClass('status-blocked').addClass('status-active');
+                                    blockBtn.prop('disabled', false);
+                                    unblockBtn.prop('disabled', true);
+                                } else {
+                                    statusSpan.text('blocked').removeClass('status-active').addClass('status-blocked');
+                                    blockBtn.prop('disabled', true);
+                                    unblockBtn.prop('disabled', false);
+                                }
+
+                                Swal.fire({
+                                    title: 'Success!',
+                                    text: `User has been ${action}ed.`,
+                                    icon: 'success',
+                                    timer: 1500,
+                                    showConfirmButton: false
+                                });
+                            } else {
+                                Swal.fire('Error', response.error || 'Action failed. Please try again.', 'error');
+                            }
+                        },
+                        error: function () {
+                            Swal.fire('Error', 'An error occurred. Please try again.', 'error');
+                        }
+                    });
+                }
+            });
+        });
+    });
+</script>
+
+</body>
+</html>
+{% endblock %}

@@ -1,0 +1,253 @@
+{% extends "adminside/base.html" %}
+
+{% block extra_head %}
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
+    <!-- Google Fonts: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-black: #000000;
+            --primary-white: #ffffff;
+            --gray-50: #f9fafb;
+            --gray-100: #f3f4f6;
+            --gray-200: #e5e7eb;
+            --gray-300: #d1d5db;
+            --gray-400: #9ca3af;
+            --gray-500: #6b7280;
+            --gray-600: #4b5563;
+            --gray-700: #374151;
+            --gray-800: #1f2937;
+            --gray-900: #111827;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--gray-50);
+            color: var(--gray-900);
+        }
+        /* Page Header */
+        .page-header {
+            background: linear-gradient(135deg, var(--primary-black) 0%, var(--gray-800) 100%);
+            color: var(--primary-white);
+            padding: 4rem 0 2rem;
+            margin-bottom: 0;
+        }
+        .page-title {
+            font-size: 3rem;
+            font-weight: 800;
+            text-align: center;
+            margin-bottom: 1rem;
+            letter-spacing: 0.05em;
+        }
+        .page-subtitle {
+            text-align: center;
+            font-size: 1.2rem;
+            color: var(--gray-300);
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        /* Section Styling */
+        .order-management-section {
+            padding: 2rem 0;
+        }
+        .card {
+            border-radius: 1rem; /* 16px */
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+            border: 1px solid var(--gray-200);
+        }
+        .btn-primary-black {
+            background-color: var(--primary-black);
+            color: var(--primary-white);
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            border: none;
+        }
+        .btn-primary-black:hover {
+            background-color: var(--gray-800);
+            color: var(--primary-white);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+        .btn-secondary-outline {
+            color: var(--gray-700);
+            border: 1px solid var(--gray-300);
+            background-color: transparent;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        .btn-secondary-outline:hover {
+            background-color: var(--gray-100);
+            color: var(--primary-black);
+        }
+        .table-responsive {
+            overflow-x: auto;
+        }
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+        .pagination a, .pagination span {
+            padding: 0.5rem 1rem;
+            border: 1px solid var(--gray-300);
+            border-radius: 0.5rem;
+            text-decoration: none;
+            color: var(--gray-700);
+            transition: all 0.3s ease;
+        }
+        .pagination a:hover {
+            background-color: var(--gray-100);
+            color: var(--primary-black);
+        }
+        .pagination .current {
+            background-color: var(--primary-black);
+            color: var(--primary-white);
+            border-color: var(--primary-black);
+        }
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .page-title {
+                font-size: 2rem;
+            }
+            .col-md-3, .col-md-2 {
+                margin-bottom: 0.5rem;
+            }
+            .row.g-2 > * {
+                padding-right: calc(var(--bs-gutter-x) * .5);
+                padding-left: calc(var(--bs-gutter-x) * .5);
+            }
+        }
+        @media (max-width: 576px) {
+            .page-header {
+                padding: 2rem 0 1rem;
+            }
+            .row.g-2 {
+                flex-direction: column;
+            }
+            .col-md-3, .col-md-2 {
+                width: 100%;
+            }
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div class="row mt-4"> {# Add margin-top to the row for spacing from top #}
+        {# This column will contain the main content, offset to make space for the sidebar #}
+        <div class="col-lg-9 offset-lg-3 col-md-12">
+            <!-- Page Header (adjusted to fit within the column) -->
+            <div class="page-header" style="padding: 2rem 0 1rem; margin-bottom: 0;">
+                <div class="container-fluid"> {# Use container-fluid to fill the column width #}
+                    <h1 class="page-title" style="font-size: 2.5rem;">Order Management</h1>
+                    <p class="page-subtitle" style="font-size: 1rem;">View and manage all customer orders.</p>
+                </div>
+            </div>
+
+            <!-- Order Management Section -->
+            <section class="order-management-section">
+                <div class="container-fluid"> {# Use container-fluid to fill the column width #}
+                    <form method="get" class="row g-3 align-items-end mb-4"> {# Use g-3 for slightly more gap #}
+                        <div class="col-md-4 col-lg-3"> {# Adjusted column width for better layout #}
+                            <label for="search-query" class="form-label visually-hidden">Search</label>
+                            <input type="text" name="q" id="search-query" class="form-control" placeholder="Search by Order ID or Email" value="{{ search_query }}">
+                        </div>
+                        <div class="col-md-4 col-lg-3"> {# Adjusted column width #}
+                            <label for="status-filter" class="form-label visually-hidden">Status</label>
+                            <select name="status" id="status-filter" class="form-select">
+                                <option value="">All Status</option>
+                                {% for key, value in status_choices %}
+                                    <option value="{{ key }}" {% if status_filter == key %}selected{% endif %}>{{ value }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-4 col-lg-2 d-flex gap-2"> {# Adjusted column width and added gap for buttons #}
+                            <button type="submit" class="btn btn-primary-black flex-grow-1">
+                                <i class="bi bi-funnel me-1"></i>Filter
+                            </button>
+                            <a href="{% url 'adminside:admin_order_list' %}" class="btn btn-secondary-outline flex-grow-1">
+                                <i class="bi bi-x-lg me-1"></i>Clear
+                            </a>
+                        </div>
+                    </form>
+
+                    <div class="table-responsive card p-3"> {# Added card styling to the table container #}
+                        <table class="table table-hover mb-0"> {# Used table-hover for better UX #}
+                            <thead>
+                                <tr>
+                                    <th>Order ID</th>
+                                    <th>User</th>
+                                    <th>Date</th>
+                                    <th>Status</th>
+                                    <th>Return Requested</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for order in orders %}
+                                <tr>
+                                    <td>{{ order.order_id }}</td>
+                                    <td>{{ order.user.email }}</td>
+                                    <td>{{ order.created_at|date:"Y-m-d H:i" }}</td>
+                                    <td>
+                                        <span class="status-badge
+                                            {% if order.status == 'Pending' %}status-badge-pending
+                                            {% elif order.status == 'Processing' %}status-badge-processing
+                                            {% elif order.status == 'Shipped' %}status-badge-shipped
+                                            {% elif order.status == 'Delivered' %}status-badge-delivered
+                                            {% elif order.status == 'Cancelled' %}status-badge-cancelled
+                                            {% elif order.status == 'Returned' %}status-badge-returned
+                                            {% endif %}">
+                                            {{ order.get_status_display }}
+                                        </span>
+                                    </td>
+                                    <td>{% if order.return_requested %}✅ Yes{% else %}❌ No{% endif %}</td>
+                                    <td>
+                                        {% if order.order_id %}
+                                        <a href="{% url 'adminside:admin_order_detail' order.order_id %}" class="btn btn-sm btn-info">
+                                            <i class="bi bi-eye me-1"></i>View
+                                        </a>
+                                        {% else %}
+                                        <span class="text-danger">No ID</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr><td colspan="6" class="text-center py-4">No orders found matching your criteria.</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="pagination">
+                        {% if orders.has_previous %}
+                            <a href="?page={{ orders.previous_page_number }}&q={{ search_query }}&status={{ status_filter }}">
+                                <i class="bi bi-arrow-left me-1"></i>Previous
+                            </a>
+                        {% endif %}
+                        <span class="current">Page {{ orders.number }} of {{ orders.paginator.num_pages }}</span>
+                        {% if orders.has_next %}
+                            <a href="?page={{ orders.next_page_number }}&q={{ search_query }}&status={{ status_filter }}">
+                                Next<i class="bi bi-arrow-right ms-1"></i>
+                            </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS (Bundle includes Popper) -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+{% endblock %}  

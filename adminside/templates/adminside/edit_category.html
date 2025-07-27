@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit Category</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+    <style>
+        /* Custom styles for consistency and enhancement */
+        body {
+            background-color: #f8f9fa; /* Light gray background for the page */
+        }
+        .add-category-page {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+            border: 1px solid #e9ecef;
+            padding: 30px;
+            margin-top: 30px;
+            margin-bottom: 30px;
+        }
+        .add-category-page h2 {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 20px;
+            color: #343a40;
+        }
+        /* Adjust form control padding and border for a softer look */
+        .form-control {
+            padding: 10px 15px;
+            border-radius: 10px;
+            border: 1px solid #ced4da;
+        }
+        .form-control:focus {
+            border-color: #80bdff;
+            box-shadow: 0 0 0 0.25rem rgba(0, 123, 255, 0.25);
+        }
+        .btn-primary {
+            background-color: #000;
+            border-color: #000;
+            padding: 12px 24px;
+            border-radius: 10px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        .btn-primary:hover {
+            background-color: #333;
+            border-color: #333;
+        }
+        .btn-secondary {
+            background-color: #6c757d;
+            border-color: #6c757d;
+            padding: 12px 24px;
+            border-radius: 10px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        .btn-secondary:hover {
+            background-color: #5a6268;
+            border-color: #545b62;
+        }
+        .alert {
+            border-radius: 10px;
+        }
+        .errorlist {
+            color: #dc3545;
+            font-size: 0.9em;
+            margin-top: 5px;
+            padding-left: 0; /* Remove default ul padding */
+        }
+        .errorlist li {
+            list-style: none;
+            margin-bottom: 5px;
+        }
+        /* Specific styling for checkbox labels to align with Bootstrap's form-check */
+        .form-check .form-check-label {
+            margin-left: 0.5rem; /* Space between checkbox and label */
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="add-category-page">
+            <h2>Edit Category</h2>
+
+            <form method="POST" action="{% url 'adminside:edit_category' category.id %}">
+                {% csrf_token %}
+
+                {% if form.errors %}
+                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                        <h4 class="alert-heading">Please correct the following errors:</h4>
+                        <ul class="errorlist">
+                            {% for field in form %}
+                                {% for error in field.errors %}
+                                    <li><strong>{{ field.label }}:</strong> {{ error }}</li>
+                                {% endfor %}
+                            {% endfor %}
+                            {% for error in form.non_field_errors %}
+                                <li>{{ error }}</li>
+                            {% endfor %}
+                        </ul>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endif %}
+
+                <div class="mb-3">
+                    <label for="{{ form.name.id_for_label }}" class="form-label">Name:</label>
+                    {{ form.name }}
+                </div>
+
+                <div class="mb-3">
+                    <label for="{{ form.description.id_for_label }}" class="form-label">Description:</label>
+                    {{ form.description }}
+                </div>
+
+                <div class="mb-3 form-check">
+                    {{ form.is_listed }}
+                    <label for="{{ form.is_listed.id_for_label }}" class="form-check-label">List / Unlist</label>
+                </div>
+
+                <div class="mb-3 form-check">
+                    {{ form.is_deleted }}
+                    <label for="{{ form.is_deleted.id_for_label }}" class="form-check-label">Deleted</label>
+                </div>
+
+                <div class="d-flex justify-content-start mt-4">
+                    <button type="submit" class="btn btn-primary me-2">Save</button>
+                    <a href="{% url 'adminside:category_list' %}" class="btn btn-secondary">Back to Categories</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Bootstrap Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+</body>
+</html>

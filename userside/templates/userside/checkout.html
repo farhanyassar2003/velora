@@ -1,0 +1,493 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block extra_head %}
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
+    <!-- Google Fonts: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-black: #000000;
+            --primary-white: #ffffff;
+            --gray-50: #f9fafb;
+            --gray-100: #f3f4f6;
+            --gray-200: #e5e7eb;
+            --gray-300: #d1d5db;
+            --gray-400: #9ca3af;
+            --gray-500: #6b7280;
+            --gray-600: #4b5563;
+            --gray-700: #374151;
+            --gray-800: #1f2937;
+            --gray-900: #111827;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--gray-50);
+            color: var(--gray-900);
+        }
+        /* Page Header */
+        .page-header {
+        background: linear-gradient(135deg, var(--primary-black) 0%, #1a3c34 100%);
+        color: var(--primary-white);
+        padding: 4rem 0 2rem;
+        margin-bottom: 0;
+        position: relative;
+        overflow: hidden;
+        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+    }
+    .page-header::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" preserveAspectRatio="none"><path fill="rgba(255,255,255,0.05)" d="M0,0 Q50,20 100,0 Q50,20 0,0 Z" /></svg>') repeat-x bottom;
+        opacity: 0.3;
+        z-index: 1;
+    }
+    .page-header .container {
+        position: relative;
+        z-index: 2;
+    }
+    .page-title {
+        font-size: 3.75rem;
+        font-weight: 900;
+        text-align: center;
+        margin-bottom: 1.25rem;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: var(--primary-white);
+        text-shadow: 2px 2px 6px rgba(0, 0, 0, 0.3);
+        animation: fadeInUp 1s ease-out;
+    }
+    .page-title:hover {
+        transform: scale(1.03);
+        transition: transform 0.3s ease;
+    }
+    .page-subtitle {
+        text-align: center;
+        font-size: 1.3rem;
+        font-weight: 400;
+        color: var(--gray-200);
+        max-width: 700px;
+        margin: 0 auto;
+        line-height: 1.8;
+        animation: fadeInUp 1.2s ease-out 0.2s;
+        animation-fill-mode: both;
+    }
+    /* Animation Keyframes */
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+        /* General Card Styling */
+        .card {
+            border-radius: 1rem; /* 16px */
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+            border: 1px solid var(--gray-200);
+            background-color: var(--primary-white);
+        }
+
+        /* Custom Button Styles */
+        .btn-primary-black {
+            background-color: var(--primary-black);
+            color: var(--primary-white);
+            padding: 1rem 2rem;
+            border-radius: 50px;
+            font-weight: 600;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            border: none;
+        }
+        .btn-primary-black:hover {
+            background-color: var(--gray-800);
+            color: var(--primary-white);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+        .btn-outline-primary-custom {
+            border: 2px solid var(--primary-black);
+            color: var(--primary-black);
+            background-color: transparent;
+            padding: 0.75rem 1.5rem;
+            border-radius: 50px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        .btn-outline-primary-custom:hover {
+            background-color: var(--primary-black);
+            color: var(--primary-white);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Address Section Specifics */
+        .address-radio-group .form-check {
+            padding: 1rem;
+            border: 1px solid var(--gray-200);
+            border-radius: 0.75rem; /* 12px */
+            margin-bottom: 0.75rem;
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+        .address-radio-group .form-check:hover {
+            background-color: var(--gray-50);
+        }
+        .address-radio-group .form-check-input:checked + .form-check-label {
+            border-color: var(--primary-black);
+            box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.1);
+            background-color: var(--gray-50);
+        }
+        .address-radio-group .form-check-input {
+            margin-top: 0.5rem; /* Align radio button with text */
+        }
+        .address-radio-group .form-check-label {
+            display: block; /* Make label clickable area larger */
+            cursor: pointer;
+            padding-left: 0.5rem; /* Space between radio and text */
+        }
+        .address-radio-group .badge {
+            font-size: 0.75em;
+            padding: 0.3em 0.6em;
+            border-radius: 0.5rem;
+            vertical-align: middle;
+            margin-left: 0.5rem;
+        }
+
+        /* Order Summary Table */
+        .order-summary-table .table {
+            margin-bottom: 0; /* Remove default table margin */
+        }
+        .order-summary-table .table thead th {
+            border-bottom: 2px solid var(--gray-300);
+            padding-top: 1rem;
+            padding-bottom: 1rem;
+            font-weight: 600;
+            color: var(--gray-700);
+        }
+        .order-summary-table .table tbody td {
+            vertical-align: middle;
+            padding-top: 1rem;
+            padding-bottom: 1rem;
+            border-color: var(--gray-200);
+        }
+        .order-summary-table .table tbody tr:last-child td {
+            border-bottom: none;
+        }
+        .order-summary-table img {
+            border-radius: 0.5rem;
+            margin-right: 0.75rem;
+            object-fit: cover;
+        }
+
+        /* Price Details List Group */
+        .price-details-list .list-group-item {
+            background-color: transparent;
+            border: none;
+            padding: 0.75rem 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: var(--gray-700);
+        }
+        .price-details-list .list-group-item:first-child {
+            padding-top: 0;
+        }
+        .price-details-list .list-group-item:last-child {
+            border-top: 1px solid var(--gray-200);
+            margin-top: 1rem;
+            padding-top: 1rem;
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--primary-black);
+        }
+        .price-details-list .list-group-item strong {
+            color: var(--primary-black);
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .page-title {
+                font-size: 2rem;
+            }
+            .order-summary-table table,
+            .order-summary-table thead,
+            .order-summary-table tbody,
+            .order-summary-table th,
+            .order-summary-table td,
+            .order-summary-table tr {
+                display: block;
+            }
+            .order-summary-table thead tr {
+                position: absolute;
+                top: -9999px;
+                left: -9999px;
+            }
+            .order-summary-table tr {
+                border: 1px solid var(--gray-200);
+                margin-bottom: 1rem;
+                border-radius: 0.75rem;
+                overflow: hidden;
+            }
+            .order-summary-table td {
+                border: none;
+                position: relative;
+                padding-left: 50%;
+                text-align: right;
+            }
+            .order-summary-table td:before {
+                position: absolute;
+                top: 0;
+                left: 6px;
+                width: 45%;
+                padding-right: 10px;
+                white-space: nowrap;
+                text-align: left;
+                font-weight: 600;
+                color: var(--gray-700);
+            }
+            .order-summary-table td:nth-of-type(1):before { content: "Product"; }
+            .order-summary-table td:nth-of-type(2):before { content: "Size"; }
+            .order-summary-table td:nth-of-type(3):before { content: "Qty"; }
+            .order-summary-table td:nth-of-type(4):before { content: "Price"; }
+            .order-summary-table td:nth-of-type(5):before { content: "Total"; }
+            .order-summary-table td:first-child {
+                text-align: left;
+                padding-left: 1rem;
+            }
+            .order-summary-table td:first-child img {
+                display: inline-block;
+                vertical-align: middle;
+            }
+        }
+        @media (max-width: 576px) {
+            .page-header {
+                padding: 2rem 0 1rem;
+            }
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="container">
+        <h1 class="page-title">Checkout</h1>
+        <p class="page-subtitle">Confirm your order details and shipping information.</p>
+    </div>
+</div>
+
+<div class="container my-5">
+    <form method="post" action="{% url 'userside:place_order' %}" id="checkoutForm">
+        {% csrf_token %}
+        <div class="row g-4">
+            <div class="col-lg-6">
+                <div class="card p-4">
+                    <h4 class="mb-4 text-primaryBlack">Shipping Address</h4>
+                    <div class="address-radio-group">
+                        {% if addresses %}
+                            {% for address in addresses %}
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="address_id" id="address{{ address.id }}" value="{{ address.id }}" {% if address.is_default or forloop.first %}checked{% endif %}>
+                                    <label class="form-check-label" for="address{{ address.id }}">
+                                        <strong>{{ address.full_name }}</strong> - {{ address.phone }}<br>
+                                        {{ address.street }}, {{ address.city }}, {{ address.state }} - {{ address.postal_code }}
+                                        {% if address.is_default %}
+                                            <span class="badge bg-success">Default</span>
+                                        {% endif %}
+                                    </label>
+                                </div>
+                            {% endfor %}
+                        {% else %}
+                            <p class="text-gray-600">No saved addresses. Please add one.</p>
+                        {% endif %}
+                    </div>
+                    <button type="button" class="btn btn-outline-primary-custom mt-3" onclick="openAddressModal()">
+                        <i class="bi bi-plus-circle me-2"></i>Add New Address
+                    </button>
+                </div>
+            </div>
+
+            <div class="col-lg-6">
+                <div class="card p-4 mb-4">
+                    <h4 class="mb-4 text-primaryBlack">Order Summary</h4>
+                    <div class="table-responsive order-summary-table">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Product</th>
+                                    <th>Size</th>
+                                    <th>Qty</th>
+                                    <th>Price</th>
+                                    <th>Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in cart_items %}
+                                <tr>
+                                    <td>
+                                        <img src="{% if item.product.get_primary_image %}{{ item.product.get_primary_image }}{% else %}https://via.placeholder.com/60x60/f3f4f6/9ca3af?text=Product{% endif %}"
+                                             alt="{{ item.product.name }}" width="60" height="60">
+                                        {{ item.product.name }}
+                                    </td>
+                                    <td><span class="badge bg-secondary">{{ item.size }}</span></td>
+                                    <td>{{ item.quantity }}</td>
+                                    <td>₹{{ item.product.price|floatformat:2 }}</td>
+                                    <td>₹{{ item.subtotal|floatformat:2 }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="card p-4">
+                    <h4 class="mb-4 text-primaryBlack">Price Details</h4>
+                    <ul class="list-group price-details-list">
+                        <li class="list-group-item d-flex justify-content-between">
+                            <span>Subtotal</span> <strong>₹{{ subtotal|floatformat:2 }}</strong>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between">
+                            <span>Tax </span> <strong>₹{{ tax|floatformat:2 }}</strong>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between">
+                            <span>Shipping</span> <strong>₹{{ shipping|floatformat:2 }}</strong>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between">
+                            <span>Total</span> <strong>₹{{ total|floatformat:2 }}</strong>
+                        </li>
+                    </ul>
+                    <button type="submit" class="btn-primary-black w-100 mt-4">
+                        Place Order (Cash on Delivery)
+                    </button>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- Toast for Missing Address -->
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 9999">
+  <div id="missingAddressToast" class="toast align-items-center text-bg-warning border-0" role="alert" aria-live="assertive" aria-atomic="true">
+    <div class="d-flex">
+      <div class="toast-body">
+        Please select or add a shipping address before placing the order.
+      </div>
+      <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+    </div>
+  </div>
+</div>
+
+<!-- Address Modal -->
+<div class="modal fade" id="addressModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form id="checkoutAddressForm">
+        {% csrf_token %}
+        <input type="hidden" name="address_id" id="addressId">
+        <div class="modal-header">
+          <h5 class="modal-title">Add New Address</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3"><label class="form-label">Full Name</label><input type="text" name="full_name" id="addressFullName" class="form-control" required></div>
+          <div class="mb-3"><label class="form-label">Phone</label><input type="text" name="phone" id="addressPhone" class="form-control" required></div>
+          <div class="mb-3"><label class="form-label">Address Line 1</label><input type="text" name="address_line1" id="addressLine1" class="form-control" required></div>
+          <div class="mb-3"><label class="form-label">Address Line 2</label><input type="text" name="address_line2" id="addressLine2" class="form-control"></div>
+          <div class="mb-3"><label class="form-label">City</label><input type="text" name="city" id="addressCity" class="form-control" required></div>
+          <div class="mb-3"><label class="form-label">State</label><input type="text" name="state" id="addressState" class="form-control" required></div>
+          <div class="mb-3"><label class="form-label">Postal Code</label><input type="text" name="postal_code" id="addressPostalCode" class="form-control" required></div>
+          <div class="mb-3"><label class="form-label">Country</label><input type="text" name="country" id="addressCountry" class="form-control" required></div>
+        </div>
+        <div class="modal-footer">
+          <button type="submit" class="btn btn-primary">Save Address</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Scripts -->
+<script>
+function openAddressModal() {
+    document.getElementById("addressId").value = "";
+    document.getElementById("addressFullName").value = "";
+    document.getElementById("addressPhone").value = "";
+    document.getElementById("addressLine1").value = "";
+    document.getElementById("addressLine2").value = "";
+    document.getElementById("addressCity").value = "";
+    document.getElementById("addressState").value = "";
+    document.getElementById("addressPostalCode").value = "";
+    document.getElementById("addressCountry").value = "";
+    new bootstrap.Modal(document.getElementById('addressModal')).show();
+}
+
+// Address Form Submission with Validation
+document.getElementById("checkoutAddressForm").addEventListener("submit", function (event) {
+    event.preventDefault();  
+
+    const fullName = document.getElementById("addressFullName").value.trim();
+    const phone = document.getElementById("addressPhone").value.trim();
+
+    const nameRegex = /^[A-Za-z ]+$/;
+    const phoneRegex = /^[0-9]{10}$/;
+
+    if (!nameRegex.test(fullName)) {
+        alert("Name must contain only alphabets.");
+        return;
+    }
+
+    if (!phoneRegex.test(phone) || /^0{10}$/.test(phone)) {
+        alert("Phone must be a valid 10-digit number and not all zeros.");
+        return;
+    }
+
+    const form = event.target;
+    const formData = new FormData(form);
+
+    fetch("{% url 'userside:save_address_checkout' %}", {
+        method: "POST",
+        headers: {
+            "X-CSRFToken": document.querySelector('[name=csrfmiddlewaretoken]').value,
+        },
+        body: formData,
+    })
+    .then(response => {
+        if (!response.ok) throw new Error("Address saving failed.");
+        return response.text();
+    })
+    .then(() => {
+        bootstrap.Modal.getInstance(document.getElementById('addressModal')).hide();
+        window.location.reload();
+    })
+    .catch(error => {
+        console.error("Error:", error);
+        alert("There was a problem saving the address.");
+    });
+});
+
+// Checkout Form Submit Validation for Address Selection
+document.getElementById("checkoutForm").addEventListener("submit", function (event) {
+    const addressChecked = document.querySelector('input[name="address_id"]:checked');
+
+    if (!addressChecked) {
+        event.preventDefault();
+        const toast = new bootstrap.Toast(document.getElementById("missingAddressToast"));
+        toast.show();
+    }
+});
+</script>
+{% endblock %}

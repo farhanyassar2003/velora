@@ -1,0 +1,362 @@
+{% extends 'adminside/base.html' %}
+
+{% block content %}
+<style>
+    .main-content {
+        margin-left: 260px; /* Matches sidebar width */
+        padding: 30px;
+        transition: margin-left 0.3s ease;
+    }
+
+    .category-page {
+        background: white;
+        border-radius: 15px;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+        border: 1px solid #e9ecef;
+        padding: 30px;
+    }
+
+    .category-page h2 {
+        font-size: 2rem;
+        font-weight: 700;
+        margin-bottom: 20px;
+    }
+
+    .search-form {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 25px;
+        flex-wrap: wrap;
+    }
+
+    .search-form input[type="text"] {
+        padding: 10px 15px;
+        border: 2px solid #dee2e6;
+        border-radius: 10px;
+        flex: 1;
+        min-width: 250px;
+    }
+
+    .search-form button,
+    .search-form a {
+        padding: 10px 20px;
+        border-radius: 10px;
+        background: #000;
+        color: white;
+        text-decoration: none;
+        font-weight: 600;
+        border: none;
+        transition: all 0.3s ease;
+    }
+
+    .search-form a {
+        background: #6c757d;
+    }
+
+    .search-form button:hover,
+    .search-form a:hover {
+        background: #333;
+        color: white;
+    }
+
+    .category-table table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 30px;
+    }
+
+    .category-table th, .category-table td {
+        padding: 15px;
+        border: 1px solid #dee2e6;
+        text-align: center;
+    }
+
+    .category-table th {
+        background: #000;
+        color: white;
+        text-transform: uppercase;
+        font-size: 0.9rem;
+    }
+
+    .category-table td a {
+        text-decoration: none;
+        font-size: 1.2rem;
+    }
+
+    .text-center {
+        text-align: center;
+        font-style: italic;
+        color: #6c757d;
+    }
+
+    .pagination {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 15px;
+        margin-bottom: 30px;
+        font-weight: 600;
+    }
+
+    .pagination a {
+        padding: 8px 16px;
+        background: #000;
+        color: white;
+        border-radius: 8px;
+        text-decoration: none;
+        transition: all 0.3s ease;
+    }
+
+    .pagination a:hover {
+        background: #333;
+    }
+
+    .add-category-form {
+        background: #f8f9fa;
+        padding: 25px;
+        border-radius: 15px;
+        border: 1px solid #dee2e6;
+    }
+
+    .add-category-form h3 {
+        font-size: 1.5rem;
+        font-weight: 700;
+        margin-bottom: 20px;
+    }
+
+    .add-category-form label {
+        display: block;
+        margin-top: 15px;
+        font-weight: 600;
+    }
+
+    .add-category-form input[type="text"],
+    .add-category-form textarea,
+    .add-category-form select {
+        width: 100%;
+        padding: 10px 15px;
+        border: 2px solid #dee2e6;
+        border-radius: 10px;
+        margin-top: 5px;
+    }
+
+    .add-category-form button {
+        margin-top: 20px;
+        padding: 12px 24px;
+        background: #000;
+        color: white;
+        border: none;
+        border-radius: 10px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+
+    .add-category-form button:hover {
+        background: #333;
+    }
+
+    .switch {
+        position: relative;
+        display: inline-block;
+        width: 50px;
+        height: 25px;
+    }
+
+    .switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+
+    .slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: #ccc;
+        transition: 0.4s;
+        border-radius: 25px;
+    }
+
+    .slider:before {
+        position: absolute;
+        content: "";
+        height: 19px;
+        width: 19px;
+        left: 3px;
+        bottom: 3px;
+        background-color: white;
+        transition: 0.4s;
+        border-radius: 50%;
+    }
+
+    input:checked + .slider {
+        background-color: #28a745;
+    }
+
+    input:checked + .slider:before {
+        transform: translateX(24px);
+    }
+
+    .alert-danger {
+        background: #f8d7da;
+        color: #721c24;
+        padding: 10px;
+        border-radius: 10px;
+        margin-bottom: 20px;
+    }
+
+    @media (max-width: 768px) {
+        .main-content {
+            margin-left: 0;
+            padding: 15px;
+        }
+
+        .search-form {
+            flex-direction: column;
+        }
+
+        .pagination {
+            flex-direction: column;
+        }
+    }
+</style>
+
+<div class="main-content">
+    <div class="category-page">
+        <h2>Category Management</h2>
+
+        <!-- Search Form -->
+        <form method="GET" class="search-form">
+            <input type="text" name="search" placeholder="Search categories..." value="{{ search_query }}">
+            <button type="submit">Search</button>
+            {% if search_query %}
+                <a href="{% url 'adminside:category_list' %}">Clear</a>
+            {% endif %}
+        </form>
+
+        <!-- Category Table -->
+        <div class="category-table">
+            <table>
+                <thead>
+                    <tr>
+                        <th>S.No</th>
+                        <th>Category Name</th>
+                        <th>List / Unlist</th>
+                        <th>Delete / Restore</th>
+                        <th>Edit</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for category in categories %}
+                    <tr>
+                        <td>{{ forloop.counter }}</td>
+                        <td>{{ category.name }}</td>
+                        <td>
+                            <a href="#" class="btn btn-sm {% if category.is_listed %}btn-success{% else %}btn-secondary{% endif %}"
+                            onclick="confirmListToggle('{{ category.id }}', '{{ category.is_listed }}')">
+                                {% if category.is_listed %}Listed{% else %}Unlisted{% endif %}
+                            </a>
+                        </td>
+                        <td>
+                            <a href="#" class="btn btn-sm {% if category.is_deleted %}btn-danger{% else %}btn-warning{% endif %}"
+                            onclick="confirmDeleteToggle('{{ category.id }}', '{{ category.is_deleted }}')">
+                                {% if category.is_deleted %}Restore{% else %}Delete{% endif %}
+                            </a>
+                        </td>
+
+                        <td>
+                            <a href="{% url 'adminside:edit_category' category.id %}" class="btn btn-sm btn-warning">Edit</a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="text-center">No categories found.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        <div class="pagination">
+            {% if categories.has_previous %}
+                <a href="?page={{ categories.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}">Previous</a>
+            {% endif %}
+
+            <span>Page {{ categories.number }} of {{ categories.paginator.num_pages }}</span>
+
+            {% if categories.has_next %}
+                <a href="?page={{ categories.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}">Next</a>
+            {% endif %}
+        </div>
+
+        <!-- Add New Category Form -->
+        <div class="add-category-form">
+            <h3>Add New Category</h3>
+            <form method="POST" action="{% url 'adminside:category_list' %}">
+                {% csrf_token %}
+                {% if form.errors %}
+                    <div class="alert alert-danger">
+                        <ul>
+                            {% for field in form %}
+                                {% for error in field.errors %}
+                                    <li>{{ field.label }}: {{ error }}</li>
+                                {% endfor %}
+                            {% endfor %}
+                            {% for error in form.non_field_errors %}
+                                <li>{{ error }}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                {% endif %}
+                <label for="{{ form.name.id_for_label }}">Name:</label>
+                {{ form.name }}
+                <label for="{{ form.description.id_for_label }}">Description:</label>
+                {{ form.description }}
+                <button type="submit">Save</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- SweetAlert2 Script -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<script>
+function confirmListToggle(id, isListed) {
+    const action = isListed === 'True' ? 'Unlist' : 'List';
+    Swal.fire({
+        title: `${action} this category?`,
+        text: `Are you sure you want to ${action.toLowerCase()} this category?`,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: `Yes, ${action}`,
+        cancelButtonText: 'Cancel'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            window.location.href = `/adminside/toggle-list-category/${id}/`;
+        }
+    });
+}
+
+function confirmDeleteToggle(id, isDeleted) {
+    const action = isDeleted === 'True' ? 'Restore' : 'Delete';
+    Swal.fire({
+        title: `${action} this category?`,
+        text: `Are you sure you want to ${action.toLowerCase()} this category?`,
+        icon: action === 'Delete' ? 'warning' : 'info',
+        showCancelButton: true,
+        confirmButtonText: `Yes, ${action}`,
+        cancelButtonText: 'Cancel'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            window.location.href = `/adminside/toggle-delete-category/${id}/`;
+        }
+    });
+}
+</script>
+
+{% endblock %}                  

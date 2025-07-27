@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Verify OTP</title>
+    <script>
+        let countdown = 60;
+        function startTimer() {
+            const resendBtn = document.getElementById('resendBtn');
+            const timerDisplay = document.getElementById('timer');
+            resendBtn.disabled = true;
+
+            const timer = setInterval(() => {
+                countdown--;
+                timerDisplay.textContent = countdown + "s";
+
+                if (countdown <= 0) {
+                    clearInterval(timer);
+                    resendBtn.disabled = false;
+                    timerDisplay.textContent = "You can resend OTP now";
+                }
+            }, 1000);
+        }
+
+        window.onload = startTimer;
+    </script>
+</head>
+<body>
+    <h2>Enter the OTP sent to your email</h2>
+
+    {% if messages %}
+        <ul>
+            {% for message in messages %}
+                <li>{{ message }}</li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+
+    <form method="POST">
+        {% csrf_token %}
+        <input type="text" name="otp" placeholder="Enter OTP" required><br><br>
+        <button type="submit">Verify</button>
+    </form>
+
+    <form method="POST" style="margin-top: 10px;">
+        {% csrf_token %}
+        <input type="hidden" name="resend_otp" value="1">
+        <button type="submit" id="resendBtn">Resend OTP</button>
+        <span id="timer" style="margin-left: 10px;"></span>
+    </form>
+</body>
+</html>

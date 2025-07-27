@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Velora - {% block title %}Welcome{% endblock %}</title>
+
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <style>
+        :root {
+            --primary-black: #000000;
+            --primary-white: #ffffff;
+            --gray-100: #f3f4f6;
+            --gray-200: #e5e7eb;
+            --gray-700: #374151;
+            --gray-800: #1f2937;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f9fafb;
+        }
+
+        .brand-logo {
+            font-size: 2.5rem;
+            font-weight: 800;
+            color: var(--primary-black);
+            text-decoration: none;
+        }
+
+        .nav-link-custom {
+            color: var(--gray-700);
+            font-weight: 500;
+            padding: 0.5rem 1rem;
+            text-decoration: none;
+        }
+
+        .nav-link-custom:hover {
+            color: var(--primary-black);
+        }
+
+        .header-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--gray-700);
+            position: relative;
+        }
+
+        .badge-notification {
+            position: absolute;
+            top: -4px;
+            right: -4px;
+            background: #ef4444;
+            color: white;
+            border-radius: 50%;
+            font-size: 0.75rem;
+            width: 18px;
+            height: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .dropdown-menu-custom {
+            position: absolute;
+            top: 100%;
+            right: 0;
+            background: white;
+            border: 1px solid var(--gray-200);
+            border-radius: 0.5rem;
+            box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+            min-width: 200px;
+            display: none;
+        }
+
+        .dropdown-menu-custom.show {
+            display: block;
+        }
+
+        .dropdown-item-custom {
+            padding: 0.75rem 1rem;
+            display: block;
+            color: var(--gray-700);
+            text-decoration: none;
+        }
+
+        .dropdown-item-custom:hover {
+            background: var(--gray-100);
+            color: var(--primary-black);
+        }
+
+        .btn-outline-custom, .btn-primary-custom {
+            border-radius: 50px;
+            font-weight: 600;
+            padding: 0.5rem 1.25rem;
+            text-decoration: none;
+        }
+
+        .btn-outline-custom {
+            border: 2px solid var(--primary-black);
+            color: var(--primary-black);
+        }
+
+        .btn-outline-custom:hover {
+            background: var(--primary-black);
+            color: var(--primary-white);
+        }
+
+        .btn-primary-custom {
+            background: var(--primary-black);
+            color: var(--primary-white);
+            border: 2px solid var(--primary-black);
+        }
+
+        .btn-primary-custom:hover {
+            background: var(--gray-800);
+            border-color: var(--gray-800);
+        }
+    </style>
+
+    {% block extra_head %}{% endblock %}
+</head>
+<body>
+    <!-- Header -->
+    <header class="main-header bg-white shadow-sm sticky-top">
+        <div class="container py-3 d-flex justify-content-between align-items-center">
+            <!-- Mobile Toggle -->
+            <div class="d-md-none">
+                <button class="btn" data-bs-toggle="collapse" data-bs-target="#mobileNav">
+                    <i class="bi bi-list fs-4"></i>
+                </button>
+            </div>
+
+            <!-- Logo -->
+            <a href="{% url 'userside:landing_page' %}" class="brand-logo">VELORA</a>
+
+            <!-- Desktop Nav -->
+            <nav class="d-none d-md-flex">
+                <a href="{% url 'userside:product_list' %}" class="nav-link-custom">Shop</a>
+                <a href="#" class="nav-link-custom">Collections</a>
+                <a href="{% url 'userside:landing_page' %}" class="nav-link-custom">About</a>
+                <a href="#" class="nav-link-custom">Contact</a>
+            </nav>
+
+            <!-- Icons -->
+            <div class="d-flex align-items-center">
+                <button class="header-icon me-2"><i class="bi bi-search"></i></button>
+
+                <!-- Wishlist -->
+                <a href="#" class="nav-link position-relative requires-login" data-url="{% url 'userside:wishlist_page' %}">
+                    <i class="bi bi-heart fs-4"></i>
+                    {% if wishlist_count > 0 %}
+                        <span class="badge-notification">{{ wishlist_count }}</span>
+                    {% endif %}
+                </a>
+
+                <!-- Cart -->
+                <a href="#" class="header-icon requires-login ms-2" data-url="{% url 'userside:view_cart' %}">
+                    <i class="bi bi-cart"></i>
+                    <span class="badge-notification" id="cartCount">{{ cart_item_count }}</span>
+                </a>
+
+                <!-- User -->
+                {% if user.is_authenticated %}
+                <div class="user-dropdown ms-3 position-relative">
+                    <button class="header-icon" onclick="toggleUserDropdown()">
+                        <i class="bi bi-person"></i>
+                        <i class="bi bi-chevron-down ms-1" style="font-size: 0.75rem;"></i>
+                    </button>
+                    <div class="dropdown-menu-custom" id="userDropdown">
+                        <a href="{% url 'userside:user_profile' %}" class="dropdown-item-custom">My Profile</a>
+                        <a href="#" class="dropdown-item-custom">Settings</a>
+                        <hr class="my-1">
+                        <a href="{% url 'userside:logout' %}" class="dropdown-item-custom">Logout</a>
+                    </div>
+                </div>
+                {% else %}
+                <a href="{% url 'userside:login' %}" class="btn btn-outline-custom ms-3">Login</a>
+                <a href="{% url 'userside:register' %}" class="btn btn-primary-custom ms-2">Register</a>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Mobile Nav -->
+        <div class="collapse d-md-none border-top py-2" id="mobileNav">
+            <a href="{% url 'userside:product_list' %}" class="nav-link-custom d-block">Shop</a>
+            <a href="#" class="nav-link-custom d-block">Collections</a>
+            <a href="#" class="nav-link-custom d-block">About</a>
+            <a href="#" class="nav-link-custom d-block">Contact</a>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main>
+        {% block content %}
+        {% endblock %}
+    </main>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const isLoggedIn = "{{ user.is_authenticated|yesno:'true,false' }}" === "true";
+
+        function toggleUserDropdown() {
+            const dropdown = document.getElementById('userDropdown');
+            dropdown.classList.toggle('show');
+        }
+
+        document.addEventListener('click', function(event) {
+            const dropdown = document.getElementById('userDropdown');
+            const userButton = event.target.closest('.user-dropdown');
+
+            if (!userButton && dropdown && dropdown.classList.contains('show')) {
+                dropdown.classList.remove('show');
+            }
+        });
+
+        function showLoginSwal() {
+            Swal.fire({
+                title: "Login Required",
+                text: "Please login or register to continue.",
+                icon: "warning",
+                showCancelButton: true,
+                confirmButtonText: "Login",
+                cancelButtonText: "Register"
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    window.location.href = "{% url 'userside:login' %}";
+                } else if (result.dismiss === Swal.DismissReason.cancel) {
+                    window.location.href = "{% url 'userside:register' %}";
+                }
+            });
+        }
