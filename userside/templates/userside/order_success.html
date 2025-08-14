@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load checkout_filters %}
 
 {% block extra_head %}
     <!-- Bootstrap CSS -->
@@ -29,91 +30,90 @@
         }
         /* Page Header */
         .page-header {
-        background: linear-gradient(135deg, var(--primary-black) 0%, var(--gray-800) 100%);
-        color: var(--primary-white);
-        padding: 4rem 0 2rem;
-        margin-bottom: 0;
-        position: relative;
-        overflow: hidden;
-        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
-    }
-    .page-header::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0) 100%);
-        z-index: 1;
-        animation: confetti-bg 3s infinite ease-in-out;
-    }
-    .page-header .container {
-        position: relative;
-        z-index: 2;
-    }
-    /* Confetti Particles */
-    .page-title {
-        font-size: 3.5rem;
-        font-weight: 900;
-        text-align: center;
-        margin-bottom: 1.25rem;
-        letter-spacing: 0.06em;
-        text-transform: uppercase;
-        color: var(--primary-white);
-        text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
-        animation: bounceIn 1s ease-out;
-        position: relative;
-    }
-    .page-title:hover {
-        transform: scale(1.03);
-        transition: transform 0.3s ease;
-    }
-    .page-subtitle {
-        text-align: center;
-        font-size: 1.3rem;
-        font-weight: 400;
-        color: var(--gray-300);
-        max-width: 700px;
-        margin: 0 auto;
-        line-height: 1.8;
-        animation: fadeInUp 1.2s ease-out 0.2s;
-        animation-fill-mode: both;
-    }
-    /* Animation Keyframes */
-    @keyframes bounceIn {
-        0% {
-            opacity: 0;
-            transform: scale(0.3);
+            background: linear-gradient(135deg, var(--primary-black) 0%, var(--gray-800) 100%);
+            color: var(--primary-white);
+            padding: 4rem 0 2rem;
+            margin-bottom: 0;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
         }
-        50% {
-            opacity: 1;
-            transform: scale(1.05);
+        .page-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0) 100%);
+            z-index: 1;
+            animation: confetti-bg 3s infinite ease-in-out;
         }
-        70% {
-            transform: scale(0.95);
+        .page-header .container {
+            position: relative;
+            z-index: 2;
         }
-        100% {
-            transform: scale(1);
+        /* Confetti Particles */
+        .page-title {
+            font-size: 3.5rem;
+            font-weight: 900;
+            text-align: center;
+            margin-bottom: 1.25rem;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            color: var(--primary-white);
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+            animation: bounceIn 1s ease-out;
+            position: relative;
         }
-    }
-    @keyframes fadeInUp {
-        from {
-            opacity: 0;
-            transform: translateY(20px);
+        .page-title:hover {
+            transform: scale(1.03);
+            transition: transform 0.3s ease;
         }
-        to {
-            opacity: 1;
-            transform: translateY(0);
+        .page-subtitle {
+            text-align: center;
+            font-size: 1.3rem;
+            font-weight: 400;
+            color: var(--gray-300);
+            max-width: 700px;
+            margin: 0 auto;
+            line-height: 1.8;
+            animation: fadeInUp 1.2s ease-out 0.2s;
+            animation-fill-mode: both;
         }
-    }
-    
+        /* Animation Keyframes */
+        @keyframes bounceIn {
+            0% {
+                opacity: 0;
+                transform: scale(0.3);
+            }
+            50% {
+                opacity: 1;
+                transform: scale(1.05);
+            }
+            70% {
+                transform: scale(0.95);
+            }
+            100% {
+                transform: scale(1);
+            }
+        }
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
         /* Section Styling */
         .confirmation-section {
             padding: 2rem 0;
         }
         .card {
-            border-radius: 1rem; /* 16px */
+            border-radius: 1rem;
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
             border: 1px solid var(--gray-200);
         }
@@ -132,6 +132,20 @@
         }
         .btn-primary-black:hover {
             background-color: var(--gray-800);
+            color: var(--primary-white);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+        .btn-secondary-outline {
+            border: 2px solid var(--primary-black);
+            color: var(--primary-black);
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        .btn-secondary-outline:hover {
+            background-color: var(--primary-black);
             color: var(--primary-white);
             transform: translateY(-2px);
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
@@ -161,52 +175,100 @@
 
     <!-- Order Confirmation Section -->
     <section class="confirmation-section">
-    <div class="container">
-        <div class="row justify-content-center">
-            <div class="col-lg-8">
-                <div class="card p-4 p-md-6 text-center">
-                    <div class="mb-4">
-                        <i class="bi bi-check-circle-fill text-success" style="font-size: 4rem;"></i>
-                        <h2 class="fs-3 fw-bold text-primaryBlack mt-3 mb-2">Order Confirmed!</h2>
-                        <p class="text-gray-700">Your order <strong>#{{ order.order_id }}</strong> has been placed successfully.</p>
-                    </div>
+        <div class="container">
+            <div class="row justify-content-center">
+                <div class="col-lg-8">
+                    <div class="card p-4 p-md-6 text-center">
+                        <div class="mb-4">
+                            <i class="bi bi-check-circle-fill text-success" style="font-size: 4rem;"></i>
+                            <h2 class="fs-3 fw-bold text-primaryBlack mt-3 mb-2">Order Confirmed!</h2>
+                            <p class="text-gray-700">Your order <strong>#{{ order.order_id }}</strong> has been placed successfully.</p>
+                        </div>
 
-                    <div class="text-start mb-4">
-                        <h3 class="fs-5 fw-bold text-primaryBlack mb-3">Order Summary</h3>
-                        <ul class="list-group list-group-flush">
-                            {% for item in order_items %}
-                                <li class="list-group-item d-flex justify-content-between align-items-center px-0 py-2">
-                                    <div>
-                                        <strong>{{ item.name }}</strong>
-                                        {% if item.size %}
-                                            <span class="badge bg-secondary ms-2">{{ item.size }}</span>
-                                        {% endif %}
-                                        <div class="text-muted small">Qty: {{ item.quantity }}</div>
-                                    </div>
-                                    <span class="fw-semibold">₹{{ item.total|floatformat:2 }}</span>
+                        <div class="text-start mb-4">
+                            <h3 class="fs-5 fw-bold text-primaryBlack mb-3">Order Summary</h3>
+                            <ul class="list-group list-group-flush">
+                                {% for item in order_items %}
+                                    <li class="list-group-item d-flex justify-content-between align-items-center px-0 py-2">
+                                        <div>
+                                            <strong>{{ item.name }}</strong>
+                                            {% if item.size %}
+                                                <span class="badge bg-secondary ms-2">{{ item.size }}</span>
+                                            {% endif %}
+                                            {% if item.color_name %}
+                                                <span class="badge bg-secondary ms-2">{{ item.color_name }}</span>
+                                            {% endif %}
+                                            <div class="text-muted small">Qty: {{ item.quantity }}</div>
+                                            {% if item.applied_offer %}
+                                                <div class="text-muted small">{{ item.applied_offer }}</div>
+                                            {% endif %}
+                                        </div>
+                                        <span class="fw-semibold">₹{{ item.total|floatformat:2 }}</span>
+                                    </li>
+                                {% endfor %}
+                                <li class="list-group-item d-flex justify-content-between align-items-center px-0 py-2 border-top mt-2">
+                                    <span>Subtotal:</span>
+                                    <span>₹{{ subtotal|floatformat:2 }}</span>
                                 </li>
-                            {% endfor %}
-                            <li class="list-group-item d-flex justify-content-between align-items-center px-0 py-3 border-top mt-2">
-                                <strong class="fs-5">Total:</strong>
-                                <strong class="fs-5">₹{{ order.total|floatformat:2 }}</strong>
-                            </li>
-                        </ul>
-                    </div>
+                                {% if total_discount > 0 %}
+                                    <li class="list-group-item d-flex justify-content-between align-items-center px-0 py-2">
+                                        <span>Discount (Offers):</span>
+                                        <span>-₹{{ total_discount|floatformat:2 }}</span>
+                                    </li>
+                                {% endif %}
+                                {% if coupon_discount > 0 %}
+                                    <li class="list-group-item d-flex justify-content-between align-items-center px-0 py-2">
+                                        <span>Coupon Discount:</span>
+                                        <span>-₹{{ coupon_discount|floatformat:2 }}</span>
+                                    </li>
+                                    {% for code, coupon in applied_coupons.items %}
+                                        <li class="list-group-item d-flex justify-content-between align-items-center px-0 py-2 text-muted small">
+                                            <span>{{ code }} ({{ coupon.discount_percentage }}%):</span>
+                                            <span>-₹{{ subtotal|multiply:coupon.discount_percentage|divide:100|floatformat:2 }}</span>
+                                        </li>
+                                    {% endfor %}
+                                {% endif %}
+                                {% if referral_coupon_discount > 0 %}
+                                    <li class="list-group-item d-flex justify-content-between align-items-center px-0 py-2">
+                                        <span>Referral Coupon Discount:</span>
+                                        <span>-₹{{ referral_coupon_discount|floatformat:2 }}</span>
+                                    </li>
+                                    {% for code, coupon in applied_referral_coupons.items %}
+                                        <li class="list-group-item d-flex justify-content-between align-items-center px-0 py-2 text-muted small">
+                                            <span>{{ code }} ({{ coupon.discount_percentage }}%):</span>
+                                            <span>-₹{{ subtotal|multiply:coupon.discount_percentage|divide:100|floatformat:2 }}</span>
+                                        </li>
+                                    {% endfor %}
+                                {% endif %}
+                                <li class="list-group-item d-flex justify-content-between align-items-center px-0 py-2">
+                                    <span>Tax:</span>
+                                    <span>₹{{ tax|floatformat:2 }}</span>
+                                </li>
+                                <li class="list-group-item d-flex justify-content-between align-items-center px-0 py-2">
+                                    <span>Shipping:</span>
+                                    <span>₹{{ shipping|floatformat:2 }}</span>
+                                </li>
+                                <li class="list-group-item d-flex justify-content-between align-items-center px-0 py-3 border-top mt-2">
+                                    <strong class="fs-5">Total:</strong>
+                                    <strong class="fs-5">₹{{ total|floatformat:2 }}</strong>
+                                </li>
+                            </ul>
+                        </div>
 
-                    <div class="d-flex flex-column flex-md-row justify-content-center gap-3">
-                        <a href="{% url 'userside:order_list' %}" class="btn btn-primary-black">
-                            <i class="bi bi-box-seam me-2"></i>View My Orders
-                        </a>
-                        <a href="{% url 'userside:product_list' %}" class="btn btn-secondary-outline">
-                            <i class="bi bi-shop me-2"></i>Continue Shopping
-                        </a>
+                        <div class="d-flex flex-column flex-md-row justify-content-center gap-3">
+                            <a href="{% url 'userside:order_list' %}" class="btn btn-primary-black">
+                                <i class="bi bi-box-seam me-2"></i>View My Orders
+                            </a>
+                            <a href="{% url 'userside:product_list' %}" class="btn btn-secondary-outline">
+                                <i class="bi bi-shop me-2"></i>Continue Shopping
+                            </a>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
-</section>
+    </section>
 
-<!-- Bootstrap JS (Bundle includes Popper) -->
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Bootstrap JS (Bundle includes Popper) -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 {% endblock %}

@@ -1,7 +1,6 @@
 {% extends "base.html" %}
 
 {% block extra_head %}
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -40,6 +39,20 @@
             line-height: 1.6;
             color: #212529;
             background-color: var(--gray-50);
+        }
+        /* Gradient Button Styles */
+        .gradient-btn {
+            background: linear-gradient(45deg, #4B0082, #14B8A6);
+            color: var(--primary-white);
+            transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.3s ease;
+            border: none;
+        }
+        .gradient-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            background: linear-gradient(45deg, #14B8A6, #4B0082);
+            color: var(--primary-white);
+            text-decoration: none;
         }
         /* Top Bar Styles */
         .top-bar {
@@ -137,7 +150,7 @@
             border: 1px solid var(--gray-200);
             min-width: 200px;
             z-index: 1000;
-            display: none; /* Controlled by JS */
+            display: none;
         }
         .dropdown-menu-custom.show {
             display: block;
@@ -156,8 +169,8 @@
         }
         /* Main Content Area */
         .main-content {
-            min-height: calc(100vh - 200px); /* Adjust based on header/footer height */
-            padding: 2rem 0; /* Example padding */
+            min-height: calc(100vh - 200px);
+            padding: 2rem 0;
         }
         /* Footer Styles */
         .footer {
@@ -243,22 +256,22 @@
         }
         /* Utility Classes */
         .btn-primary-custom {
-            background: var(--primary-black);
+            background: linear-gradient(45deg, #4B0082, #14B8A6);
             color: var(--primary-white);
-            border: 2px solid var(--primary-black);
+            border: none;
             padding: 0.75rem 1.5rem;
             border-radius: 50px;
             font-weight: 600;
             text-decoration: none;
             display: inline-block;
-            transition: all 0.3s ease;
+            transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.3s ease;
         }
         .btn-primary-custom:hover {
-            background: var(--gray-800);
-            border-color: var(--gray-800);
+            transform: scale(1.05);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            background: linear-gradient(45deg, #14B8A6, #4B0082);
             color: var(--primary-white);
             text-decoration: none;
-            transform: translateY(-2px);
         }
         .btn-outline-custom {
             background: transparent;
@@ -277,69 +290,68 @@
             text-decoration: none;
             transform: translateY(-2px);
         }
-
         /* Page Header */
         .page-header {
-        background: linear-gradient(135deg, var(--primary-black) 0%, #1a3c34 100%);
-        color: var(--primary-white);
-        padding: 4rem 0 2rem;
-        margin-bottom: 0;
-        position: relative;
-        overflow: hidden;
-        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
-    }
-    .page-header::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" preserveAspectRatio="none"><path fill="rgba(255,255,255,0.05)" d="M0,0 Q50,20 100,0 Q50,20 0,0 Z" /></svg>') repeat-x bottom;
-        opacity: 0.3;
-        z-index: 1;
-    }
-    .page-header .container {
-        position: relative;
-        z-index: 2;
-    }
-    .page-title {
-        font-size: 3.75rem;
-        font-weight: 900;
-        text-align: center;
-        margin-bottom: 1.25rem;
-        letter-spacing: 0.06em;
-        text-transform: uppercase;
-        color: var(--primary-white);
-        text-shadow: 2px 2px 6px rgba(0, 0, 0, 0.3);
-        animation: fadeInUp 1s ease-out;
-    }
-    .page-title:hover {
-        transform: scale(1.03);
-        transition: transform 0.3s ease;
-    }
-    .page-subtitle {
-        text-align: center;
-        font-size: 1.3rem;
-        font-weight: 400;
-        color: var(--gray-200);
-        max-width: 700px;
-        margin: 0 auto;
-        line-height: 1.8;
-        animation: fadeInUp 1.2s ease-out 0.2s;
-        animation-fill-mode: both;
-    }
-    /* Animation Keyframes */
-    @keyframes fadeInUp {
-        from {
-            opacity: 0;
-            transform: translateY(20px);
+            background: linear-gradient(135deg, var(--primary-black) 0%, #1a3c34 100%);
+            color: var(--primary-white);
+            padding: 4rem 0 2rem;
+            margin-bottom: 0;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
         }
-        to {
-            opacity: 1;
-            transform: translateY(0);
+        .page-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" preserveAspectRatio="none"><path fill="rgba(255,255,255,0.05)" d="M0,0 Q50,20 100,0 Q50,20 0,0 Z" /></svg>') repeat-x bottom;
+            opacity: 0.3;
+            z-index: 1;
         }
-    }
+        .page-header .container {
+            position: relative;
+            z-index: 2;
+        }
+        .page-title {
+            font-size: 3.75rem;
+            font-weight: 900;
+            text-align: center;
+            margin-bottom: 1.25rem;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            color: var(--primary-white);
+            text-shadow: 2px 2px 6px rgba(0, 0, 0, 0.3);
+            animation: fadeInUp 1s ease-out;
+        }
+        .page-title:hover {
+            transform: scale(1.03);
+            transition: transform 0.3s ease;
+        }
+        .page-subtitle {
+            text-align: center;
+            font-size: 1.3rem;
+            font-weight: 400;
+            color: var(--gray-200);
+            max-width: 700px;
+            margin: 0 auto;
+            line-height: 1.8;
+            animation: fadeInUp 1.2s ease-out 0.2s;
+            animation-fill-mode: both;
+        }
+        /* Animation Keyframes */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
         /* Category Filters */
         .category-section {
             background: var(--primary-white);
@@ -355,28 +367,28 @@
             align-items: center;
         }
         .category-btn {
-            background: var(--primary-white);
-            color: var(--gray-700);
-            border: 2px solid var(--gray-300);
+            background: linear-gradient(45deg, #4B0082, #14B8A6);
+            color: var(--primary-white);
+            border: none;
             padding: 0.75rem 1.5rem;
             border-radius: 50px;
             font-weight: 600;
             text-decoration: none;
-            transition: all 0.3s ease;
+            transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.3s ease;
             font-size: 0.95rem;
             white-space: nowrap;
         }
         .category-btn:hover {
-            background: var(--gray-100);
-            color: var(--primary-black);
+            transform: scale(1.05);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            background: linear-gradient(45deg, #14B8A6, #4B0082);
+            color: var(--primary-white);
             text-decoration: none;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
         }
         .category-btn.active {
-            background: var(--primary-black);
+            background: linear-gradient(45deg, #14B8A6, #4B0082);
             color: var(--primary-white);
-            border-color: var(--primary-black);
+            border: none;
         }
         /* Filters Section */
         .filters-section {
@@ -411,20 +423,22 @@
             outline: none;
         }
         .search-btn {
-            background: var(--primary-black);
+            background: linear-gradient(45deg, #4B0082, #14B8A6);
             color: var(--primary-white);
             border: none;
             border-radius: 50px;
             padding: 0.75rem 1.5rem;
             font-weight: 600;
-            transition: all 0.3s ease;
+            transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.3s ease;
             display: flex;
             align-items: center;
             gap: 0.5rem;
         }
         .search-btn:hover {
-            background: var(--gray-800);
-            transform: translateY(-1px);
+            transform: scale(1.05);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            background: linear-gradient(45deg, #14B8A6, #4B0082);
+            color: var(--primary-white);
         }
         .clear-search-btn {
             background: var(--gray-200);
@@ -438,6 +452,24 @@
         .clear-search-btn:hover {
             background: var(--gray-300);
             color: var(--gray-800);
+        }
+        .clear-filters-btn {
+            background: transparent;
+            color: #dc3545;
+            border: 2px solid #dc3545;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .clear-filters-btn:hover {
+            background: #dc3545;
+            color: var(--primary-white);
+            text-decoration: none;
         }
         /* Sort and Filter Controls */
         .filter-controls {
@@ -466,24 +498,6 @@
             box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.1);
             outline: none;
         }
-        .clear-filters-btn {
-            background: transparent;
-            color: #dc3545;
-            border: 2px solid #dc3545;
-            padding: 0.5rem 1rem;
-            border-radius: 8px;
-            font-weight: 600;
-            text-decoration: none;
-            transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-        .clear-filters-btn:hover {
-            background: #dc3545;
-            color: var(--primary-white);
-            text-decoration: none;
-        }
         /* Results Info */
         .results-section {
             padding: 2rem 0;
@@ -500,8 +514,8 @@
         /* Product Grid */
         .products-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, 280px); /* Fixed width for cards */
-            justify-content: center; /* Center the grid items */
+            grid-template-columns: repeat(auto-fill, 280px);
+            justify-content: center;
             gap: 2rem;
         }
         .product-card {
@@ -512,7 +526,7 @@
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
             transition: transform 0.3s ease, box-shadow 0.3s ease;
             position: relative;
-            width: 280px; /* Explicitly set width to ensure consistency */
+            width: 280px;
         }
         .product-card:hover {
             transform: translateY(-5px);
@@ -548,33 +562,34 @@
         .product-card:hover .product-image-container::before {
             background: rgba(0, 0, 0, 0.2);
         }
-
         .wishlist-btn {
             position: absolute;
             top: 10px;
             right: 10px;
-            background: rgba(255, 255, 255, 0.9);
+            background: linear-gradient(45deg, #4B0082, #14B8A6);
             border: none;
             border-radius: 50%;
             padding: 0.5rem;
             font-size: 1.2rem;
             cursor: pointer;
-            color: #e11d48; /* Rose color */
-            transition: background 0.3s ease;
+            color: var(--primary-white);
+            transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.3s ease;
             z-index: 2;
         }
         .wishlist-btn:hover {
-            background: #fef2f2;
+            transform: scale(1.05);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            background: linear-gradient(45deg, #14B8A6, #4B0082);
         }
         .view-product-btn {
             position: absolute;
-            bottom: -50px; /* Hidden by default */
+            bottom: -50px;
             left: 0;
             width: 100%;
             text-align: center;
             padding: 0.75rem 0;
-            background: rgba(0, 0, 0, 0.8);
-            color: #fff;
+            background: linear-gradient(45deg, #4B0082, #14B8A6);
+            color: var(--primary-white);
             text-decoration: none;
             font-weight: 600;
             transition: all 0.3s ease;
@@ -586,6 +601,8 @@
             bottom: 0;
             opacity: 1;
             visibility: visible;
+            transform: scale(1.05);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
         }
         .product-info {
             padding: 1rem;
@@ -653,23 +670,76 @@
             justify-content: center;
             width: 44px;
             height: 44px;
-            border: 2px solid var(--gray-300);
+            border: none;
             border-radius: 8px;
-            color: var(--gray-700);
+            background: linear-gradient(45deg, #4B0082, #14B8A6);
+            color: var(--primary-white);
             text-decoration: none;
             font-weight: 600;
-            transition: all 0.3s ease;
+            transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.3s ease;
         }
         .page-link-custom:hover {
-            background: var(--gray-100);
-            color: var(--primary-black);
+            transform: scale(1.05);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            background: linear-gradient(45deg, #14B8A6, #4B0082);
+            color: var(--primary-white);
             text-decoration: none;
-            transform: translateY(-2px);
         }
         .page-item-custom.active .page-link-custom {
-            background: var(--primary-black);
+            background: linear-gradient(45deg, #14B8A6, #4B0082);
             color: var(--primary-white);
-            border-color: var(--primary-black);
+            border: none;
+        }
+        .page-link-custom.disabled {
+            background: var(--gray-300);
+            color: var(--gray-600);
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        /* Circular Offer Badge */
+        .offer-badge {
+            position: absolute;
+            top: 12px;
+            left: 12px;
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            color: #ffffff;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            z-index: 3;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            text-align: center;
+            line-height: 1.2;
+        }
+        .offer-badge:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
+        }
+        .offer-badge::before {
+            content: '';
+            position: absolute;
+            top: -3px;
+            left: -3px;
+            right: -3px;
+            bottom: -3px;
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            border-radius: 50%;
+            z-index: -1;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        .product-card:hover .offer-badge::before {
+            opacity: 0.4;
         }
         /* Responsive Design */
         @media (max-width: 768px) {
@@ -689,7 +759,7 @@
                 justify-content: space-between;
             }
             .products-grid {
-                grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); /* Allow flexibility on tablets */
+                grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
                 gap: 1.5rem;
             }
             .search-container {
@@ -698,7 +768,7 @@
         }
         @media (max-width: 576px) {
             .products-grid {
-                grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); /* Allow stretching to fill on small mobiles */
+                grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
                 gap: 1rem;
             }
             .product-image-container {
@@ -710,6 +780,13 @@
             .page-header {
                 padding: 2rem 0 1rem;
             }
+            .offer-badge {
+                width: 40px;
+                height: 40px;
+                font-size: 0.65rem;
+                top: 8px;
+                left: 8px;
+            }
         }
     </style>
 </head>
@@ -717,7 +794,6 @@
 {% endblock %}
 
 {% block content %}
-
     <!-- Page-Specific Content -->
     <main class="main-content container">
         <div class="page-header">
@@ -760,7 +836,7 @@
                                 <i class="bi bi-x"></i>
                             </a>
                         {% endif %}
-                        <button type="submit" class="search-btn">
+                        <button type="submit" class="search-btn gradient-btn">
                             <i class="bi bi-search"></i>
                             Search
                         </button>
@@ -803,24 +879,28 @@
                     {% if selected_category and selected_category != 'all' %} in <strong>{{ selected_category|title }}</strong>{% endif %}
                 </div>
                 <div class="products-grid">
-                    {% for product in products %}
+                    {% for item in products_with_offers %}
                         <div class="product-card">
                             <div class="product-image-container">
-                                <img src="{% if product.get_primary_image %}{{ product.get_primary_image }}{% else %}https://via.placeholder.com/300x300/f3f4f6/9ca3af?text=Product{% endif %}" 
-                                     alt="{{ product.name }}" class="product-image">
+                                <img src="{% if item.product.get_primary_image %}{{ item.product.get_primary_image }}{% else %}https://via.placeholder.com/300x300/f3f4f6/9ca3af?text=Product{% endif %}" 
+                                     alt="{{ item.product.name }}" class="product-image">
                                 <!-- Wishlist Button -->
-                                <button class="wishlist-btn" data-product-id="{{ product.id }}" id="wishlist-btn-{{ product.id }}">
+                                <button class="wishlist-btn gradient-btn" data-product-id="{{ item.product.id }}" id="wishlist-btn-{{ item.product.id }}">
                                     <i class="bi bi-heart"></i>
                                 </button>
+                                <!-- Offer Badge -->
+                                {% if item.offer_percentage %}
+                                    <span class="offer-badge">{{ item.offer_percentage }}% OFF</span>
+                                {% endif %}
                                 <!-- View Product Button -->
-                                <a href="{% url 'userside:product_detail' product.id %}" class="view-product-btn">
+                                <a href="{% url 'userside:product_detail' item.product.id %}" class="view-product-btn gradient-btn">
                                     View Product
                                 </a>
                             </div>
                             <div class="product-info">
-                                <h3 class="product-name">{{ product.name }}</h3>
-                                <div class="product-price">${{ product.price }}</div>
-                                <p id="wishlist-msg-{{ product.id }}" class="wishlist-msg"></p>
+                                <h3 class="product-name">{{ item.product.name }}</h3>
+                                <div class="product-price">${{ item.product.price }}</div>
+                                <p id="wishlist-msg-{{ item.product.id }}" class="wishlist-msg"></p>
                             </div>
                         </div>
                     {% empty %}
@@ -833,143 +913,143 @@
                             <p class="empty-description">
                                 We couldn't find any products matching your criteria. Try adjusting your search or filter options.
                             </p>
-                            <a href="{% url 'userside:clear_filters' %}" class="btn-hero-primary" style="background: var(--primary-black); color: var(--primary-white); padding: 1rem 2rem; border-radius: 50px; font-weight: 600; text-decoration: none; display: inline-block; transition: all 0.3s ease;">
+                            <a href="{% url 'userside:clear_filters' %}" class="btn-primary-custom" style="background: var(--primary-black); color: var(--primary-white); padding: 1rem 2rem; border-radius: 50px; font-weight: 600; text-decoration: none; display: inline-block; transition: all 0.3s ease;">
                                 <i class="bi bi-arrow-clockwise me-2"></i>Clear All Filters
                             </a>
                         </div>
                     {% endfor %}
                 </div>
                 <!-- Pagination -->
-                {% if page_obj.has_other_pages %}
-                    <div class="pagination-container">
-                        <ul class="pagination-custom">
-                            {% if page_obj.has_previous %}
+                <div class="pagination-container">
+                    <ul class="pagination-custom">
+                        {% if page_obj.has_previous %}
+                            <li class="page-item-custom">
+                                <a class="page-link-custom gradient-btn" href="?page={{ page_obj.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if selected_category and selected_category != 'all' %}&category={{ selected_category }}{% endif %}{% if selected_sort %}&sort={{ selected_sort }}{% endif %}">
+                                    <i class="bi bi-chevron-left"></i>
+                                </a>
+                            </li>
+                        {% else %}
+                            <li class="page-item-custom">
+                                <span class="page-link-custom disabled"><i class="bi bi-chevron-left"></i></span>
+                            </li>
+                        {% endif %}
+                        {% for num in page_obj.paginator.page_range %}
+                            {% if page_obj.number == num %}
+                                <li class="page-item-custom active">
+                                    <span class="page-link-custom gradient-btn">{{ num }}</span>
+                                </li>
+                            {% else %}
                                 <li class="page-item-custom">
-                                    <a class="page-link-custom" href="?page={{ page_obj.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if selected_category and selected_category != 'all' %}&category={{ selected_category }}{% endif %}{% if selected_sort %}&sort={{ selected_sort }}{% endif %}">
-                                        <i class="bi bi-chevron-left"></i>
-                                    </a>
+                                    <a class="page-link-custom gradient-btn" href="?page={{ num }}{% if search_query %}&search={{ search_query }}{% endif %}{% if selected_category and selected_category != 'all' %}&category={{ selected_category }}{% endif %}{% if selected_sort %}&sort={{ selected_sort }}{% endif %}">{{ num }}</a>
                                 </li>
                             {% endif %}
-                            {% for num in page_obj.paginator.page_range %}
-                                {% if page_obj.number == num %}
-                                    <li class="page-item-custom active">
-                                        <span class="page-link-custom">{{ num }}</span>
-                                    </li>
-                                {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
-                                    <li class="page-item-custom">
-                                        <a class="page-link-custom" href="?page={{ num }}{% if search_query %}&search={{ search_query }}{% endif %}{% if selected_category and selected_category != 'all' %}&category={{ selected_category }}{% endif %}{% if selected_sort %}&sort={{ selected_sort }}{% endif %}">{{ num }}</a>
-                                    </li>
-                                {% endif %}
-                            {% endfor %}
-                            {% if page_obj.has_next %}
-                                <li class="page-item-custom">
-                                    <a class="page-link-custom" href="?page={{ page_obj.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if selected_category and selected_category != 'all' %}&category={{ selected_category }}{% endif %}{% if selected_sort %}&sort={{ selected_sort }}{% endif %}">
-                                        <i class="bi bi-chevron-right"></i>
-                                    </a>
-                                </li>
-                            {% endif %}
-                        </ul>
-                    </div>
-                {% endif %}
+                        {% endfor %}
+                        {% if page_obj.has_next %}
+                            <li class="page-item-custom">
+                                <a class="page-link-custom gradient-btn" href="?page={{ page_obj.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if selected_category and selected_category != 'all' %}&category={{ selected_category }}{% endif %}{% if selected_sort %}&sort={{ selected_sort }}{% endif %}">
+                                    <i class="bi bi-chevron-right"></i>
+                                </a>
+                            </li>
+                        {% else %}
+                            <li class="page-item-custom">
+                                <span class="page-link-custom disabled"><i class="bi bi-chevron-right"></i></span>
+                            </li>
+                        {% endif %}
+                    </ul>
+                </div>
             </div>
         </section>
     </main>
 
-    
-
     <!-- Bootstrap Bundle JS (includes Popper) -->
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
-<script>
-    function toggleUserDropdown() {
-        const dropdown = document.getElementById('userDropdown');
-        dropdown.classList.toggle('show');
-    }
-
-    // Close dropdown when clicking outside
-    document.addEventListener('click', function(event) {
-        const dropdown = document.getElementById('userDropdown');
-        const userButton = event.target.closest('.user-dropdown');
-        if (!userButton && dropdown.classList.contains('show')) {
-            dropdown.classList.remove('show');
+    <script>
+        function toggleUserDropdown() {
+            const dropdown = document.getElementById('userDropdown');
+            dropdown.classList.toggle('show');
         }
-    });
 
-    // Smooth scrolling for anchor links
-    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-        anchor.addEventListener('click', function (e) {
-            e.preventDefault();
-            const target = document.querySelector(this.getAttribute('href'));
-            if (target) {
-                target.scrollIntoView({
-                    behavior: 'smooth',
-                    block: 'start'
-                });
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function(event) {
+            const dropdown = document.getElementById('userDropdown');
+            const userButton = event.target.closest('.user-dropdown');
+            if (!userButton && dropdown.classList.contains('show')) {
+                dropdown.classList.remove('show');
             }
         });
-    });
 
-    // Wishlist toggle (add/remove) with SweetAlert
-    document.querySelectorAll('.wishlist-btn').forEach(button => {
-        button.addEventListener('click', function(e) {
-            e.preventDefault();
-            const productId = this.dataset.productId;
-            const icon = this.querySelector('i');
-            const isInWishlist = icon.classList.contains('bi-heart-fill');
-
-            const url = isInWishlist
-                ? `/remove-from-wishlist/${productId}/`
-                : `/add-to-wishlist/${productId}/`;
-
-            fetch(url, {
-                method: 'POST',
-                headers: {
-                    'X-CSRFToken': '{{ csrf_token }}',
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({})
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    // Toggle icon
-                    icon.classList.toggle('bi-heart');
-                    icon.classList.toggle('bi-heart-fill');
-
-                    // SweetAlert message
-                    Swal.fire({
-                        icon: isInWishlist ? 'info' : 'success',
-                        title: data.message,
-                        showConfirmButton: false,
-                        timer: 1500
-                    });
-
-                    // Optional: update wishlist count via reload
-                    setTimeout(() => location.reload(), 1000);
-                } else {
-                    Swal.fire({
-                        icon: 'error',
-                        title: data.message,
-                        showConfirmButton: true
+        // Smooth scrolling for anchor links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
                     });
                 }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Something went wrong!',
-                    text: 'Please try again later.',
-                    showConfirmButton: true
+            });
+        });
+
+        // Wishlist toggle (add/remove) with SweetAlert
+        document.querySelectorAll('.wishlist-btn').forEach(button => {
+            button.addEventListener('click', function(e) {
+                e.preventDefault();
+                const productId = this.dataset.productId;
+                const icon = this.querySelector('i');
+                const isInWishlist = icon.classList.contains('bi-heart-fill');
+
+                const url = isInWishlist
+                    ? `/remove-from-wishlist/${productId}/`
+                    : `/add-to-wishlist/${productId}/`;
+
+                fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': '{{ csrf_token }}',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({})
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Toggle icon
+                        icon.classList.toggle('bi-heart');
+                        icon.classList.toggle('bi-heart-fill');
+
+                        // SweetAlert message
+                        Swal.fire({
+                            icon: isInWishlist ? 'info' : 'success',
+                            title: data.message,
+                            showConfirmButton: false,
+                            timer: 1500
+                        });
+
+                        // Optional: update wishlist count via reload
+                        setTimeout(() => location.reload(), 1000);
+                    } else {
+                        Swal.fire({
+                            icon: 'error',
+                            title: data.message,
+                            showConfirmButton: true
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Please LOGIN or SignUp',
+                        showConfirmButton: true
+                    });
                 });
             });
         });
-    });
-</script>
-
-
-
+    </script>
 </body>
 </html>
 {% endblock %}

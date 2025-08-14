@@ -1,340 +1,363 @@
 {% extends 'adminside/base.html' %}
+{% load static %}
+
+{% block extra_head %}
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        /* Ensure content respects sidebar width */
+        .content-area {
+            margin-left: 280px;
+            padding: 24px;
+            transition: margin-left 0.3s ease;
+            background-color: #f9fafb; /* Light gray background */
+        }
+
+        @media (max-width: 768px) {
+            .content-area {
+                margin-left: 0;
+                padding: 16px;
+            }
+        }
+
+        /* Custom hover effect for cards */
+        .metric-card {
+            transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+        }
+        .metric-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            border-color: #4B0082; /* Indigo-900 */
+        }
+
+        /* Custom toggle switch styling */
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 48px;
+            height: 24px;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 24px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        .toggle-switch input:checked + .slider {
+            background-color: #10b981;
+        }
+
+        .toggle-switch input:checked + .slider:before {
+            transform: translateX(24px);
+        }
+
+        /* Modal styling */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 50;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background-color: white;
+            padding: 24px;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 600px;
+            box-shadow: 0 10px 15px rgba(0, 0, 0, 0.2);
+            position: relative;
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            font-size: 24px;
+            cursor: pointer;
+            color: #6b7280;
+        }
+
+        .modal-close:hover {
+            color: #4B0082;
+        }
+
+        /* Enhanced Add Category and Edit button styling */
+        .add-category-btn, .edit-category-btn {
+            background: linear-gradient(45deg, #4B0082, #14B8A6); /* Gradient from Indigo-900 to Teal-500 */
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .add-category-btn:hover, .edit-category-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            background: linear-gradient(45deg, #14B8A6, #4B0082); /* Reverse gradient on hover */
+        }
+    </style>
+{% endblock %}
 
 {% block content %}
-<style>
-    .main-content {
-        margin-left: 260px; /* Matches sidebar width */
-        padding: 30px;
-        transition: margin-left 0.3s ease;
-    }
+<div class="content-area">
+    <div class="container mx-auto">
+        <h1 class="text-4xl font-extrabold text-gray-900 mb-8">Category Management</h1>
 
-    .category-page {
-        background: white;
-        border-radius: 15px;
-        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
-        border: 1px solid #e9ecef;
-        padding: 30px;
-    }
-
-    .category-page h2 {
-        font-size: 2rem;
-        font-weight: 700;
-        margin-bottom: 20px;
-    }
-
-    .search-form {
-        display: flex;
-        gap: 10px;
-        margin-bottom: 25px;
-        flex-wrap: wrap;
-    }
-
-    .search-form input[type="text"] {
-        padding: 10px 15px;
-        border: 2px solid #dee2e6;
-        border-radius: 10px;
-        flex: 1;
-        min-width: 250px;
-    }
-
-    .search-form button,
-    .search-form a {
-        padding: 10px 20px;
-        border-radius: 10px;
-        background: #000;
-        color: white;
-        text-decoration: none;
-        font-weight: 600;
-        border: none;
-        transition: all 0.3s ease;
-    }
-
-    .search-form a {
-        background: #6c757d;
-    }
-
-    .search-form button:hover,
-    .search-form a:hover {
-        background: #333;
-        color: white;
-    }
-
-    .category-table table {
-        width: 100%;
-        border-collapse: collapse;
-        margin-bottom: 30px;
-    }
-
-    .category-table th, .category-table td {
-        padding: 15px;
-        border: 1px solid #dee2e6;
-        text-align: center;
-    }
-
-    .category-table th {
-        background: #000;
-        color: white;
-        text-transform: uppercase;
-        font-size: 0.9rem;
-    }
-
-    .category-table td a {
-        text-decoration: none;
-        font-size: 1.2rem;
-    }
-
-    .text-center {
-        text-align: center;
-        font-style: italic;
-        color: #6c757d;
-    }
-
-    .pagination {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        gap: 15px;
-        margin-bottom: 30px;
-        font-weight: 600;
-    }
-
-    .pagination a {
-        padding: 8px 16px;
-        background: #000;
-        color: white;
-        border-radius: 8px;
-        text-decoration: none;
-        transition: all 0.3s ease;
-    }
-
-    .pagination a:hover {
-        background: #333;
-    }
-
-    .add-category-form {
-        background: #f8f9fa;
-        padding: 25px;
-        border-radius: 15px;
-        border: 1px solid #dee2e6;
-    }
-
-    .add-category-form h3 {
-        font-size: 1.5rem;
-        font-weight: 700;
-        margin-bottom: 20px;
-    }
-
-    .add-category-form label {
-        display: block;
-        margin-top: 15px;
-        font-weight: 600;
-    }
-
-    .add-category-form input[type="text"],
-    .add-category-form textarea,
-    .add-category-form select {
-        width: 100%;
-        padding: 10px 15px;
-        border: 2px solid #dee2e6;
-        border-radius: 10px;
-        margin-top: 5px;
-    }
-
-    .add-category-form button {
-        margin-top: 20px;
-        padding: 12px 24px;
-        background: #000;
-        color: white;
-        border: none;
-        border-radius: 10px;
-        font-weight: 600;
-        transition: all 0.3s ease;
-    }
-
-    .add-category-form button:hover {
-        background: #333;
-    }
-
-    .switch {
-        position: relative;
-        display: inline-block;
-        width: 50px;
-        height: 25px;
-    }
-
-    .switch input {
-        opacity: 0;
-        width: 0;
-        height: 0;
-    }
-
-    .slider {
-        position: absolute;
-        cursor: pointer;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background-color: #ccc;
-        transition: 0.4s;
-        border-radius: 25px;
-    }
-
-    .slider:before {
-        position: absolute;
-        content: "";
-        height: 19px;
-        width: 19px;
-        left: 3px;
-        bottom: 3px;
-        background-color: white;
-        transition: 0.4s;
-        border-radius: 50%;
-    }
-
-    input:checked + .slider {
-        background-color: #28a745;
-    }
-
-    input:checked + .slider:before {
-        transform: translateX(24px);
-    }
-
-    .alert-danger {
-        background: #f8d7da;
-        color: #721c24;
-        padding: 10px;
-        border-radius: 10px;
-        margin-bottom: 20px;
-    }
-
-    @media (max-width: 768px) {
-        .main-content {
-            margin-left: 0;
-            padding: 15px;
-        }
-
-        .search-form {
-            flex-direction: column;
-        }
-
-        .pagination {
-            flex-direction: column;
-        }
-    }
-</style>
-
-<div class="main-content">
-    <div class="category-page">
-        <h2>Category Management</h2>
-
-        <!-- Search Form -->
-        <form method="GET" class="search-form">
-            <input type="text" name="search" placeholder="Search categories..." value="{{ search_query }}">
-            <button type="submit">Search</button>
-            {% if search_query %}
-                <a href="{% url 'adminside:category_list' %}">Clear</a>
-            {% endif %}
-        </form>
-
-        <!-- Category Table -->
-        <div class="category-table">
-            <table>
-                <thead>
-                    <tr>
-                        <th>S.No</th>
-                        <th>Category Name</th>
-                        <th>List / Unlist</th>
-                        <th>Delete / Restore</th>
-                        <th>Edit</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for category in categories %}
-                    <tr>
-                        <td>{{ forloop.counter }}</td>
-                        <td>{{ category.name }}</td>
-                        <td>
-                            <a href="#" class="btn btn-sm {% if category.is_listed %}btn-success{% else %}btn-secondary{% endif %}"
-                            onclick="confirmListToggle('{{ category.id }}', '{{ category.is_listed }}')">
-                                {% if category.is_listed %}Listed{% else %}Unlisted{% endif %}
-                            </a>
-                        </td>
-                        <td>
-                            <a href="#" class="btn btn-sm {% if category.is_deleted %}btn-danger{% else %}btn-warning{% endif %}"
-                            onclick="confirmDeleteToggle('{{ category.id }}', '{{ category.is_deleted }}')">
-                                {% if category.is_deleted %}Restore{% else %}Delete{% endif %}
-                            </a>
-                        </td>
-
-                        <td>
-                            <a href="{% url 'adminside:edit_category' category.id %}" class="btn btn-sm btn-warning">Edit</a>
-                        </td>
-                    </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="5" class="text-center">No categories found.</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-
-        <!-- Pagination -->
-        <div class="pagination">
-            {% if categories.has_previous %}
-                <a href="?page={{ categories.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}">Previous</a>
-            {% endif %}
-
-            <span>Page {{ categories.number }} of {{ categories.paginator.num_pages }}</span>
-
-            {% if categories.has_next %}
-                <a href="?page={{ categories.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}">Next</a>
-            {% endif %}
-        </div>
-
-        <!-- Add New Category Form -->
-        <div class="add-category-form">
-            <h3>Add New Category</h3>
-            <form method="POST" action="{% url 'adminside:category_list' %}">
-                {% csrf_token %}
-                {% if form.errors %}
-                    <div class="alert alert-danger">
-                        <ul>
-                            {% for field in form %}
-                                {% for error in field.errors %}
-                                    <li>{{ field.label }}: {{ error }}</li>
-                                {% endfor %}
-                            {% endfor %}
-                            {% for error in form.non_field_errors %}
-                                <li>{{ error }}</li>
-                            {% endfor %}
-                        </ul>
+        <div class="mb-8 bg-white p-6 rounded-xl shadow-lg border border-gray-200">
+            <div class="flex flex-col md:flex-row justify-between items-center gap-4">
+                <form id="search-form" method="GET" action="{% url 'adminside:category_list' %}" class="flex-1 max-w-md flex items-center gap-2">
+                    <div class="flex-1">
+                        <label class="block text-sm font-semibold text-gray-800 mb-2">Search Categories</label>
+                        <input type="text" name="search" value="{{ search_query }}" 
+                               placeholder="Search by category name"
+                               class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-900 focus:border-indigo-900">
                     </div>
+                    <div class="flex gap-2 items-center">
+                        <button type="submit" class="bg-indigo-900 text-white px-3 py-2 rounded-lg hover:bg-teal-500 transition-colors font-semibold text-sm">
+                            Search
+                        </button>
+                        {% if search_query %}
+                        <a href="{% url 'adminside:category_list' %}" class="bg-gray-300 text-gray-700 px-3 py-2 rounded-lg hover:bg-gray-400 transition-colors font-semibold text-sm">
+                            Clear
+                        </a>
+                        {% endif %}
+                    </div>
+                </form>
+                <div class="flex items-center">
+                    <button onclick="openModal()" class="add-category-btn text-white px-6 py-3 rounded-lg font-bold">
+                        Add Category
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden mb-8">
+            <div class="overflow-x-auto">
+                <table class="w-full table-auto">
+                    <thead>
+                        <tr class="bg-indigo-900 text-white">
+                            <th class="px-6 py-4 text-left font-semibold">S.No</th>
+                            <th class="px-6 py-4 text-left font-semibold">Category Name</th>
+                            <th class="px-6 py-4 text-center font-semibold">Status</th>
+                            <th class="px-6 py-4 text-center font-semibold">Visibility</th>
+                            <th class="px-6 py-4 text-center font-semibold">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for category in categories %}
+                        <tr class="{% cycle 'bg-white' 'bg-gray-50' %} hover:bg-blue-50 transition-colors">
+                            <td class="border-b border-gray-200 px-6 py-4 font-medium text-gray-900">
+                                {{ forloop.counter }}
+                            </td>
+                            <td class="border-b border-gray-200 px-6 py-4 font-medium text-gray-900">
+                                {{ category.name }}
+                            </td>
+                            <td class="border-b border-gray-200 px-6 py-4 text-center">
+                                {% if category.is_deleted %}
+                                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                        Deleted
+                                    </span>
+                                {% else %}
+                                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                        Active
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td class="border-b border-gray-200 px-6 py-4 text-center">
+                                {% if category.is_listed %}
+                                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                        Listed
+                                    </span>
+                                {% else %}
+                                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                        Unlisted
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td class="border-b border-gray-200 px-6 py-4">
+                                <div class="flex justify-center space-x-2">
+                                    <button onclick="confirmListToggle('{{ category.id }}', '{{ category.is_listed }}')"
+                                            class="{% if category.is_listed %}bg-red-500 hover:bg-red-600{% else %}bg-green-500 hover:bg-green-600{% endif %} text-white px-3 py-2 rounded-lg transition-colors font-medium text-sm">
+                                        {% if category.is_listed %}Unlist{% else %}List{% endif %}
+                                    </button>
+                                    <button onclick="confirmDeleteToggle('{{ category.id }}', '{{ category.is_deleted }}')"
+                                            class="{% if category.is_deleted %}bg-green-500 hover:bg-green-600{% else %}bg-red-500 hover:bg-red-600{% endif %} text-white px-3 py-2 rounded-lg transition-colors font-medium text-sm">
+                                        {% if category.is_deleted %}Restore{% else %}Delete{% endif %}
+                                    </button>
+                                    <a href="{% url 'adminside:edit_category' category.id %}" 
+                                       class="edit-category-btn text-white px-3 py-2 rounded-lg font-semibold text-sm">
+                                        Edit
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5" class="border-b border-gray-200 px-6 py-8 text-center text-gray-600">
+                                <div class="flex flex-col items-center">
+                                    <svg class="w-12 h-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+                                    </svg>
+                                    <p class="text-lg font-medium">No categories found</p>
+                                    <p class="text-sm text-gray-500">Create your first category to get started</p>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="mb-8 flex justify-center">
+            <nav class="inline-flex pagination bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden">
+                {% if categories.paginator.num_pages > 1 %}
+                    {% if categories.has_previous %}
+                        <a href="?page={{ categories.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}" 
+                           class="px-4 py-3 text-sm font-medium text-gray-700 bg-white hover:bg-indigo-900 hover:text-white transition-colors border-r border-gray-200">
+                            Previous
+                        </a>
+                    {% endif %}
+                    <span class="px-4 py-3 text-sm font-medium text-gray-700 bg-gray-50 border-r border-gray-200">
+                        Page {{ categories.number }} of {{ categories.paginator.num_pages }}
+                    </span>
+                    {% if categories.has_next %}
+                        <a href="?page={{ categories.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}" 
+                           class="px-4 py-3 text-sm font-medium text-gray-700 bg-white hover:bg-indigo-900 hover:text-white transition-colors">
+                            Next
+                        </a>
+                    {% endif %}
+                {% else %}
+                    <span class="px-4 py-3 text-sm font-medium text-gray-700 bg-gray-50 border-r border-gray-200">
+                        Page 1
+                    </span>
                 {% endif %}
-                <label for="{{ form.name.id_for_label }}">Name:</label>
-                {{ form.name }}
-                <label for="{{ form.description.id_for_label }}">Description:</label>
-                {{ form.description }}
-                <button type="submit">Save</button>
-            </form>
+            </nav>
+        </div>
+
+        <div id="addCategoryModal" class="modal">
+            <div class="modal-content">
+                <span class="modal-close" onclick="closeModal()">&times;</span>
+                <h2 class="text-2xl font-bold text-gray-900 mb-6">Add New Category</h2>
+                
+                {% if form.errors %}
+                <div class="mb-6 bg-red-50 border border-red-200 rounded-lg p-4">
+                    <div class="flex">
+                        <div class="flex-shrink-0">
+                            <svg class="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+                            </svg>
+                        </div>
+                        <div class="ml-3">
+                            <h3 class="text-sm font-medium text-red-800">Please fix the following errors:</h3>
+                            <div class="mt-2 text-sm text-red-700">
+                                <ul class="list-disc list-inside space-y-1">
+                                    {% for field in form %}
+                                        {% for error in field.errors %}
+                                            <li>{{ field.label }}: {{ error }}</li>
+                                        {% endfor %}
+                                    {% endfor %}
+                                    {% for error in form.non_field_errors %}
+                                        <li>{{ error }}</li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                <form id="addCategoryForm" method="POST" action="{% url 'adminside:category_list' %}" class="space-y-6">
+                    {% csrf_token %}
+                    <div>
+                        <label for="{{ form.name.id_for_label }}" class="block text-sm font-semibold text-gray-800 mb-2">
+                            Category Name
+                        </label>
+                        {{ form.name }}
+                        {% if form.name.help_text %}
+                            <p class="mt-1 text-sm text-gray-500">{{ form.name.help_text }}</p>
+                        {% endif %}
+                    </div>
+
+                    <div>
+                        <label for="{{ form.description.id_for_label }}" class="block text-sm font-semibold text-gray-800 mb-2">
+                            Description
+                        </label>
+                        {{ form.description }}
+                        {% if form.description.help_text %}
+                            <p class="mt-1 text-sm text-gray-500">{{ form.description.help_text }}</p>
+                        {% endif %}
+                    </div>
+
+                    <div class="flex justify-end gap-3">
+                        <button type="button" onclick="closeModal()" class="bg-gray-500 text-white px-6 py-3 rounded-lg hover:bg-gray-600 transition-colors font-semibold">
+                            Cancel
+                        </button>
+                        <button type="submit" class="bg-indigo-900 text-white px-6 py-3 rounded-lg hover:bg-teal-500 transition-colors font-semibold">
+                            Save Category
+                        </button>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
 </div>
 
-<!-- SweetAlert2 Script -->
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-
 <script>
+function openModal() {
+    document.getElementById('addCategoryModal').style.display = 'flex';
+}
+
+function closeModal() {
+    document.getElementById('addCategoryModal').style.display = 'none';
+    document.getElementById('addCategoryForm').reset(); // Reset form fields
+}
+
 function confirmListToggle(id, isListed) {
     const action = isListed === 'True' ? 'Unlist' : 'List';
+    const actionColor = isListed === 'True' ? '#ef4444' : '#10b981'; // Red for Unlist, Green for List
     Swal.fire({
         title: `${action} this category?`,
         text: `Are you sure you want to ${action.toLowerCase()} this category?`,
         icon: 'question',
         showCancelButton: true,
+        confirmButtonColor: actionColor,
+        cancelButtonColor: '#6b7280',
         confirmButtonText: `Yes, ${action}`,
-        cancelButtonText: 'Cancel'
+        cancelButtonText: 'Cancel',
+        customClass: {
+            popup: 'rounded-xl',
+            confirmButton: 'rounded-lg',
+            cancelButton: 'rounded-lg'
+        }
     }).then((result) => {
         if (result.isConfirmed) {
             window.location.href = `/adminside/toggle-list-category/${id}/`;
@@ -344,19 +367,77 @@ function confirmListToggle(id, isListed) {
 
 function confirmDeleteToggle(id, isDeleted) {
     const action = isDeleted === 'True' ? 'Restore' : 'Delete';
+    const actionColor = isDeleted === 'True' ? '#10b981' : '#ef4444'; // Green for Restore, Red for Delete
     Swal.fire({
         title: `${action} this category?`,
         text: `Are you sure you want to ${action.toLowerCase()} this category?`,
         icon: action === 'Delete' ? 'warning' : 'info',
         showCancelButton: true,
+        confirmButtonColor: actionColor,
+        cancelButtonColor: '#6b7280',
         confirmButtonText: `Yes, ${action}`,
-        cancelButtonText: 'Cancel'
+        cancelButtonText: 'Cancel',
+        customClass: {
+            popup: 'rounded-xl',
+            confirmButton: 'rounded-lg',
+            cancelButton: 'rounded-lg'
+        }
     }).then((result) => {
         if (result.isConfirmed) {
             window.location.href = `/adminside/toggle-delete-category/${id}/`;
         }
     });
 }
+
+// Add form field styling and SweetAlert2 for successful submission
+document.addEventListener('DOMContentLoaded', function() {
+    // Style form inputs
+    const inputs = document.querySelectorAll('input[type="text"], textarea, select');
+    inputs.forEach(input => {
+        input.classList.add('w-full', 'p-3', 'border', 'border-gray-300', 'rounded-lg', 'focus:ring-2', 'focus:ring-indigo-900', 'focus:border-indigo-900');
+    });
+     
+    // Style textarea specifically
+    const textareas = document.querySelectorAll('textarea');
+    textareas.forEach(textarea => {
+        textarea.classList.add('min-h-24');
+    });
+
+    // Check for success parameter in URL to show SweetAlert2 for a new category
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('success') === 'true') {
+        Swal.fire({
+            title: 'Success!',
+            text: 'Category added successfully',
+            icon: 'success',
+            confirmButtonColor: '#4B0082',
+            customClass: {
+                popup: 'rounded-xl',
+                confirmButton: 'rounded-lg'
+            }
+        }).then(() => {
+            // Remove success parameter from URL to prevent repeated alerts
+            window.history.replaceState({}, document.title, window.location.pathname);
+        });
+    }
+
+    // Add new logic to check for a successful category edit
+    if (urlParams.get('edit_success') === 'true') {
+        Swal.fire({
+            title: 'Updated!',
+            text: 'Category updated successfully',
+            icon: 'success',
+            confirmButtonColor: '#4B0082',
+            customClass: {
+                popup: 'rounded-xl',
+                confirmButton: 'rounded-lg'
+            }
+        }).then(() => {
+            // Remove edit_success parameter from URL to prevent repeated alerts
+            window.history.replaceState({}, document.title, window.location.pathname);
+        });
+    }
+});
 </script>
 
-{% endblock %}                  
+{% endblock %}

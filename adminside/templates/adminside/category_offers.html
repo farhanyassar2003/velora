@@ -1,0 +1,668 @@
+{% extends 'adminside/base.html' %}
+{% load static %}
+
+{% block extra_head %}
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- SweetAlert2 for notifications -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        /* Ensure content respects sidebar width */
+        .content-area {
+            margin-left: 280px;
+            padding: 24px;
+            transition: margin-left 0.3s ease;
+            background-color: #f9fafb; /* Light gray background */
+        }
+
+        @media (max-width: 768px) {
+            .content-area {
+                margin-left: 0;
+                padding: 16px;
+            }
+        }
+
+        /* Modal animation */
+        #category-offer-modal, #delete-confirm-modal {
+            transition: opacity 0.3s ease;
+        }
+        #category-offer-modal.hidden, #delete-confirm-modal.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        /* Error message style */
+        .error-message {
+            color: #dc3545;
+            font-size: 0.9rem;
+            margin-top: 0.25rem;
+            display: none;
+        }
+
+        /* Custom hover effect for cards */
+        .metric-card {
+            transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+        }
+        .metric-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            border-color: #4B0082; /* Indigo-900 */
+        }
+
+        /* Custom toggle switch styling */
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 48px;
+            height: 24px;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 24px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background-color: #4B0082;
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(24px);
+        }
+
+        /* Enhanced Add Category Offer button styling */
+        .add-category-offer-btn {
+            background: linear-gradient(45deg, #4B0082, #14B8A6); /* Gradient from Indigo-900 to Teal-500 */
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .add-category-offer-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            background: linear-gradient(45deg, #14B8A6, #4B0082); /* Reverse gradient on hover */
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+<div class="content-area" id="offer-content">
+    <div class="container mx-auto">
+        <h1 class="text-4xl font-extrabold text-gray-900 mb-8">Category Offers</h1>
+
+        <!-- Search and Add Button Section -->
+        <div class="mb-8 bg-white p-6 rounded-xl shadow-lg border border-gray-200">
+            <div class="flex flex-col md:flex-row justify-between items-center gap-4">
+                <form method="GET" class="flex-1 max-w-md flex items-center gap-2">
+                    <div class="flex-1">
+                        <label class="block text-sm font-semibold text-gray-800 mb-2">Search Offers</label>
+                        <input type="text" name="category_search" value="{{ category_search_query }}"
+                               placeholder="Search by offer or category name"
+                               class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-900 focus:border-indigo-900">
+                    </div>
+                    <div class="flex gap-2 items-center">
+                        <button type="submit" class="bg-indigo-900 text-white px-3 py-2 rounded-lg hover:bg-teal-500 transition-colors font-semibold text-sm">
+                            Search
+                        </button>
+                        {% if category_search_query %}
+                        <a href="{% url 'adminside:category_offers' %}"
+                           class="bg-gray-300 text-gray-700 px-3 py-2 rounded-lg hover:bg-gray-400 transition-colors font-semibold text-sm">
+                            Clear
+                        </a>
+                        {% endif %}
+                    </div>
+                </form>
+                <div class="flex items-center">
+                    <button id="add-category-offer-btn"
+                            class="add-category-offer-btn text-white px-6 py-3 rounded-lg font-bold">
+                        Add Category Offer
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Offers Table -->
+        <div class="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full table-auto">
+                    <thead>
+                        <tr class="bg-indigo-900 text-white">
+                            <th class="px-6 py-4 text-left font-semibold">Offer Name</th>
+                            <th class="px-6 py-4 text-left font-semibold">Category</th>
+                            <th class="px-6 py-4 text-left font-semibold">Discount (%)</th>
+                            <th class="px-6 py-4 text-left font-semibold">Start Date</th>
+                            <th class="px-6 py-4 text-left font-semibold">End Date</th>
+                            <th class="px-6 py-4 text-left font-semibold">Status</th>
+                            <th class="px-6 py-4 text-left font-semibold">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for offer in category_offers %}
+                        <tr class="{% cycle 'bg-white' 'bg-gray-50' %} hover:bg-blue-50 transition-colors">
+                            <td class="border-b border-gray-200 px-6 py-4 font-medium text-gray-900">{{ offer.name }}</td>
+                            <td class="border-b border-gray-200 px-6 py-4 text-gray-700">{{ offer.category.name }}</td>
+                            <td class="border-b border-gray-200 px-6 py-4 text-gray-700">{{ offer.discount_percentage }}%</td>
+                            <td class="border-b border-gray-200 px-6 py-4 text-gray-700">{{ offer.start_date }}</td>
+                            <td class="border-b border-gray-200 px-6 py-4 text-gray-700">{{ offer.end_date }}</td>
+                            <td class="border-b border-gray-200 px-6 py-4">
+                                <label class="toggle-switch">
+                                    <input type="checkbox" class="toggle-active" data-offer-id="{{ offer.id }}" data-offer-type="category" {% if offer.is_active %}checked{% endif %}>
+                                    <span class="slider"></span>
+                                </label>
+                            </td>
+                            <td class="border-b border-gray-200 px-6 py-4">
+                                <div class="flex space-x-2">
+                                    <button class="edit-offer-btn bg-yellow-500 text-white px-4 py-2 rounded-lg hover:bg-yellow-600 transition-colors font-medium" data-offer-id="{{ offer.id }}">
+                                        Edit
+                                    </button>
+                                    <button class="delete-offer-btn bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition-colors font-medium" data-offer-id="{{ offer.id }}" data-offer-type="category">
+                                        Delete
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="7" class="border-b border-gray-200 px-6 py-8 text-center text-gray-600">
+                                <div class="flex flex-col items-center">
+                                    <svg class="w-12 h-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2M4 13h2m13-8-4 4-4-4m6 4V8.5"></path>
+                                    </svg>
+                                    <p class="text-lg font-medium">No category offers found</p>
+                                    <p class="text-sm text-gray-500">Create your first category offer to get started</p>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Pagination -->
+        <div class="mt-8 flex justify-center">
+            <nav class="inline-flex pagination bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden">
+                {% if category_offers.paginator.num_pages > 1 and category_offers.has_previous %}
+                <a href="?category_page={{ category_offers.previous_page_number }}{% if category_search_query %}&category_search={{ category_search_query }}{% endif %}"
+                   class="px-4 py-3 text-sm font-medium text-gray-700 bg-white hover:bg-indigo-900 hover:text-white transition-colors border-r border-gray-200">
+                   Previous
+                </a>
+                {% endif %}
+                {% for num in category_offers.paginator.page_range %}
+                <a href="?category_page={{ num }}{% if category_search_query %}&category_search={{ category_search_query }}{% endif %}"
+                   class="px-4 py-3 text-sm font-medium {% if category_offers.number == num %}bg-indigo-900 text-white{% else %}text-gray-700 bg-white hover:bg-indigo-900 hover:text-white{% endif %} transition-colors border-r border-gray-200 last:border-r-0">
+                   {{ num }}
+                </a>
+                {% endfor %}
+                {% if category_offers.paginator.num_pages > 1 and category_offers.has_next %}
+                <a href="?category_page={{ category_offers.next_page_number }}{% if category_search_query %}&category_search={{ category_search_query }}{% endif %}"
+                   class="px-4 py-3 text-sm font-medium text-gray-700 bg-white hover:bg-indigo-900 hover:text-white transition-colors">
+                   Next
+                </a>
+                {% endif %}
+            </nav>
+        </div>
+
+        <!-- Add/Edit Modal -->
+        <div id="category-offer-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
+            <div class="bg-white rounded-xl shadow-xl w-full max-w-md mx-4">
+                <div class="p-6">
+                    <h2 id="modal-title" class="text-2xl font-bold text-gray-900 mb-6">Add Category Offer</h2>
+                    <form id="category-offer-form">
+                        {% csrf_token %}
+                        <input type="hidden" id="offer-id">
+                        <div class="mb-4">
+                            <label class="block text-sm font-semibold text-gray-800 mb-2">Offer Name</label>
+                            <input type="text" id="name" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-900 focus:border-indigo-900" required>
+                            <p id="name-error" class="error-message">Offer Name is required.</p>
+                        </div>
+                        <div class="mb-4">
+                            <label class="block text-sm font-semibold text-gray-800 mb-2">Category</label>
+                            <select id="category_id" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-900 focus:border-indigo-900" required>
+                                <option value="">Select a category</option>
+                                {% for category in categories %}
+                                <option value="{{ category.id }}">{{ category.name }}</option>
+                                {% endfor %}
+                            </select>
+                            <p id="category_id-error" class="error-message">Category is required.</p>
+                        </div>
+                        <div class="mb-4">
+                            <label class="block text-sm font-semibold text-gray-800 mb-2">Discount Percentage</label>
+                            <input type="number" id="discount_percentage" step="0.01" min="0" max="100" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-900 focus:border-indigo-900" required>
+                            <p id="discount_percentage-error" class="error-message">Discount Percentage must be between 0 and 100.</p>
+                        </div>
+                        <div class="mb-4">
+                            <label class="block text-sm font-semibold text-gray-800 mb-2">Start Date</label>
+                            <input type="date" id="start_date" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-900 focus:border-indigo-900" required>
+                            <p id="start_date-error" class="error-message">Start Date is required.</p>
+                        </div>
+                        <div class="mb-4">
+                            <label class="block text-sm font-semibold text-gray-800 mb-2">End Date</label>
+                            <input type="date" id="end_date" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-900 focus:border-indigo-900" required>
+                            <p id="end_date-error" class="error-message">End Date is required and must be after Start Date.</p>
+                        </div>
+                        <div class="mb-6">
+                            <label class="inline-flex items-center">
+                                <input type="checkbox" id="is_active" checked class="w-4 h-4 text-indigo-900 border-gray-300 rounded focus:ring-indigo-900">
+                                <span class="ml-2 text-sm font-semibold text-gray-800">Active</span>
+                            </label>
+                        </div>
+                        <div class="flex justify-end space-x-3">
+                            <button type="button" id="cancel-btn" class="bg-gray-300 text-gray-700 px-6 py-3 rounded-lg hover:bg-gray-400 transition-colors font-semibold">
+                                Cancel
+                            </button>
+                            <button type="submit" class="bg-indigo-900 text-white px-6 py-3 rounded-lg hover:bg-teal-500 transition-colors font-semibold">
+                                Save
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Delete Confirmation Modal -->
+        <div id="delete-confirm-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
+            <div class="bg-white rounded-xl shadow-xl w-full max-w-md mx-4">
+                <div class="p-6">
+                    <h2 class="text-2xl font-bold text-gray-900 mb-4">Confirm Deletion</h2>
+                    <p class="text-gray-700 mb-6">Are you sure you want to delete this offer? This action cannot be undone.</p>
+                    <div class="flex justify-end space-x-3">
+                        <button id="cancel-delete-btn" class="bg-gray-300 text-gray-700 px-6 py-3 rounded-lg hover:bg-gray-400 transition-colors font-semibold">
+                            Cancel
+                        </button>
+                        <button id="confirm-delete-btn" class="bg-red-500 text-white px-6 py-3 rounded-lg hover:bg-red-600 transition-colors font-semibold">
+                            Delete
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // Get CSRF token from form or cookie
+        function getCsrfToken() {
+            const tokenInput = document.querySelector('#category-offer-form input[name="csrfmiddlewaretoken"]');
+            if (tokenInput && tokenInput.value) {
+                console.log('CSRF token retrieved from form:', tokenInput.value);
+                return tokenInput.value;
+            }
+            const name = 'csrftoken';
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        console.log('CSRF token retrieved from cookie:', cookieValue);
+                        break;
+                    }
+                }
+            }
+            if (!cookieValue) {
+                console.error('CSRF token not found');
+            }
+            return cookieValue || '';
+        }
+
+        // Show error message
+        const showError = (elementId, message) => {
+            const errorElement = document.getElementById(`${elementId}-error`);
+            errorElement.textContent = message;
+            errorElement.style.display = 'block';
+        };
+
+        // Clear error messages
+        const clearErrors = () => {
+            document.querySelectorAll('.error-message').forEach(el => {
+                el.style.display = 'none';
+            });
+        };
+
+        // Open Add Modal
+        document.getElementById('add-category-offer-btn').addEventListener('click', (e) => {
+            e.preventDefault();
+            console.log('Add Category Offer button clicked');
+            clearErrors();
+            document.getElementById('modal-title').textContent = 'Add Category Offer';
+            document.getElementById('category-offer-form').reset();
+            document.getElementById('offer-id').value = '';
+            document.getElementById('is_active').checked = true;
+            document.getElementById('category_id').value = '';
+            document.getElementById('category-offer-modal').classList.remove('hidden');
+        });
+
+        // Open Edit Modal
+        document.querySelectorAll('.edit-offer-btn').forEach(button => {
+            button.addEventListener('click', (e) => {
+                e.preventDefault();
+                console.log('Edit button clicked for offer ID:', button.dataset.offerId);
+                clearErrors();
+                const csrfToken = getCsrfToken();
+                fetch(`/adminside/manage-offer/category/?id=${button.dataset.offerId}`, {
+                    method: 'GET',
+                    headers: {
+                        'X-CSRFToken': csrfToken,
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'same-origin'
+                })
+                .then(response => {
+                    console.log('Edit fetch response status:', response.status);
+                    if (!response.ok) {
+                        return response.text().then(text => {
+                            throw new Error(`HTTP error! Status: ${response.status}, Response: ${text.substring(0, 100)}...`);
+                        });
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('Edit response data:', data);
+                    if (data.success) {
+                        document.getElementById('modal-title').textContent = 'Edit Category Offer';
+                        document.getElementById('offer-id').value = button.dataset.offerId;
+                        document.getElementById('name').value = data.name;
+                        document.getElementById('category_id').value = data.category_id;
+                        document.getElementById('discount_percentage').value = data.discount_percentage;
+                        document.getElementById('start_date').value = data.start_date;
+                        document.getElementById('end_date').value = data.end_date;
+                        document.getElementById('is_active').checked = data.is_active;
+                        document.getElementById('category-offer-modal').classList.remove('hidden');
+                    } else {
+                        console.error('Failed to load offer data:', data.message);
+                        alert('Failed to load offer data: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Edit fetch error:', error);
+                    alert('An error occurred while loading offer data: ' + error.message);
+                });
+            });
+        });
+
+        // Submit Form
+        document.getElementById('category-offer-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            console.log('Form submitted');
+            clearErrors();
+
+            const data = {
+                id: document.getElementById('offer-id').value,
+                name: document.getElementById('name').value.trim(),
+                category_id: document.getElementById('category_id').value,
+                discount_percentage: parseFloat(document.getElementById('discount_percentage').value) || 0,
+                start_date: document.getElementById('start_date').value,
+                end_date: document.getElementById('end_date').value,
+                is_active: document.getElementById('is_active').checked
+            };
+
+            // Client-side validation
+            let hasError = false;
+            if (!data.name) {
+                showError('name', 'Offer Name is required.');
+                hasError = true;
+            }
+            if (!data.category_id) {
+                showError('category_id', 'Category is required.');
+                hasError = true;
+            }
+            if (isNaN(data.discount_percentage) || data.discount_percentage <= 0 || data.discount_percentage > 100) {
+                showError('discount_percentage', 'Discount Percentage must be between 0 and 100.');
+                hasError = true;
+            }
+            if (!data.start_date) {
+                showError('start_date', 'Start Date is required.');
+                hasError = true;
+            }
+            if (!data.end_date) {
+                showError('end_date', 'End Date is required.');
+                hasError = true;
+            }
+            if (data.start_date && data.end_date && new Date(data.start_date) > new Date(data.end_date)) {
+                showError('end_date', 'End Date must be after Start Date.');
+                hasError = true;
+            }
+
+            if (hasError) {
+                console.log('Validation failed:', data);
+                return;
+            }
+
+            const csrfToken = getCsrfToken();
+            console.log('Submitting data:', data);
+            fetch("{% url 'adminside:manage_category_offer' %}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
+                body: JSON.stringify(data),
+                credentials: 'same-origin'
+            })
+            .then(response => {
+                console.log('Submit fetch response status:', response.status);
+                if (!response.ok) {
+                    return response.text().then(text => {
+                        throw new Error(`HTTP error! Status: ${response.status}, Response: ${text.substring(0, 100)}...`);
+                    });
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('Submit response data:', data);
+                if (data.success) {
+                    console.log('Offer saved successfully:', data.message);
+                    document.getElementById('category-offer-modal').classList.add('hidden');
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Success',
+                        text: data.message,
+                        timer: 2000,
+                        showConfirmButton: false
+                    }).then(() => {
+                        location.reload();
+                    });
+                } else {
+                    console.error('Failed to save offer:', data.message);
+                    showError('name', data.message); // Display server-side error
+                }
+            })
+            .catch(error => {
+                console.error('Submit fetch error:', error);
+                showError('name', 'An error occurred while saving the offer: ' + error.message);
+            });
+        });
+
+        // Open Delete Confirmation
+        document.querySelectorAll('.delete-offer-btn').forEach(button => {
+            button.addEventListener('click', (e) => {
+                e.preventDefault();
+                console.log('Delete button clicked for offer ID:', button.dataset.offerId);
+                const confirmButton = document.getElementById('confirm-delete-btn');
+                confirmButton.dataset.offerId = button.dataset.offerId;
+                confirmButton.dataset.offerType = button.dataset.offerType;
+                document.getElementById('delete-confirm-modal').classList.remove('hidden');
+            });
+        });
+
+        // Confirm Delete
+        document.getElementById('confirm-delete-btn').addEventListener('click', (e) => {
+            e.preventDefault();
+            console.log('Confirm delete clicked for offer ID:', e.target.dataset.offerId);
+            const offerId = e.target.dataset.offerId;
+            const offerType = e.target.dataset.offerType;
+            const csrfToken = getCsrfToken();
+            fetch(`/adminside/delete-offer/${offerType}/${offerId}/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
+                body: JSON.stringify({}),
+                credentials: 'same-origin'
+            })
+            .then(response => {
+                console.log('Delete fetch response status:', response.status);
+                if (!response.ok) {
+                    return response.text().then(text => {
+                        throw new Error(`HTTP error! Status: ${response.status}, Response: ${text.substring(0, 100)}...`);
+                    });
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('Delete response data:', data);
+                if (data.success) {
+                    console.log('Offer deleted successfully:', data.message);
+                    document.getElementById('delete-confirm-modal').classList.add('hidden');
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Success',
+                        text: data.message,
+                        timer: 2000,
+                        showConfirmButton: false
+                    }).then(() => {
+                        location.reload();
+                    });
+                } else {
+                    console.error('Failed to delete offer:', data.message);
+                    alert('Failed to delete offer: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Delete fetch error:', error);
+                alert('An error occurred while deleting the offer: ' + error.message);
+            });
+        });
+
+        // Toggle Active Status
+        document.querySelectorAll('.toggle-active').forEach(toggle => {
+            toggle.addEventListener('change', (e) => {
+                console.log('Toggle active changed for offer ID:', e.target.dataset.offerId);
+                const offerId = e.target.dataset.offerId;
+                const offerType = e.target.dataset.offerType;
+                const isActive = e.target.checked;
+                const csrfToken = getCsrfToken();
+                fetch(`/adminside/toggle-active-offer/${offerType}/${offerId}/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify({ is_active: isActive }),
+                    credentials: 'same-origin'
+                })
+                .then(response => {
+                    console.log('Toggle fetch response status:', response.status);
+                    if (!response.ok) {
+                        return response.text().then(text => {
+                            throw new Error(`HTTP error! Status: ${response.status}, Response: ${text.substring(0, 100)}...`);
+                        });
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('Toggle response data:', data);
+                    if (data.success) {
+                        console.log(`Offer ${isActive ? 'activated' : 'deactivated'} successfully:`, data.message);
+                    } else {
+                        console.error('Failed to toggle offer:', data.message);
+                        alert('Failed to toggle offer: ' + data.message);
+                        e.target.checked = !isActive; // Revert toggle on failure
+                    }
+                })
+                .catch(error => {
+                    console.error('Toggle fetch error:', error);
+                    alert('An error occurred while toggling the offer: ' + error.message);
+                    e.target.checked = !isActive; // Revert toggle on failure
+                });
+            });
+        });
+
+        // Close Modals
+        document.querySelectorAll('#cancel-btn, #cancel-delete-btn').forEach(button => {
+            button.addEventListener('click', (e) => {
+                e.preventDefault();
+                console.log('Cancel button clicked');
+                clearErrors();
+                document.querySelectorAll('#category-offer-modal, #delete-confirm-modal').forEach(modal => {
+                    modal.classList.add('hidden');
+                });
+            });
+        });
+
+        // Close modal when clicking outside
+        document.querySelectorAll('#category-offer-modal, #delete-confirm-modal').forEach(modal => {
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    console.log('Clicked outside modal');
+                    clearErrors();
+                    modal.classList.add('hidden');
+                }
+            });
+        });
+
+        // Handle Pagination Links
+        document.querySelectorAll('.pagination a').forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                const url = link.getAttribute('href');
+                console.log('Pagination link clicked:', url);
+                const csrfToken = getCsrfToken();
+                fetch(url, {
+                    method: 'GET',
+                    headers: {
+                        'X-CSRFToken': csrfToken,
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'same-origin'
+                })
+                .then(response => {
+                    console.log('Pagination fetch response status:', response.status);
+                    if (!response.ok) {
+                        return response.text().then(text => {
+                            throw new Error(`HTTP error! Status: ${response.status}, Response: ${text.substring(0, 100)}...`);
+                        });
+                    }
+                    return response.text();
+                })
+                .then(html => {
+                    console.log('Pagination content loaded');
+                    document.getElementById('offer-content').innerHTML = html;
+                    location.reload(); // Reload to reattach event listeners
+                })
+                .catch(error => {
+                    console.error('Pagination fetch error:', error);
+                    alert('Error loading page: ' + error.message);
+                });
+            });
+        });
+    });
+</script>
+{% endblock %}

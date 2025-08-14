@@ -3,8 +3,10 @@ from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, Permis
 from django.utils import timezone
 from django.conf import settings
 import random
+import uuid
 from django.core.exceptions import ValidationError
 import re
+from datetime import timedelta
 
 class CustomUserManager(BaseUserManager):
     def create_user(self, email, password=None, **extra_fields):
@@ -20,8 +22,6 @@ class CustomUserManager(BaseUserManager):
         extra_fields.setdefault("is_staff", True)
         extra_fields.setdefault("is_superuser", True)
         return self.create_user(email, password, **extra_fields)
-
-
 
 class CustomUser(AbstractBaseUser, PermissionsMixin):
     STATUS_CHOICES = [
@@ -42,28 +42,66 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     date_joined = models.DateTimeField(default=timezone.now)
     is_verified = models.BooleanField(default=False)
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='active')
+    referral_code = models.CharField(max_length=10, unique=True, blank=True, null=True,db_index=True)
+    referred_by = models.ForeignKey(
+        'self',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='referrals'
+    )
 
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['first_name', 'last_name', 'phone_number']
 
     objects = CustomUserManager()
 
+    def save(self, *args, **kwargs):
+        if not self.referral_code:
+            # Generate a unique referral code
+            while True:
+                code = str(uuid.uuid4())[:8].upper()
+                if not CustomUser.objects.filter(referral_code__iexact=code).exists():
+                    self.referral_code = code
+                    break
+        super().save(*args, **kwargs)
+
     def __str__(self):
         return self.email
+
     def get_full_name(self):
         return f"{self.first_name} {self.last_name}".strip()
    
 
 
 # OTP model
+
+
+from django.db import models
+from django.utils import timezone
+from django.conf import settings
+
 class EmailOTP(models.Model):
-    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     otp = models.CharField(max_length=6)
     created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+    purpose = models.CharField(
+        max_length=20,
+        choices=[('registration', 'Registration'), ('password_reset', 'Password Reset')],
+        default='registration'
+    )
 
-    def generate_otp(self):
-        self.otp = str(random.randint(100000, 999999))
-        self.save()
+    def is_valid(self):
+        return timezone.now() <= self.expires_at
+
+    def __str__(self):
+        return f"OTP for {self.user.email} ({self.purpose})"
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['user', 'purpose']),
+        ]
         
         
 from django.db import models

@@ -1,346 +1,443 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
-    <meta http-equiv="Pragma" content="no-cache">
-    <meta http-equiv="Expires" content="0">
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Dashboard - Velora</title>
-    <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Bootstrap Icons -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
-    <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    {% extends 'adminside/base.html' %}
-    {% block content %}
+{% extends 'adminside/base.html' %}
+
+{% block extra_head %}
+    <!-- Tailwind CSS for dashboard styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js for sales chart -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
+        /* Adjust content to prevent overlap with fixed sidebar */
+        .dashboard-content {
+            margin-left: 280px;
+            padding: 24px;
+            transition: margin-left 0.3s ease;
+            background-color: #f9fafb;
+        }
+
+        @media (max-width: 768px) {
+            .dashboard-content {
+                margin-left: 0;
+                padding: 16px;
+            }
+        }
+
+        /* Custom hover effect for cards */
+        .metric-card {
+            transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+        }
+        .metric-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            border-color: #4B0082;
+        }
+
+        /* Enhanced styling for top products and categories */
+        .top-section {
+            background: linear-gradient(135deg, #4B0082 0%, #6B7280 100%);
+            border-radius: 12px;
+            padding: 16px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease;
+        }
+        .top-section:hover {
+            transform: translateY(-2px);
+        }
+        .top-section h2 {
+            color: #ffffff;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+        }
+        .top-section table thead tr {
+            background: linear-gradient(90deg, #1E3A8A 0%, #4B0082 100%);
+        }
+        .top-section table tbody tr {
+            transition: background-color 0.2s ease, transform 0.2s ease;
+        }
+        .top-section table tbody tr:hover {
+            background-color: #e0f2fe;
+            transform: scale(1.02);
+        }
+        .top-section canvas {
+            border-radius: 8px;
+            background: #ffffff;
+            padding: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        }
+
+        /* Ensure consistent input and button sizes */
+        .filter-box {
+            width: 100%;
+        }
+        .filter-box select,
+        .filter-box input,
+        .filter-box button {
+            width: 100%;
             box-sizing: border-box;
         }
-
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #f8f9fa;
-            color: #212529;
-        }
-
-        /* Main Content */
-        .main-content {
-            margin-left: 280px;
-            min-height: 100vh;
-            background: #f8f9fa;
-        }
-
-        .top-bar {
-            background: white;
-            padding: 20px 30px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-            border-bottom: 1px solid #e9ecef;
-        }
-
-        .page-title {
-            font-size: 2rem;
-            font-weight: 700;
-            color: #212529;
-            margin: 0;
-        }
-
-        .page-subtitle {
-            color: #6c757d;
-            font-size: 0.95rem;
-            margin-top: 5px;
-        }
-
-        .content-area {
-            padding: 30px;
-        }
-
-        /* Dashboard Cards */
-        .stats-row {
-            margin-bottom: 40px;
-        }
-
-        .stat-card {
-            background: white;
-            border-radius: 15px;
-            padding: 30px;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
-            border: 1px solid #e9ecef;
-            transition: all 0.3s ease;
-            height: 100%;
-        }
-
-        .stat-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
-        }
-
-        .stat-icon {
-            width: 60px;
-            height: 60px;
-            background: #000;
-            color: white;
-            border-radius: 15px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.5rem;
-            margin-bottom: 20px;
-        }
-
-        .stat-number {
-            font-size: 2.5rem;
-            font-weight: 700;
-            color: #212529;
-            margin-bottom: 5px;
-        }
-
-        .stat-label {
-            color: #6c757d;
-            font-size: 0.95rem;
-            font-weight: 500;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .stat-change {
-            font-size: 0.85rem;
-            margin-top: 10px;
-        }
-
-        .stat-change.positive {
-            color: #28a745;
-        }
-
-        .stat-change.negative {
-            color: #dc3545;
-        }
-
-        /* Table Styles */
-        .table-container {
-            background: white;
-            border-radius: 15px;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
-            border: 1px solid #e9ecef;
-            overflow: hidden;
-        }
-
-        .table-header {
-            padding: 25px 30px;
-            border-bottom: 1px solid #e9ecef;
-            background: #f8f9fa;
-        }
-
-        .table-title {
-            font-size: 1.4rem;
-            font-weight: 600;
-            color: #212529;
-            margin: 0;
-        }
-
-        .table-responsive {
-            border-radius: 0;
-        }
-
-        .custom-table {
-            margin: 0;
-            border: none;
-        }
-
-        .custom-table thead th {
-            background: #000;
-            color: white;
-            border: none;
-            padding: 20px 25px;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            font-size: 0.85rem;
-        }
-
-        .custom-table tbody td {
-            padding: 20px 25px;
-            border-top: 1px solid #e9ecef;
-            border-bottom: none;
-            vertical-align: middle;
-            font-weight: 500;
-        }
-
-        .custom-table tbody tr:hover {
-            background: #f8f9fa;
-        }
-
-        /* Status Badges */
-        .status-badge {
-            padding: 8px 16px;
-            border-radius: 20px;
-            font-size: 0.8rem;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .status-completed {
-            background: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
-        }
-
-        .status-processing {
-            background: #e2e3e5;
-            color: #383d41;
-            border: 1px solid #d6d8db;
-        }
-
-        .status-rejected {
-            background: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
-        }
-
-        /* ID Badge */
-        .id-badge {
-            background: #000;
-            color: white;
-            padding: 6px 12px;
-            border-radius: 8px;
-            font-weight: 600;
-            font-size: 0.85rem;
-        }
-
-        /* Type Badge */
-        .type-badge {
-            background: #f8f9fa;
-            color: #495057;
-            padding: 6px 12px;
-            border-radius: 8px;
-            font-weight: 500;
-            font-size: 0.85rem;
-            border: 1px solid #dee2e6;
-        }
-
-        /* Responsive Design */
-        @media (max-width: 768px) {
-            .sidebar {
-                width: 100%;
-                height: auto;
-                position: relative;
-            }
-
-            .main-content {
-                margin-left: 0;
-            }
-
-            .content-area {
-                padding: 20px 15px;
-            }
-
-            .top-bar {
-                padding: 15px 20px;
-            }
-
-            .page-title {
-                font-size: 1.5rem;
-            }
-
-            .stat-card {
-                padding: 20px;
-                margin-bottom: 20px;
-            }
-
-            .custom-table thead th,
-            .custom-table tbody td {
-                padding: 15px 10px;
-                font-size: 0.85rem;
-            }
-        }
-
-        /* Mobile Sidebar Toggle */
-        .sidebar-toggle {
-            display: none;
-            background: #000;
-            color: white;
-            border: none;
-            padding: 10px 15px;
-            border-radius: 5px;
-            margin-right: 15px;
-        }
-
-        @media (max-width: 768px) {
-            .sidebar-toggle {
-                display: inline-block;
-            }
-
-            .sidebar {
-                transform: translateX(-100%);
-            }
-
-            .sidebar.show {
-                transform: translateX(0);
-            }
-        }
     </style>
-</head>
-<body>
+{% endblock %}
 
-    <!-- Main Content -->
-    <div class="main-content">
-        <!-- Top Bar -->
-        <div class="top-bar d-flex align-items-center">
-            <button class="sidebar-toggle" onclick="toggleSidebar()">
-                <i class="bi bi-list"></i>
-            </button>
-            <div>
-                <h1 class="page-title">Dashboard</h1>
-                <p class="page-subtitle">Welcome back! Here's what's happening with your store today.</p>
-            </div>
-        </div>
+{% block content %}
+    <div class="dashboard-content">
+        <div class="container mx-auto">
+            <h1 class="text-4xl font-extrabold text-gray-900 mb-8">Sales Dashboard</h1>
+
+            <!-- Filter Form -->
+            <form method="GET" class="mb-8 bg-white p-6 rounded-xl shadow-lg border border-gray-200">
+                <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+                    <div class="filter-box">
+                        <label class="block text-sm font-semibold text-gray-800">Report Type</label>
+                        <select name="report_type" onchange="this.form.submit()" class="mt-1 block p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-900 focus:border-indigo-900 bg-white text-gray-900">
+                            <option value="custom" {% if report_type == 'custom' %}selected{% endif %}>Custom</option>
+                            <option value="daily" {% if report_type == 'daily' %}selected{% endif %}>Daily</option>
+                            <option value="weekly" {% if report_type == 'weekly' %}selected{% endif %}>Weekly</option>
+                            <option value="monthly" {% if report_type == 'monthly' %}selected{% endif %}>Monthly</option>
+                            <option value="yearly" {% if report_type == 'yearly' %}selected{% endif %}>Yearly</option>
+                        </select>
                     </div>
+                    {% if report_type == 'custom' %}
+                    <div class="filter-box">
+                        <label class="block text-sm font-semibold text-gray-800">Start Date</label>
+                        <input type="date" name="start_date" value="{{ start_date|date:'Y-m-d' }}" class="mt-1 block p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-900 focus:border-indigo-900">
+                    </div>
+                    <div class="filter-box">
+                        <label class="block text-sm font-semibold text-gray-800">End Date</label>
+                        <input type="date" name="end_date" value="{{ end_date|date:'Y-m-d' }}" class="mt-1 block p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-900 focus:border-indigo-900">
+                    </div>
+                    <div class="filter-box flex items-end">
+                        <button type="submit" class="bg-indigo-900 text-white p-2 rounded-lg hover:bg-teal-500 transition-colors text-sm">Apply Filters</button>
+                    </div>
+                    <div class="filter-box flex items-end relative">
+                        <div class="relative w-full">
+                            <button type="button" id="downloadButton" class="bg-indigo-900 text-white p-2 rounded-lg hover:bg-teal-500 flex items-center justify-between transition-colors text-sm">
+                                Download
+                                <svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                </svg>
+                            </button>
+                            <div id="downloadMenu" class="hidden absolute z-10 mt-2 w-full bg-white rounded-lg shadow-xl border border-gray-200">
+                                <button type="submit" name="download_format" value="pdf" class="block w-full text-left px-4 py-3 text-sm font-medium text-gray-800 hover:bg-teal-500 hover:text-white">Download PDF</button>
+                                <button type="submit" name="download_format" value="excel" class="block w-full text-left px-4 py-3 text-sm font-medium text-gray-800 hover:bg-indigo-500 hover:text-white">Download Excel</button>
+                            </div>
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="filter-box flex items-end relative">
+                        <div class="relative w-full">
+                            <button type="button" id="downloadButton" class="bg-indigo-900 text-white p-2 rounded-lg hover:bg-teal-500 flex items-center justify-between transition-colors text-sm">
+                                Download
+                                <svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                </svg>
+                            </button>
+                            <div id="downloadMenu" class="hidden absolute z-10 mt-2 w-full bg-white rounded-lg shadow-xl border border-gray-200">
+                                <button type="submit" name="download_format" value="pdf" class="block w-full text-left px-4 py-3 text-sm font-medium text-gray-800 hover:bg-teal-500 hover:text-white">Download PDF</button>
+                                <button type="submit" name="download_format" value="excel" class="block w-full text-left px-4 py-3 text-sm font-medium text-gray-800 hover:bg-indigo-500 hover:text-white">Download Excel</button>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </form>
+
+            <!-- Summary Metrics -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 mb-8">
+                <div class="metric-card bg-white p-6 rounded-xl shadow-lg border border-gray-200">
+                    <h2 class="text-lg font-semibold text-gray-800">Total Orders</h2>
+                    <p class="text-3xl font-bold text-gray-900 mt-2">{{ total_orders }}</p>
+                </div>
+                <div class="metric-card bg-white p-6 rounded-xl shadow-lg border border-gray-200">
+                    <h2 class="text-lg font-semibold text-gray-800">Total Sales</h2>
+                    <p class="text-3xl font-bold text-gray-900 mt-2">${{ total_sales|floatformat:2 }}</p>
+                </div>
+                <div class="metric-card bg-white p-6 rounded-xl shadow-lg border border-gray-200">
+                    <h2 class="text-lg font-semibold text-gray-800">Total Discount</h2>
+                    <p class="text-3xl font-bold text-gray-900 mt-2">${{ total_discount|floatformat:2 }}</p>
+                </div>
+                <div class="metric-card bg-white p-6 rounded-xl shadow-lg border border-gray-200">
+                    <h2 class="text-lg font-semibold text-gray-800">Coupon Discount</h2>
+                    <p class="text-3xl font-bold text-gray-900 mt-2">${{ total_coupon_discount|floatformat:2 }}</p>
                 </div>
             </div>
-  </tbody>
+
+            <!-- Sales Chart -->
+            <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-200 mb-8">
+                <h2 class="text-xl font-semibold text-gray-900 mb-4">Sales and Orders Over Time</h2>
+                <canvas id="salesChart" height="100"></canvas>
+            </div>
+
+            <!-- Sales Table -->
+            <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-200 mb-8">
+                <h2 class="text-xl font-semibold text-gray-900 mb-4">Sales Details</h2>
+                <table class="w-full table-auto sales-table">
+                    <thead>
+                        <tr class="bg-indigo-900 text-white">
+                            <th class="px-4 py-3 text-left">Order ID</th>
+                            <th class="px-4 py-3 text-left">Date</th>
+                            <th class="px-4 py-3 text-left">Customer</th>
+                            <th class="px-4 py-3 text-left">Subtotal</th>
+                            <th class="px-4 py-3 text-left">Discount</th>
+                            <th class="px-4 py-3 text-left">Coupon Discount</th>
+                            <th class="px-4 py-3 text-left">Referral Discount</th>
+                            <th class="px-4 py-3 text-left">Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for order in orders %}
+                        <tr class="{% cycle 'bg-white' 'bg-gray-50' %} transition duration-200 hover:bg-indigo-50">
+                            <td class="border-b border-gray-200 px-4 py-3">{{ order.order_id }}</td>
+                            <td class="border-b border-gray-200 px-4 py-3">{{ order.created_at|date:"Y-m-d" }}</td>
+                            <td class="border-b border-gray-200 px-4 py-3">{{ order.user.email }}</td>
+                            <td class="border-b border-gray-200 px-4 py-3">${{ order.subtotal|floatformat:2 }}</td>
+                            <td class="border-b border-gray-200 px-4 py-3">${{ order.discount|floatformat:2 }}</td>
+                            <td class="border-b border-gray-200 px-4 py-3">${{ order.coupon_discount|floatformat:2 }}</td>
+                            <td class="border-b border-gray-200 px-4 py-3">${{ order.referral_coupon_discount|floatformat:2 }}</td>
+                            <td class="border-b border-gray-200 px-4 py-3">${{ order.total|floatformat:2 }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="8" class="border-b border-gray-200 px-4 py-3 text-center text-gray-600">No orders found for the selected period.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Top Categories Chart and Table -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8 top-section">
+                <div class="p-6">
+                    <h2 class="text-xl font-semibold mb-4">Top 10 Best Selling Categories</h2>
+                    <canvas id="topCategoriesChart" height="200"></canvas>
+                </div>
+                <div class="p-6">
+                    <h2 class="text-xl font-semibold mb-4">Top Categories Details</h2>
+                    <table class="w-full table-auto">
+                        <thead>
+                            <tr class="text-white">
+                                <th class="px-4 py-3 text-left">Category</th>
+                                <th class="px-4 py-3 text-left">Quantity Sold</th>
+                                <th class="px-4 py-3 text-left">Revenue</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for category in top_categories %}
+                            <tr class="{% cycle 'bg-white' 'bg-gray-50' %}">
+                                <td class="border-b border-gray-200 px-4 py-3">{{ category.product__category__name }}</td>
+                                <td class="border-b border-gray-200 px-4 py-3">{{ category.total_quantity }}</td>
+                                <td class="border-b border-gray-200 px-4 py-3">${{ category.total_revenue|floatformat:2 }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="3" class="border-b border-gray-200 px-4 py-3 text-center text-gray-600">No categories sold in the selected period.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
                     </table>
                 </div>
             </div>
+
+            <!-- Top Products Chart and Table -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8 top-section">
+                <div class="p-6">
+                    <h2 class="text-xl font-semibold mb-4">Top 10 Best Selling Products</h2>
+                    <canvas id="topProductsChart" height="200"></canvas>
+                </div>
+                <div class="p-6">
+                    <h2 class="text-xl font-semibold mb-4">Top Products Details</h2>
+                    <table class="w-full table-auto">
+                        <thead>
+                            <tr class="text-white">
+                                <th class="px-4 py-3 text-left">Product</th>
+                                <th class="px-4 py-3 text-left">Quantity Sold</th>
+                                <th class="px-4 py-3 text-left">Revenue</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for product in top_products %}
+                            <tr class="{% cycle 'bg-white' 'bg-gray-50' %}">
+                                <td class="border-b border-gray-200 px-4 py-3">{{ product.product__name }}</td>
+                                <td class="border-b border-gray-200 px-4 py-3">{{ product.total_quantity }}</td>
+                                <td class="border-b border-gray-200 px-4 py-3">${{ product.total_revenue|floatformat:2 }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="3" class="border-b border-gray-200 px-4 py-3 text-center text-gray-600">No products sold in the selected period.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
         </div>
-    </div>
-    {% endblock %}
-              
-    {% block scripts %}
-    <!-- Bootstrap JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
-    <!-- Custom JavaScript -->
-    <script>
-        function toggleSidebar() {
-            const sidebar = document.getElementById('sidebar');
-            sidebar.classList.toggle('show');
-        }
-
-        // Close sidebar when clicking outside on mobile
-        document.addEventListener('click', function(event) {
-            const sidebar = document.getElementById('sidebar');
-            const toggle = document.querySelector('.sidebar-toggle');
-
-            if (window.innerWidth <= 768) {
-                if (!sidebar.contains(event.target) && !toggle.contains(event.target)) {
-                    sidebar.classList.remove('show');
+        <!-- Chart.js Script for Sales -->
+        <script>
+            const ctx = document.getElementById('salesChart').getContext('2d');
+            const salesChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: {{ chart_data.labels|safe }},
+                    datasets: [
+                        {
+                            label: 'Sales ($)',
+                            data: {{ chart_data.sales|safe }},
+                            borderColor: '#4B0082',
+                            backgroundColor: '#4B0082',
+                            fill: false,
+                            tension: 0.1,
+                            pointRadius: 5,
+                            pointHoverRadius: 8
+                        },
+                        {
+                            label: 'Orders',
+                            data: {{ chart_data.orders|safe }},
+                            borderColor: '#14B8A6',
+                            backgroundColor: '#14B8A6',
+                            fill: false,
+                            tension: 0.1,
+                            pointRadius: 5,
+                            pointHoverRadius: 8
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: { display: true, text: 'Amount ($)', color: '#1f2937', font: { weight: 'bold' } },
+                            grid: { color: '#e5e7eb' }
+                        },
+                        x: {
+                            title: { display: true, text: 'Date', color: '#1f2937', font: { weight: 'bold' } },
+                            grid: { display: false }
+                        }
+                    },
+                    plugins: {
+                        legend: { labels: { color: '#1f2937', font: { size: 14 } } },
+                        tooltip: { backgroundColor: '#1f2937', titleFont: { weight: 'bold' }, bodyFont: { size: 12 } }
+                    },
+                    animation: {
+                        duration: 1000,
+                        easing: 'easeInOutQuad'
+                    }
                 }
-            }
-        });
+            });
+        </script>
 
-        // Prevent back navigation after logout
-        if (window.history && window.history.pushState) {
-            window.history.pushState(null, "", window.location.href);
-            window.onpopstate = function () {
-                window.history.pushState(null, "", window.location.href);
-            };
-        }
-    </script>
-    </body>
-    </html>
-    {% endblock %}
+        <!-- Chart.js Script for Top Products -->
+        <script>
+            const topProductsCtx = document.getElementById('topProductsChart').getContext('2d');
+            const topProductsChart = new Chart(topProductsCtx, {
+                type: 'bar',
+                data: {
+                    labels: {{ top_products_chart.labels|safe }},
+                    datasets: [
+                        {
+                            label: 'Quantity Sold',
+                            data: {{ top_products_chart.quantities|safe }},
+                            backgroundColor: '#4B0082',
+                            hoverBackgroundColor: '#6D28D9',
+                            borderRadius: 4
+                        },
+                        {
+                            label: 'Revenue ($)',
+                            data: {{ top_products_chart.revenues|safe }},
+                            backgroundColor: '#14B8A6',
+                            hoverBackgroundColor: '#2DD4BF',
+                            borderRadius: 4
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: { display: true, text: 'Value', color: '#1f2937', font: { weight: 'bold' } },
+                            grid: { color: '#e5e7eb' }
+                        },
+                        x: {
+                            title: { display: true, text: 'Product', color: '#1f2937', font: { weight: 'bold' } },
+                            grid: { display: false }
+                        }
+                    },
+                    plugins: {
+                        legend: { labels: { color: '#1f2937', font: { size: 14 } } },
+                        tooltip: { backgroundColor: '#1f2937', titleFont: { weight: 'bold' }, bodyFont: { size: 12 } }
+                    },
+                    animation: {
+                        duration: 1200,
+                        easing: 'easeInOutQuad'
+                    }
+                }
+            });
+        </script>
+
+        <!-- Chart.js Script for Top Categories -->
+        <script>
+            const topCategoriesCtx = document.getElementById('topCategoriesChart').getContext('2d');
+            const topCategoriesChart = new Chart(topCategoriesCtx, {
+                type: 'bar',
+                data: {
+                    labels: {{ top_categories_chart.labels|safe }},
+                    datasets: [
+                        {
+                            label: 'Quantity Sold',
+                            data: {{ top_categories_chart.quantities|safe }},
+                            backgroundColor: '#4B0082',
+                            hoverBackgroundColor: '#6D28D9',
+                            borderRadius: 4
+                        },
+                        {
+                            label: 'Revenue ($)',
+                            data: {{ top_categories_chart.revenues|safe }},
+                            backgroundColor: '#14B8A6',
+                            hoverBackgroundColor: '#2DD4BF',
+                            borderRadius: 4
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: { display: true, text: 'Value', color: '#1f2937', font: { weight: 'bold' } },
+                            grid: { color: '#e5e7eb' }
+                        },
+                        x: {
+                            title: { display: true, text: 'Category', color: '#1f2937', font: { weight: 'bold' } },
+                            grid: { display: false }
+                        }
+                    },
+                    plugins: {
+                        legend: { labels: { color: '#1f2937', font: { size: 14 } } },
+                        tooltip: { backgroundColor: '#1f2937', titleFont: { weight: 'bold' }, bodyFont: { size: 12 } }
+                    },
+                    animation: {
+                        duration: 1200,
+                        easing: 'easeInOutQuad'
+                    }
+                }
+            });
+        </script>
+
+        <!-- Dropdown Toggle Script -->
+        <script>
+            const downloadButton = document.getElementById('downloadButton');
+            const downloadMenu = document.getElementById('downloadMenu');
+
+            downloadButton.addEventListener('click', () => {
+                downloadMenu.classList.toggle('hidden');
+            });
+
+            document.addEventListener('click', (event) => {
+                if (!downloadButton.contains(event.target) && !downloadMenu.contains(event.target)) {
+                    downloadMenu.classList.add('hidden');
+                }
+            });
+        </script>
+    </div>
+{% endblock %}

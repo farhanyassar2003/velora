@@ -1,5 +1,6 @@
+<!DOCTYPE html>
 {% extends 'base.html' %}
-{% load static %}
+{% load static checkout_filters %}
 
 {% block extra_head %}
     <!-- Bootstrap CSS -->
@@ -8,6 +9,8 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
     <!-- Google Fonts: Inter -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <!-- SweetAlert2 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11.10.1/dist/sweetalert2.min.css" rel="stylesheet">
     <style>
         :root {
             --primary-black: #000000;
@@ -22,86 +25,81 @@
             --gray-700: #374151;
             --gray-800: #1f2937;
             --gray-900: #111827;
+            --teal-accent: #14B8A6;
         }
         body {
             font-family: 'Inter', sans-serif;
             background-color: var(--gray-50);
             color: var(--gray-900);
         }
-        /* Page Header */
         .page-header {
-        background: linear-gradient(135deg, var(--primary-black) 0%, #1a3c34 100%);
-        color: var(--primary-white);
-        padding: 4rem 0 2rem;
-        margin-bottom: 0;
-        position: relative;
-        overflow: hidden;
-        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
-    }
-    .page-header::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" preserveAspectRatio="none"><path fill="rgba(255,255,255,0.05)" d="M0,0 Q50,20 100,0 Q50,20 0,0 Z" /></svg>') repeat-x bottom;
-        opacity: 0.3;
-        z-index: 1;
-    }
-    .page-header .container {
-        position: relative;
-        z-index: 2;
-    }
-    .page-title {
-        font-size: 3.75rem;
-        font-weight: 900;
-        text-align: center;
-        margin-bottom: 1.25rem;
-        letter-spacing: 0.06em;
-        text-transform: uppercase;
-        color: var(--primary-white);
-        text-shadow: 2px 2px 6px rgba(0, 0, 0, 0.3);
-        animation: fadeInUp 1s ease-out;
-    }
-    .page-title:hover {
-        transform: scale(1.03);
-        transition: transform 0.3s ease;
-    }
-    .page-subtitle {
-        text-align: center;
-        font-size: 1.3rem;
-        font-weight: 400;
-        color: var(--gray-200);
-        max-width: 700px;
-        margin: 0 auto;
-        line-height: 1.8;
-        animation: fadeInUp 1.2s ease-out 0.2s;
-        animation-fill-mode: both;
-    }
-    /* Animation Keyframes */
-    @keyframes fadeInUp {
-        from {
-            opacity: 0;
-            transform: translateY(20px);
+            background: linear-gradient(135deg, var(--primary-black) 0%, #1a3c34 100%);
+            color: var(--primary-white);
+            padding: 4rem 0 2rem;
+            margin-bottom: 0;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
         }
-        to {
-            opacity: 1;
-            transform: translateY(0);
+        .page-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" preserveAspectRatio="none"><path fill="rgba(255,255,255,0.05)" d="M0,0 Q50,20 100,0 Q50,20 0,0 Z" /></svg>') repeat-x bottom;
+            opacity: 0.3;
+            z-index: 1;
         }
-    }
-
-        /* General Card Styling */
+        .page-header .container {
+            position: relative;
+            z-index: 2;
+        }
+        .page-title {
+            font-size: 3.75rem;
+            font-weight: 900;
+            text-align: center;
+            margin-bottom: 1.25rem;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            color: var(--primary-white);
+            text-shadow: 2px 2px 6px rgba(0, 0, 0, 0.3);
+            animation: fadeInUp 1s ease-out;
+        }
+        .page-title:hover {
+            transform: scale(1.03);
+            transition: transform 0.3s ease;
+        }
+        .page-subtitle {
+            text-align: center;
+            font-size: 1.3rem;
+            font-weight: 400;
+            color: var(--gray-200);
+            max-width: 700px;
+            margin: 0 auto;
+            line-height: 1.8;
+            animation: fadeInUp 1.2s ease-out 0.2s;
+            animation-fill-mode: both;
+        }
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
         .card {
-            border-radius: 1rem; /* 16px */
+            border-radius: 1rem;
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
             border: 1px solid var(--gray-200);
             background-color: var(--primary-white);
         }
-
-        /* Custom Button Styles */
         .btn-primary-black {
-            background-color: var(--primary-black);
+            background: linear-gradient(45deg, var(--primary-black), var(--teal-accent));
             color: var(--primary-white);
             padding: 1rem 2rem;
             border-radius: 50px;
@@ -114,10 +112,21 @@
             border: none;
         }
         .btn-primary-black:hover {
-            background-color: var(--gray-800);
+            background: linear-gradient(45deg, var(--teal-accent), var(--primary-black));
             color: var(--primary-white);
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            transform: scale(1.05);
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
+        }
+        .btn-primary-black:active {
+            transform: scale(0.98);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        }
+        .btn-primary-black:disabled {
+            background: var(--gray-400);
+            color: var(--gray-600);
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
         }
         .btn-outline-primary-custom {
             border: 2px solid var(--primary-black);
@@ -129,48 +138,126 @@
             transition: all 0.3s ease;
         }
         .btn-outline-primary-custom:hover {
-            background-color: var(--primary-black);
+            background: linear-gradient(45deg, var(--primary-black), var(--teal-accent));
             color: var(--primary-white);
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            border-color: transparent;
+            transform: scale(1.05);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
         }
-
-        /* Address Section Specifics */
+        .btn-outline-primary-custom:active {
+            transform: scale(0.98);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+        .btn-outline-primary-custom:disabled {
+            border-color: var(--gray-400);
+            color: var(--gray-400);
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        .modal-content .btn-close {
+            background-color: var(--gray-800);
+            color: var(--primary-white);
+            border-radius: 50%;
+            padding: 0.5rem;
+            opacity: 0.8;
+            transition: all 0.3s ease;
+        }
+        .modal-content .btn-close:hover {
+            background-color: var(--teal-accent);
+            opacity: 1;
+            transform: scale(1.1);
+        }
         .address-radio-group .form-check {
-            padding: 1rem;
-            border: 1px solid var(--gray-200);
-            border-radius: 0.75rem; /* 12px */
-            margin-bottom: 0.75rem;
-            transition: all 0.2s ease;
+            padding: 1.25rem;
+            border: 2px solid var(--gray-200);
+            border-radius: 1rem;
+            margin-bottom: 1rem;
+            background: var(--primary-white);
+            transition: all 0.3s ease;
             cursor: pointer;
+            position: relative;
         }
         .address-radio-group .form-check:hover {
-            background-color: var(--gray-50);
+            background: linear-gradient(45deg, var(--gray-100), var(--gray-200));
+            transform: scale(1.02);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
         }
         .address-radio-group .form-check-input:checked + .form-check-label {
-            border-color: var(--primary-black);
-            box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.1);
-            background-color: var(--gray-50);
+            border: 2px solid var(--gray-300);
+            background: var(--gray-100);
+            box-shadow: 0 0 8px rgba(0, 0, 0, 0.1);
+            border-radius: 0.75rem;
+            padding: 0.75rem;
         }
         .address-radio-group .form-check-input {
-            margin-top: 0.5rem; /* Align radio button with text */
+            margin-top: 0.5rem;
+            transform: scale(1.2);
         }
         .address-radio-group .form-check-label {
-            display: block; /* Make label clickable area larger */
+            display: block;
             cursor: pointer;
-            padding-left: 0.5rem; /* Space between radio and text */
+            padding-left: 0.75rem;
+            color: var(--gray-900);
+            font-weight: 500;
+            line-height: 1.6;
         }
         .address-radio-group .badge {
-            font-size: 0.75em;
-            padding: 0.3em 0.6em;
+            font-size: 0.8em;
+            padding: 0.4em 0.8em;
             border-radius: 0.5rem;
             vertical-align: middle;
-            margin-left: 0.5rem;
+            margin-left: 0.75rem;
+            background-color: var(--gray-600);
+            color: var(--primary-white);
         }
-
-        /* Order Summary Table */
+        .payment-radio-group .form-check {
+            padding: 1.25rem;
+            border: 2px solid var(--gray-200);
+            border-radius: 1rem;
+            margin-bottom: 1rem;
+            background: var(--primary-white);
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+        }
+        .payment-radio-group .form-check:hover {
+            background: linear-gradient(45deg, var(--gray-100), var(--gray-200));
+            transform: scale(1.02);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+        .payment-radio-group .form-check.disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        .payment-radio-group .form-check-input:checked + .form-check-label {
+            border: 2px solid var(--gray-300);
+            background: var(--gray-100);
+            box-shadow: 0 0 8px rgba(0, 0, 0, 0.1);
+            border-radius: 0.75rem;
+            padding: 0.75rem;
+        }
+        .payment-radio-group .form-check-input {
+            margin-top: 0.5rem;
+            transform: scale(1.2);
+        }
+        .payment-radio-group .form-check-label {
+            display: block;
+            cursor: pointer;
+            padding-left: 0.75rem;
+            color: var(--gray-900);
+            font-weight: 500;
+            font-size: 1.1rem;
+            line-height: 1.6;
+        }
+        .payment-radio-group .cod-warning {
+            font-size: 0.9rem;
+            color: #dc3545; /* Bootstrap danger color */
+            margin-left: 2rem;
+            line-height: 1.6;
+        }
         .order-summary-table .table {
-            margin-bottom: 0; /* Remove default table margin */
+            margin-bottom: 0;
         }
         .order-summary-table .table thead th {
             border-bottom: 2px solid var(--gray-300);
@@ -193,8 +280,24 @@
             margin-right: 0.75rem;
             object-fit: cover;
         }
-
-        /* Price Details List Group */
+        .color-swatch {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            border: 1px solid var(--gray-300);
+            vertical-align: middle;
+            margin-right: 0.5rem;
+            background-color: #cccccc;
+        }
+        .offer-badge {
+            font-size: 0.75em;
+            padding: 0.3em 0.6em;
+            border-radius: 0.5rem;
+            margin-left: 0.5rem;
+            background-color: var(--gray-100);
+            color: var(--gray-700);
+        }
         .price-details-list .list-group-item {
             background-color: transparent;
             border: none;
@@ -218,8 +321,43 @@
         .price-details-list .list-group-item strong {
             color: var(--primary-black);
         }
-
-        /* Responsive Design */
+        .coupon-section {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+        .coupon-section input {
+            border-radius: 0.5rem;
+            border: 1px solid var(--gray-300);
+            padding: 0.5rem;
+        }
+        .coupon-section .btn {
+            border-radius: 0.5rem;
+        }
+        .coupon-applied {
+            color: var(--gray-700);
+            font-size: 0.9rem;
+            margin-top: 0.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .coupon-modal .modal-content {
+            border-radius: 1rem;
+        }
+        .coupon-modal .coupon-item {
+            border: 1px solid var(--gray-200);
+            border-radius: 0.5rem;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .coupon-modal .coupon-item.disabled {
+            opacity: 0.6;
+            background-color: var(--gray-100);
+        }
         @media (max-width: 768px) {
             .page-title {
                 font-size: 2rem;
@@ -261,10 +399,12 @@
                 color: var(--gray-700);
             }
             .order-summary-table td:nth-of-type(1):before { content: "Product"; }
-            .order-summary-table td:nth-of-type(2):before { content: "Size"; }
-            .order-summary-table td:nth-of-type(3):before { content: "Qty"; }
-            .order-summary-table td:nth-of-type(4):before { content: "Price"; }
-            .order-summary-table td:nth-of-type(5):before { content: "Total"; }
+            .order-summary-table td:nth-of-type(2):before { content: "Color"; }
+            .order-summary-table td:nth-of-type(3):before { content: "Size"; }
+            .order-summary-table td:nth-of-type(4):before { content: "Qty"; }
+            .order-summary-table td:nth-of-type(5):before { content: "Price"; }
+            .order-summary-table td:nth-of-type(6):before { content: "Discount"; }
+            .order-summary-table td:nth-of-type(7):before { content: "Total"; }
             .order-summary-table td:first-child {
                 text-align: left;
                 padding-left: 1rem;
@@ -273,11 +413,33 @@
                 display: inline-block;
                 vertical-align: middle;
             }
+            .order-summary-table td:nth-of-type(2) .color-swatch {
+                vertical-align: middle;
+            }
+            .address-radio-group .form-check,
+            .payment-radio-group .form-check {
+                padding: 1rem;
+            }
+            .address-radio-group .form-check-label,
+            .payment-radio-group .form-check-label {
+                font-size: 1rem;
+            }
         }
         @media (max-width: 576px) {
             .page-header {
                 padding: 2rem 0 1rem;
             }
+            .address-radio-group .form-check,
+            .payment-radio-group .form-check {
+                padding: 0.75rem;
+            }
+        }
+        .toast-body a {
+            color: var(--teal-accent);
+            text-decoration: underline;
+        }
+        .toast-body a:hover {
+            color: var(--primary-black);
         }
     </style>
 {% endblock %}
@@ -295,7 +457,7 @@
         {% csrf_token %}
         <div class="row g-4">
             <div class="col-lg-6">
-                <div class="card p-4">
+                <div class="card p-4 mb-4">
                     <h4 class="mb-4 text-primaryBlack">Shipping Address</h4>
                     <div class="address-radio-group">
                         {% if addresses %}
@@ -304,7 +466,7 @@
                                     <input class="form-check-input" type="radio" name="address_id" id="address{{ address.id }}" value="{{ address.id }}" {% if address.is_default or forloop.first %}checked{% endif %}>
                                     <label class="form-check-label" for="address{{ address.id }}">
                                         <strong>{{ address.full_name }}</strong> - {{ address.phone }}<br>
-                                        {{ address.street }}, {{ address.city }}, {{ address.state }} - {{ address.postal_code }}
+                                        {{ address.street_address }}{% if address.address_line2 %}, {{ address.address_line2 }}{% endif %}, {{ address.city }}, {{ address.state }} - {{ address.postal_code }}, {{ address.country }}
                                         {% if address.is_default %}
                                             <span class="badge bg-success">Default</span>
                                         {% endif %}
@@ -319,6 +481,45 @@
                         <i class="bi bi-plus-circle me-2"></i>Add New Address
                     </button>
                 </div>
+
+                <div class="card p-4">
+                    <h4 class="mb-4 text-primaryBlack">Payment Method</h4>
+                    <div class="payment-radio-group">
+                        <div class="form-check {% if total > 1000 %}disabled{% endif %}">
+                            <input class="form-check-input" type="radio" name="payment_method" id="paymentCOD" value="COD" {% if total <= 1000 and not payment_method or payment_method == 'COD' %}checked{% endif %} {% if total > 1000 %}disabled{% endif %}>
+                            <label class="form-check-label" for="paymentCOD">
+                                Cash on Delivery
+                                {% if total > 1000 %}
+                                    <span class="cod-warning">Not available for orders above ₹1000</span>
+                                {% endif %}
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="payment_method" id="paymentOnline" value="Online" {% if total > 1000 or payment_method == 'Online' %}checked{% endif %}>
+                            <label class="form-check-label" for="paymentOnline">
+                                Online Payment
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="payment_method" id="paymentWallet" value="Wallet" {% if payment_method == 'Wallet' %}checked{% endif %}>
+                            <label class="form-check-label" for="paymentWallet">
+                                Wallet (Balance: ₹{{ wallet_balance|floatformat:2 }})
+                            </label>
+                        </div>
+                    </div>
+                    <div id="gateway-selection" style="display: none;" class="mt-3">
+                        <h5 class="mb-3">Select Payment Gateway</h5>
+                        <div class="payment-radio-group">
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="payment_gateway" id="gatewayRazorpay" value="razorpay" checked>
+                                <label class="form-check-label" for="gatewayRazorpay">
+                                    Razorpay
+                                </label>
+                            </div>
+                            <!-- Add more gateways here as needed -->
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <div class="col-lg-6">
@@ -329,29 +530,69 @@
                             <thead>
                                 <tr>
                                     <th>Product</th>
+                                    <th>Color</th>
                                     <th>Size</th>
                                     <th>Qty</th>
                                     <th>Price</th>
+                                    <th>Discount</th>
                                     <th>Total</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {% for item in cart_items %}
+                                {% for cart_item in cart_items_with_discounts %}
                                 <tr>
                                     <td>
-                                        <img src="{% if item.product.get_primary_image %}{{ item.product.get_primary_image }}{% else %}https://via.placeholder.com/60x60/f3f4f6/9ca3af?text=Product{% endif %}"
-                                             alt="{{ item.product.name }}" width="60" height="60">
-                                        {{ item.product.name }}
+                                        <img src="{% if cart_item.item.product.get_primary_image %}{{ cart_item.item.product.get_primary_image }}{% else %}https://via.placeholder.com/60x60/f3f4f6/9ca3af?text=Product{% endif %}"
+                                             alt="{{ cart_item.item.product.name }}" width="60" height="60">
+                                        {{ cart_item.item.product.name }}
                                     </td>
-                                    <td><span class="badge bg-secondary">{{ item.size }}</span></td>
-                                    <td>{{ item.quantity }}</td>
-                                    <td>₹{{ item.product.price|floatformat:2 }}</td>
-                                    <td>₹{{ item.subtotal|floatformat:2 }}</td>
+                                    <td>
+                                        {% if cart_item.item.color_name %}
+                                            <span class="color-swatch" data-color-name="{{ cart_item.item.color_name|lower }}"></span>
+                                            {{ cart_item.item.color_name }}
+                                        {% else %}
+                                            <span>N/A</span>
+                                        {% endif %}
+                                    </td>
+                                    <td><span class="badge bg-secondary">{{ cart_item.item.size|default:'N/A' }}</span></td>
+                                    <td>{{ cart_item.item.quantity }}</td>
+                                    <td>₹{{ cart_item.subtotal|floatformat:2 }}</td>
+                                    <td>
+                                        {% if cart_item.discount > 0 %}
+                                            ₹{{ cart_item.discount|floatformat:2 }}
+                                            <span class="offer-badge">{{ cart_item.applied_offer }}</span>
+                                        {% else %}
+                                            ₹0.00
+                                        {% endif %}
+                                    </td>
+                                    <td>₹{{ cart_item.discounted_price|floatformat:2 }}</td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
                         </table>
                     </div>
+                </div>
+
+                <div class="card p-4 mb-4">
+                    <h4 class="mb-4 text-primaryBlack">Available Coupons</h4>
+                    <div class="coupon-section mb-3">
+                        <input type="text" id="couponCode" class="form-control" placeholder="Enter coupon code">
+                        <button type="button" id="applyCouponBtn" class="btn btn-primary-black">Apply</button>
+                    </div>
+                    <div id="applied-coupons" class="coupon-applied mb-3">
+                        {% if applied_coupons %}
+                            <h6>Applied Coupons:</h6>
+                            {% for code, coupon in applied_coupons.items %}
+                                <div class="d-flex justify-content-between align-items-center mb-2" data-coupon-code="{{ code }}">
+                                    <span>{{ code }} ({{ coupon.discount }})</span>
+                                    <button type="button" class="btn btn-outline-primary-custom btn-sm remove-coupon-btn" data-coupon-code="{{ code }}" data-coupon-type="{{ coupon.type }}">Remove</button>
+                                </div>
+                            {% endfor %}
+                        {% endif %}
+                    </div>
+                    <button type="button" class="btn btn-primary-black" data-bs-toggle="modal" data-bs-target="#couponModal">
+                        View Available Coupons
+                    </button>
                 </div>
 
                 <div class="card p-4">
@@ -360,8 +601,23 @@
                         <li class="list-group-item d-flex justify-content-between">
                             <span>Subtotal</span> <strong>₹{{ subtotal|floatformat:2 }}</strong>
                         </li>
+                        {% if total_discount > 0 %}
+                            <li class="list-group-item d-flex justify-content-between">
+                                <span>Discount</span> <strong>-₹{{ total_discount|floatformat:2 }}</strong>
+                            </li>
+                        {% endif %}
+                        {% if regular_coupon_discount > 0 %}
+                            <li class="list-group-item d-flex justify-content-between">
+                                <span>Coupon Discount</span> <strong>-₹{{ regular_coupon_discount|floatformat:2 }}</strong>
+                            </li>
+                        {% endif %}
+                        {% if referral_coupon_discount > 0 %}
+                            <li class="list-group-item d-flex justify-content-between">
+                                <span>Referral Coupon Discount</span> <strong>-₹{{ referral_coupon_discount|floatformat:2 }}</strong>
+                            </li>
+                        {% endif %}
                         <li class="list-group-item d-flex justify-content-between">
-                            <span>Tax </span> <strong>₹{{ tax|floatformat:2 }}</strong>
+                            <span>Tax</span> <strong>₹{{ tax|floatformat:2 }}</strong>
                         </li>
                         <li class="list-group-item d-flex justify-content-between">
                             <span>Shipping</span> <strong>₹{{ shipping|floatformat:2 }}</strong>
@@ -370,8 +626,8 @@
                             <span>Total</span> <strong>₹{{ total|floatformat:2 }}</strong>
                         </li>
                     </ul>
-                    <button type="submit" class="btn-primary-black w-100 mt-4">
-                        Place Order (Cash on Delivery)
+                    <button type="submit" class="btn btn-primary-black w-100 mt-4" id="placeOrderBtn">
+                        Place Order
                     </button>
                 </div>
             </div>
@@ -381,47 +637,154 @@
 
 <!-- Toast for Missing Address -->
 <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 9999">
-  <div id="missingAddressToast" class="toast align-items-center text-bg-warning border-0" role="alert" aria-live="assertive" aria-atomic="true">
-    <div class="d-flex">
-      <div class="toast-body">
-        Please select or add a shipping address before placing the order.
-      </div>
-      <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+    <div id="missingAddressToast" class="toast align-items-center text-bg-warning border-0" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="d-flex">
+            <div class="toast-body">
+                Please select or add a shipping address before placing the order.
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
     </div>
-  </div>
+</div>
+
+<!-- Toast for Missing Payment Method -->
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 9999">
+    <div id="missingPaymentToast" class="toast align-items-center text-bg-warning border-0" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="d-flex">
+            <div class="toast-body">
+                Please select a payment method before placing the order.
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+    </div>
+</div>
+
+<!-- Toast for Missing Payment Gateway -->
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 9999">
+    <div id="missingGatewayToast" class="toast align-items-center text-bg-warning border-0" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="d-flex">
+            <div class="toast-body">
+                Please select a payment gateway for online payment.
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+    </div>
+</div>
+
+<!-- Toast for Insufficient Wallet Balance -->
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 9999">
+    <div id="insufficientWalletToast" class="toast align-items-center text-bg-warning border-0" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="d-flex">
+            <div class="toast-body">
+                Insufficient wallet balance. Please add ₹{{ wallet_balance_deficit|floatformat:2 }} to your <a href="{% url 'userside:wallet' %}" class="text-decoration-underline">wallet</a> or choose another payment method.
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+    </div>
+</div>
+
+<!-- Toast for COD Restriction -->
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 9999">
+    <div id="codRestrictionToast" class="toast align-items-center text-bg-warning border-0" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="d-flex">
+            <div class="toast-body">
+                Cash on Delivery is not available for orders above ₹1000. Please select another payment method.
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+    </div>
+</div>
+
+<!-- Coupon Modal -->
+<div class="modal fade coupon-modal" id="couponModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Available Coupons</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                {% if coupons %}
+                    {% for coupon_entry in coupons %}
+                        <div class="coupon-item {% if not coupon_entry.is_valid_for_user or coupon_entry.used_by_user %}disabled{% endif %}">
+                            <div>
+                                <p><strong>Code:</strong> {{ coupon_entry.code }}</p>
+                                <p><strong>Discount:</strong> {{ coupon_entry.discount }}</p>
+                                <p><strong>Valid Until:</strong> {{ coupon_entry.coupon.valid_until|date:"M d, Y" }}</p>
+                                <p><strong>Type:</strong> {{ coupon_entry.type|title }}</p>
+                            </div>
+                            <button type="button" class="btn btn-primary-black apply-coupon-btn" 
+                                    data-coupon-code="{{ coupon_entry.code }}"
+                                    data-coupon-type="{{ coupon_entry.type }}"
+                                    {% if not coupon_entry.is_valid_for_user or coupon_entry.used_by_user %}disabled{% endif %}>
+                                {% if applied_coupons|dict_key:coupon_entry.code %}
+                                    Applied
+                                {% elif coupon_entry.used_by_user %}
+                                    Used
+                                {% elif not coupon_entry.is_valid_for_user %}
+                                    Invalid
+                                {% else %}
+                                    Apply
+                                {% endif %}
+                            </button>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <p class="text-gray-600">No valid coupons available at this time.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
 </div>
 
 <!-- Address Modal -->
 <div class="modal fade" id="addressModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <form id="checkoutAddressForm">
-        {% csrf_token %}
-        <input type="hidden" name="address_id" id="addressId">
-        <div class="modal-header">
-          <h5 class="modal-title">Add New Address</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form id="checkoutAddressForm">
+                {% csrf_token %}
+                <input type="hidden" name="address_id" id="addressId">
+                <div class="modal-header">
+                    <h5 class="modal-title">Add New Address</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3"><label class="form-label">Full Name</label><input type="text" name="full_name" id="addressFullName" class="form-control" required></div>
+                    <div class="mb-3"><label class="form-label">Phone</label><input type="text" name="phone" id="addressPhone" class="form-control" required></div>
+                    <div class="mb-3"><label class="form-label">Address Line 1</label><input type="text" name="street_address" id="addressLine1" class="form-control" required></div>
+                    <div class="mb-3"><label class="form-label">Address Line 2</label><input type="text" name="address_line2" id="addressLine2" class="form-control"></div>
+                    <div class="mb-3"><label class="form-label">City</label><input type="text" name="city" id="addressCity" class="form-control" required></div>
+                    <div class="mb-3"><label class="form-label">State</label><input type="text" name="state" id="addressState" class="form-control" required></div>
+                    <div class="mb-3"><label class="form-label">Postal Code</label><input type="text" name="postal_code" id="addressPostalCode" class="form-control" required></div>
+                    <div class="mb-3"><label class="form-label">Country</label><input type="text" name="country" id="addressCountry" class="form-control" required></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary-black">Save Address</button>
+                </div>
+            </form>
         </div>
-        <div class="modal-body">
-          <div class="mb-3"><label class="form-label">Full Name</label><input type="text" name="full_name" id="addressFullName" class="form-control" required></div>
-          <div class="mb-3"><label class="form-label">Phone</label><input type="text" name="phone" id="addressPhone" class="form-control" required></div>
-          <div class="mb-3"><label class="form-label">Address Line 1</label><input type="text" name="address_line1" id="addressLine1" class="form-control" required></div>
-          <div class="mb-3"><label class="form-label">Address Line 2</label><input type="text" name="address_line2" id="addressLine2" class="form-control"></div>
-          <div class="mb-3"><label class="form-label">City</label><input type="text" name="city" id="addressCity" class="form-control" required></div>
-          <div class="mb-3"><label class="form-label">State</label><input type="text" name="state" id="addressState" class="form-control" required></div>
-          <div class="mb-3"><label class="form-label">Postal Code</label><input type="text" name="postal_code" id="addressPostalCode" class="form-control" required></div>
-          <div class="mb-3"><label class="form-label">Country</label><input type="text" name="country" id="addressCountry" class="form-control" required></div>
-        </div>
-        <div class="modal-footer">
-          <button type="submit" class="btn btn-primary">Save Address</button>
-        </div>
-      </form>
     </div>
-  </div>
 </div>
 
 <!-- Scripts -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.10.1/dist/sweetalert2.min.js"></script>
 <script>
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
 function openAddressModal() {
     document.getElementById("addressId").value = "";
     document.getElementById("addressFullName").value = "";
@@ -435,24 +798,63 @@ function openAddressModal() {
     new bootstrap.Modal(document.getElementById('addressModal')).show();
 }
 
-// Address Form Submission with Validation
+// Address Form Submission with Validation and Duplicate Check
 document.getElementById("checkoutAddressForm").addEventListener("submit", function (event) {
-    event.preventDefault();  
+    event.preventDefault();
 
     const fullName = document.getElementById("addressFullName").value.trim();
     const phone = document.getElementById("addressPhone").value.trim();
+    const streetAddress = document.getElementById("addressLine1").value.trim();
+    const addressLine2 = document.getElementById("addressLine2").value.trim();
+    const city = document.getElementById("addressCity").value.trim();
+    const state = document.getElementById("addressState").value.trim();
+    const postalCode = document.getElementById("addressPostalCode").value.trim();
+    const country = document.getElementById("addressCountry").value.trim();
 
     const nameRegex = /^[A-Za-z ]+$/;
     const phoneRegex = /^[0-9]{10}$/;
 
     if (!nameRegex.test(fullName)) {
-        alert("Name must contain only alphabets.");
+        Swal.fire({
+            icon: 'error',
+            title: 'Invalid Name',
+            text: 'Name must contain only alphabets.',
+            confirmButtonColor: '#14B8A6',
+            background: '#fff',
+            color: '#111827'
+        });
         return;
     }
 
     if (!phoneRegex.test(phone) || /^0{10}$/.test(phone)) {
-        alert("Phone must be a valid 10-digit number and not all zeros.");
+        Swal.fire({
+            icon: 'error',
+            title: 'Invalid Phone',
+            text: 'Phone must be a valid 10-digit number and not all zeros.',
+            confirmButtonColor: '#14B8A6',
+            background: '#fff',
+            color: '#111827'
+        });
         return;
+    }
+
+    // Check for duplicate address
+    const existingAddresses = document.querySelectorAll('.address-radio-group .form-check-label');
+    const newAddressString = `${streetAddress}${addressLine2 ? ', ' + addressLine2 : ''}, ${city}, ${state} - ${postalCode}, ${country}`.toLowerCase().trim();
+    for (let label of existingAddresses) {
+        const existingAddress = label.textContent.replace(/\s+/g, ' ').toLowerCase().trim();
+        const existingAddressWithoutName = existingAddress.split(' - ')[1] || existingAddress;
+        if (existingAddressWithoutName === newAddressString) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Address Already Exists',
+                text: 'This address is already saved.',
+                confirmButtonColor: '#14B8A6',
+                background: '#fff',
+                color: '#111827'
+            });
+            return;
+        }
     }
 
     const form = event.target;
@@ -461,33 +863,497 @@ document.getElementById("checkoutAddressForm").addEventListener("submit", functi
     fetch("{% url 'userside:save_address_checkout' %}", {
         method: "POST",
         headers: {
-            "X-CSRFToken": document.querySelector('[name=csrfmiddlewaretoken]').value,
+            "X-CSRFToken": getCookie('csrftoken') || document.querySelector('[name=csrfmiddlewaretoken]').value,
         },
         body: formData,
     })
     .then(response => {
-        if (!response.ok) throw new Error("Address saving failed.");
-        return response.text();
+        if (!response.ok) {
+            return response.json().then(errorData => {
+                throw new Error(errorData.errors ? errorData.errors.join(' ') : errorData.message || 'Address saving failed.');
+            });
+        }
+        return response.json();
     })
-    .then(() => {
-        bootstrap.Modal.getInstance(document.getElementById('addressModal')).hide();
-        window.location.reload();
+    .then(data => {
+        if (data.success) {
+            bootstrap.Modal.getInstance(document.getElementById('addressModal')).hide();
+            const noAddressMessage = document.querySelector('.address-radio-group .text-gray-600');
+            if (noAddressMessage) {
+                noAddressMessage.remove();
+            }
+            const addressGroup = document.querySelector('.address-radio-group');
+            const addressId = data.address_id;
+            const isDefault = data.is_default || false;
+            const addressLine2Text = addressLine2 ? `, ${addressLine2}` : '';
+            const addressHtml = `
+                <div class="form-check">
+                    <input class="form-check-input" type="radio" name="address_id" id="address${addressId}" value="${addressId}" ${isDefault ? 'checked' : ''}>
+                    <label class="form-check-label" for="address${addressId}">
+                        <strong>${formData.get('full_name')}</strong> - ${formData.get('phone')}<br>
+                        ${formData.get('street_address')}${addressLine2Text}, 
+                        ${formData.get('city')}, ${formData.get('state')} - ${formData.get('postal_code')}, ${formData.get('country')}
+                        ${isDefault ? '<span class="badge bg-success">Default</span>' : ''}
+                    </label>
+                </div>
+            `;
+            addressGroup.insertAdjacentHTML('beforeend', addressHtml);
+            Swal.fire({
+                icon: 'success',
+                title: 'Address Added',
+                text: data.message || 'Your address has been successfully added!',
+                confirmButtonColor: '#14B8A6',
+                background: '#fff',
+                color: '#111827',
+                timer: 2000,
+                timerProgressBar: true
+            });
+        } else {
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: (data.errors && data.errors.length) ? data.errors.join(' ') : data.message || 'There was a problem saving the address.',
+                confirmButtonColor: '#14B8A6',
+                background: '#fff',
+                color: '#111827'
+            });
+        }
     })
     .catch(error => {
-        console.error("Error:", error);
-        alert("There was a problem saving the address.");
+        Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: error.message || 'There was a problem saving the address.',
+            confirmButtonColor: '#14B8A6',
+            background: '#fff',
+            color: '#111827'
+        });
     });
 });
 
-// Checkout Form Submit Validation for Address Selection
+// Checkout Form Submit Validation
 document.getElementById("checkoutForm").addEventListener("submit", function (event) {
     const addressChecked = document.querySelector('input[name="address_id"]:checked');
+    const paymentMethod = document.querySelector('input[name="payment_method"]:checked');
+    const paymentGateway = document.querySelector('input[name="payment_gateway"]:checked');
+    const walletBalance = parseFloat('{{ wallet_balance|floatformat:2 }}');
+    const orderTotal = parseFloat('{{ total|floatformat:2 }}');
 
     if (!addressChecked) {
         event.preventDefault();
         const toast = new bootstrap.Toast(document.getElementById("missingAddressToast"));
         toast.show();
+        return;
     }
+
+    if (!paymentMethod) {
+        event.preventDefault();
+        const toast = new bootstrap.Toast(document.getElementById("missingPaymentToast"));
+        toast.show();
+        return;
+    }
+
+    if (paymentMethod.value === 'Online' && !paymentGateway) {
+        event.preventDefault();
+        const toast = new bootstrap.Toast(document.getElementById("missingGatewayToast"));
+        toast.show();
+        return;
+    }
+
+    if (paymentMethod.value === 'Wallet' && walletBalance < orderTotal) {
+        event.preventDefault();
+        const toast = new bootstrap.Toast(document.getElementById("insufficientWalletToast"));
+        toast.show();
+        return;
+    }
+
+    if (paymentMethod.value === 'COD' && orderTotal > 1000) {
+        event.preventDefault();
+        const toast = new bootstrap.Toast(document.getElementById("codRestrictionToast"));
+        toast.show();
+        return;
+    }
+});
+
+// Prevent Form Submission on Enter Key for Insufficient Wallet Balance or COD Restriction
+document.getElementById("checkoutForm").addEventListener("keypress", function (event) {
+    if (event.key === "Enter") {
+        const paymentMethod = document.querySelector('input[name="payment_method"]:checked');
+        const walletBalance = parseFloat('{{ wallet_balance|floatformat:2 }}');
+        const orderTotal = parseFloat('{{ total|floatformat:2 }}');
+        if (paymentMethod && paymentMethod.value === 'Wallet' && walletBalance < orderTotal) {
+            event.preventDefault();
+            const toast = new bootstrap.Toast(document.getElementById("insufficientWalletToast"));
+            toast.show();
+        } else if (paymentMethod && paymentMethod.value === 'COD' && orderTotal > 1000) {
+            event.preventDefault();
+            const toast = new bootstrap.Toast(document.getElementById("codRestrictionToast"));
+            toast.show();
+        }
+    }
+});
+
+// Show/Hide Payment Gateway Selection and Update Place Order Button
+document.querySelectorAll('input[name="payment_method"]').forEach(function(radio) {
+    radio.addEventListener('change', function() {
+        const gatewaySelection = document.getElementById('gateway-selection');
+        const placeOrderBtn = document.getElementById('placeOrderBtn');
+        const walletBalance = parseFloat('{{ wallet_balance|floatformat:2 }}');
+        const orderTotal = parseFloat('{{ total|floatformat:2 }}');
+
+        if (this.value === 'COD' && orderTotal > 1000) {
+            const toast = new bootstrap.Toast(document.getElementById("codRestrictionToast"));
+            toast.show();
+            // Switch to Online Payment if COD is selected for orders > ₹1000
+            document.getElementById('paymentOnline').checked = true;
+            gatewaySelection.style.display = 'block';
+            placeOrderBtn.textContent = 'Proceed to Payment';
+            placeOrderBtn.disabled = false;
+            placeOrderBtn.classList.remove('disabled');
+            return;
+        }
+
+        if (this.value === 'Online') {
+            gatewaySelection.style.display = 'block';
+            placeOrderBtn.textContent = 'Proceed to Payment';
+            placeOrderBtn.disabled = false;
+            placeOrderBtn.classList.remove('disabled');
+        } else if (this.value === 'Wallet') {
+            gatewaySelection.style.display = 'none';
+            placeOrderBtn.textContent = 'Place Order (Wallet)';
+            placeOrderBtn.disabled = walletBalance < orderTotal;
+            if (walletBalance < orderTotal) {
+                placeOrderBtn.classList.add('disabled');
+            } else {
+                placeOrderBtn.classList.remove('disabled');
+            }
+        } else {
+            gatewaySelection.style.display = 'none';
+            placeOrderBtn.textContent = 'Place Order (Cash on Delivery)';
+            placeOrderBtn.disabled = false;
+            placeOrderBtn.classList.remove('disabled');
+        }
+    });
+});
+
+document.addEventListener('DOMContentLoaded', () => {
+    const paymentMethod = document.querySelector('input[name="payment_method"]:checked');
+    const gatewaySelection = document.getElementById('gateway-selection');
+    const placeOrderBtn = document.getElementById('placeOrderBtn');
+    const walletBalance = parseFloat('{{ wallet_balance|floatformat:2 }}');
+    const orderTotal = parseFloat('{{ total|floatformat:2 }}');
+
+    if (paymentMethod && paymentMethod.value === 'Wallet') {
+        gatewaySelection.style.display = 'none';
+        placeOrderBtn.textContent = 'Place Order (Wallet)';
+        placeOrderBtn.disabled = walletBalance < orderTotal;
+        if (walletBalance < orderTotal) {
+            placeOrderBtn.classList.add('disabled');
+        } else {
+            placeOrderBtn.classList.remove('disabled');
+        }
+    } else if (paymentMethod && paymentMethod.value === 'Online') {
+        gatewaySelection.style.display = 'block';
+        placeOrderBtn.textContent = 'Proceed to Payment';
+        placeOrderBtn.disabled = false;
+        placeOrderBtn.classList.remove('disabled');
+    } else {
+        gatewaySelection.style.display = 'none';
+        placeOrderBtn.textContent = 'Place Order (Cash on Delivery)';
+        placeOrderBtn.disabled = false;
+        placeOrderBtn.classList.remove('disabled');
+    }
+
+    // Coupon Management
+    const applyCouponBtn = document.getElementById("applyCouponBtn");
+    if (!applyCouponBtn) {
+        console.error("Apply Coupon button not found in DOM");
+        Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: 'Apply Coupon button not found. Please contact support.',
+            confirmButtonColor: '#14B8A6',
+            background: '#fff',
+            color: '#111827'
+        });
+        return;
+    }
+
+    applyCouponBtn.addEventListener("click", function () {
+        const couponCode = document.getElementById("couponCode").value.trim();
+        if (!couponCode) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'No Coupon Code',
+                text: 'Please enter a coupon code.',
+                confirmButtonColor: '#14B8A6',
+                background: '#fff',
+                color: '#111827'
+            });
+            return;
+        }
+
+        console.log(`Applying coupon: ${couponCode}`);
+        fetch("{% url 'userside:apply_coupon' %}", {
+            method: "POST",
+            headers: {
+                "X-CSRFToken": getCookie('csrftoken') || document.querySelector('[name=csrfmiddlewaretoken]').value,
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ coupon_code: couponCode }),
+        })
+        .then(response => {
+            console.log(`Response status for apply_coupon: ${response.status}`);
+            if (!response.ok) {
+                return response.json().then(errorData => {
+                    throw new Error(errorData.message || 'Failed to apply coupon.');
+                });
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Coupon Applied',
+                    text: data.message || 'Coupon applied successfully!',
+                    confirmButtonColor: '#14B8A6',
+                    background: '#fff',
+                    color: '#111827',
+                    timer: 2000,
+                    timerProgressBar: true
+                }).then(() => {
+                    window.location.reload();
+                });
+            } else {
+                console.log(`Coupon application failed: ${data.message}`);
+                fetch("{% url 'userside:apply_referral_coupon' %}", {
+                    method: "POST",
+                    headers: {
+                        "X-CSRFToken": getCookie('csrftoken') || document.querySelector('[name=csrfmiddlewaretoken]').value,
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({ coupon_code: couponCode }),
+                })
+                .then(response => {
+                    console.log(`Response status for apply_referral_coupon: ${response.status}`);
+                    if (!response.ok) {
+                        return response.json().then(errorData => {
+                            throw new Error(errorData.message || 'Failed to apply referral coupon.');
+                        });
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.success) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Referral Coupon Applied',
+                            text: data.message || 'Referral coupon applied successfully!',
+                            confirmButtonColor: '#14B8A6',
+                            background: '#fff',
+                            color: '#111827',
+                            timer: 2000,
+                            timerProgressBar: true
+                        }).then(() => {
+                            window.location.reload();
+                        });
+                    } else {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Invalid Coupon',
+                            text: data.message || 'Invalid coupon code.',
+                            confirmButtonColor: '#14B8A6',
+                            background: '#fff',
+                            color: '#111827'
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.error(`Error applying referral coupon: ${error.message}`);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: error.message || 'Error applying referral coupon.',
+                        confirmButtonColor: '#14B8A6',
+                        background: '#fff',
+                        color: '#111827'
+                    });
+                });
+            }
+        })
+        .catch(error => {
+            console.error(`Error applying coupon: ${error.message}`);
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: error.message || 'Error applying coupon.',
+                confirmButtonColor: '#14B8A6',
+                background: '#fff',
+                color: '#111827'
+            });
+        });
+    });
+
+    // Event delegation for apply-coupon-btn
+    document.querySelector('#couponModal .modal-body').addEventListener('click', function(event) {
+        try {
+            const button = event.target.closest('.apply-coupon-btn');
+            if (button) {
+                const couponCode = button.getAttribute('data-coupon-code');
+                const couponType = button.getAttribute('data-coupon-type');
+                const url = couponType === 'referral' ? "{% url 'userside:apply_referral_coupon' %}" : "{% url 'userside:apply_coupon' %}";
+                console.log(`Applying ${couponType} coupon: ${couponCode}`);
+                fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': getCookie('csrftoken') || document.querySelector('[name=csrfmiddlewaretoken]').value,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ coupon_code: couponCode }),
+                })
+                .then(response => {
+                    console.log(`Response status for ${couponType} coupon: ${response.status}`);
+                    if (!response.ok) {
+                        return response.json().then(errorData => {
+                            throw new Error(errorData.message || `Failed to apply ${couponType} coupon.`);
+                        });
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.success) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: couponType === 'referral' ? 'Referral Coupon Applied' : 'Coupon Applied',
+                            text: data.message || `${couponType.charAt(0).toUpperCase() + couponType.slice(1)} coupon applied successfully!`,
+                            confirmButtonColor: '#14B8A6',
+                            background: '#fff',
+                            color: '#111827',
+                            timer: 2000,
+                            timerProgressBar: true
+                        }).then(() => {
+                            bootstrap.Modal.getInstance(document.getElementById('couponModal')).hide();
+                            window.location.reload();
+                        });
+                    } else {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Invalid Coupon',
+                            text: data.message || 'Invalid coupon code.',
+                            confirmButtonColor: '#14B8A6',
+                            background: '#fff',
+                            color: '#111827'
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.error(`Error applying ${couponType} coupon: ${error.message}`);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: error.message || `Error applying ${couponType} coupon.`,
+                        confirmButtonColor: '#14B8A6',
+                        background: '#fff',
+                        color: '#111827'
+                    });
+                });
+            }
+        } catch (error) {
+            console.error('Error in coupon button click handler:', error);
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: 'An unexpected error occurred. Please try again.',
+                confirmButtonColor: '#14B8A6',
+                background: '#fff',
+                color: '#111827'
+            });
+        }
+    });
+
+    document.querySelectorAll('.remove-coupon-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            const couponCode = this.getAttribute('data-coupon-code');
+            const couponType = this.getAttribute('data-coupon-type');
+            console.log(`Removing ${couponType} coupon: ${couponCode}`);
+            fetch("{% url 'userside:remove_coupon' %}", {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken') || document.querySelector('[name=csrfmiddlewaretoken]').value,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ coupon_code: couponCode, coupon_type: couponType }),
+            })
+            .then(response => {
+                console.log(`Response status for remove_coupon: ${response.status}`);
+                if (!response.ok) {
+                    return response.json().then(errorData => {
+                        throw new Error(errorData.message || 'Failed to remove coupon.');
+                    });
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Coupon Removed',
+                        text: data.message || 'Coupon removed successfully!',
+                        confirmButtonColor: '#14B8A6',
+                        background: '#fff',
+                        color: '#111827',
+                        timer: 2000,
+                        timerProgressBar: true
+                    }).then(() => {
+                        window.location.reload();
+                    });
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: data.message || 'Error removing coupon.',
+                        confirmButtonColor: '#14B8A6',
+                        background: '#fff',
+                        color: '#111827'
+                    });
+                }
+            })
+            .catch(error => {
+                console.error(`Error removing coupon: ${error.message}`);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: error.message || 'Error removing coupon.',
+                    confirmButtonColor: '#14B8A6',
+                    background: '#fff',
+                    color: '#111827'
+                });
+            });
+        });
+    });
+
+    // Color name to hex code mapping
+    const colorMap = {
+        'red': '#FF0000',
+        'blue': '#0000FF',
+        'green': '#008000',
+        'black': '#000000',
+        'white': '#FFFFFF',
+        'yellow': '#FFFF00',
+        'purple': '#800080',
+        'pink': '#FFC1CC',
+        'gray': '#808080',
+        'brown': '#A52A2A',
+    };
+
+    // Apply color swatches on page load
+    document.querySelectorAll('.color-swatch').forEach(swatch => {
+        const colorName = swatch.getAttribute('data-color-name');
+        const hexCode = colorMap[colorName] || '#cccccc';
+        swatch.style.backgroundColor = hexCode;
+        swatch.setAttribute('title', `Color: ${colorName.charAt(0).toUpperCase() + colorName.slice(1)} (${hexCode})`);
+    });
 });
 </script>
 {% endblock %}

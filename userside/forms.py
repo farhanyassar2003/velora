@@ -7,53 +7,62 @@ from .models import CustomUser
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
 from .models import CustomUser
-from django.core.exceptions import ValidationError
 
 class CustomUserCreationForm(UserCreationForm):
-    first_name = forms.CharField(max_length=30, required=True)
-    last_name = forms.CharField(max_length=30, required=False)
-    email = forms.EmailField(required=True)
-    phone_number = forms.CharField(max_length=15, required=True)
-    password1 = forms.CharField(widget=forms.PasswordInput)
-    password2 = forms.CharField(widget=forms.PasswordInput)
+    referral_code = forms.CharField(max_length=10, required=False, label="Referral Code (Optional)")
 
     class Meta:
         model = CustomUser
         fields = ('first_name', 'last_name', 'email', 'phone_number', 'password1', 'password2')
 
+    def clean_referral_code(self):
+        referral_code = self.cleaned_data.get('referral_code', '').strip().upper()
+        if referral_code:
+            if not CustomUser.objects.filter(referral_code__iexact=referral_code).exists():
+                raise forms.ValidationError("Invalid referral code.")
+        return referral_code
+
+    def clean_email(self):
+        email = self.cleaned_data.get('email').strip()
+        if CustomUser.objects.filter(email__iexact=email).exists():
+            raise forms.ValidationError("An account with this email already exists.")
+        return email
+
     def clean_phone_number(self):
-        phone_number = self.cleaned_data['phone_number']
-
-        # Must be digits only
-        if not phone_number.isdigit():
-            raise forms.ValidationError("Phone number must contain only digits.")
-
-        # Must be exactly 10 digits
-        if len(phone_number) != 10:
-            raise forms.ValidationError("Phone number must be exactly 10 digits.")
-
-        # Cannot be all zeros
-        if phone_number == "0000000000":
-            raise forms.ValidationError("Phone number cannot be all zeros.")
-
+        phone_number = self.cleaned_data.get('phone_number').strip()
+        if not phone_number:
+            raise forms.ValidationError("Phone number is required.")
         return phone_number
 
-    def save(self, commit=True):
-        user = super().save(commit=False)
-        user.email = self.cleaned_data['email']
-        user.first_name = self.cleaned_data['first_name']
-        user.last_name = self.cleaned_data['last_name']
-        user.phone_number = self.cleaned_data['phone_number']
-        if commit:
-            user.save()
-        return user
+from django import forms
+from django.contrib.auth.forms import SetPasswordForm
+from django.contrib.auth import get_user_model
 
+User = get_user_model()
+
+class ForgotPasswordForm(forms.Form):
+    email = forms.EmailField(
+        required=True,
+        widget=forms.EmailInput(attrs={
+            'class': 'form-control with-icon',
+            'id': 'id_email',
+            'placeholder': 'Enter your email'
+        })
+    )
+
+    def clean_email(self):
+        email = self.cleaned_data['email']
+        if not User.objects.filter(email=email).exists():
+            raise forms.ValidationError("No account found with this email.")
+        return email
 
 class OTPForm(forms.Form):
     otp = forms.CharField(max_length=6, required=True)
 
-class ForgotPasswordForm(forms.Form):
-    email = forms.EmailField(required=True)
+class ResetPasswordForm(SetPasswordForm):
+    class Meta:
+        model = User
+        fields = ['new_password1', 'new_password2']
 
 # ===========================# User Profile Management Forms# ===========================
 

@@ -1,0 +1,35 @@
+{% extends 'userside/base.html' %}
+
+{% block content %}
+<div class="container mx-auto p-6">
+    <h1 class="text-2xl font-bold mb-6">My Coupons</h1>
+    {% if coupons %}
+    <div class="bg-white shadow rounded-lg overflow-hidden">
+        <table class="w-full">
+            <thead class="bg-gray-200">
+                <tr>
+                    <th class="p-3 text-left">Coupon Code</th>
+                    <th class="p-3 text-left">Discount (%)</th>
+                    <th class="p-3 text-left">Valid Until</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for coupon in coupons %}
+                <tr class="border-b">
+                    <td class="p-3">{{ coupon.code }}</td>
+                    <td class="p-3">{{ coupon.discount_percentage }}</td>
+                    <td class="p-3">{{ coupon.valid_until }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="3" class="p-3 text-center">No coupons available.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p class="text-center">You have no active coupons.</p>
+    {% endif %}
+</div>
+{% endblock %}

@@ -29,7 +29,34 @@
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: 'Inter', sans-serif; background-color: var(--gray-50); line-height: 1.6; color: var(--gray-900); }
 
-    /* Breadcrumbs */
+    .gradient-btn {
+        background: linear-gradient(45deg, #4B0082, #14B8A6);
+        color: var(--primary-white);
+        border: none;
+        padding: 1rem 2rem;
+        border-radius: 12px;
+        font-weight: 700;
+        font-size: 1.1rem;
+        cursor: pointer;
+        transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.3s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        width: 100%;
+        margin-top: 1rem;
+    }
+    .gradient-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+        background: linear-gradient(45deg, #14B8A6, #4B0082);
+    }
+    .gradient-btn:disabled {
+        background: var(--gray-400);
+        cursor: not-allowed;
+        transform: none;
+    }
+
     .breadcrumb-container { background: var(--primary-white); padding: 1rem 0; border-bottom: 1px solid var(--gray-200); }
     .breadcrumb { background: transparent; margin: 0; padding: 0; }
     .breadcrumb-item { color: var(--gray-600); font-size: 0.9rem; }
@@ -37,13 +64,8 @@
     .breadcrumb-item a:hover { color: var(--primary-blue); }
     .breadcrumb-item.active { color: var(--gray-900); font-weight: 500; }
 
-    /* Main Container */
     .main-container { max-width: 1400px; margin: 0 auto; padding: 2rem 1rem; }
-
-    /* Product Section */
     .product-section { background: var(--primary-white); border-radius: 16px; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1); overflow: hidden; margin-bottom: 3rem; }
-
-    /* Image Gallery */
     .image-gallery { padding: 2rem; display: flex; }
     .image-thumbnails { display: flex; flex-direction: column; gap: 1rem; margin-right: 2rem; }
     .thumbnail { width: 80px; height: 80px; border: 2px solid var(--gray-200); border-radius: 12px; cursor: pointer; overflow: hidden; transition: all 0.3s ease; }
@@ -52,14 +74,10 @@
     .main-image-container { position: relative; flex: 1; max-height: 600px; overflow: hidden; border-radius: 16px; cursor: zoom-in; background: var(--gray-50); }
     .main-image { width: 100%; height: 100%; object-fit: cover; transition: transform 0.3s ease; }
     .main-image:hover { transform: scale(1.05); }
-
-    /* Zoom Modal */
     .zoom-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.9); display: none; align-items: center; justify-content: center; z-index: 2000; }
     .zoom-content { position: relative; max-width: 90%; max-height: 90%; }
     .zoom-image { width: 100%; height: 100%; object-fit: contain; }
     .zoom-close { position: absolute; top: -40px; right: 0; color: white; font-size: 2rem; cursor: pointer; background: rgba(0, 0, 0, 0.5); border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; }
-
-    /* Product Info */
     .product-info { padding: 2rem; }
     .product-title { font-size: 2rem; font-weight: 700; color: var(--gray-900); margin-bottom: 1rem; line-height: 1.3; }
     .product-description { color: var(--gray-700); font-size: 1rem; margin-bottom: 2rem; line-height: 1.7; }
@@ -71,8 +89,6 @@
     .current-price { font-size: 2.5rem; font-weight: 800; color: var(--gray-900); display: block; }
     .original-price { font-size: 1.4rem; color: var(--gray-600); text-decoration: line-through; margin-left: 0.5rem; }
     .discount-info { background: linear-gradient(135deg, var(--danger-color), #ff6b6b); color: white; padding: 0.5rem 1rem; border-radius: 8px; font-weight: 600; display: inline-block; margin-top: 0.5rem; }
-
-    /* Stock Status */
     .stock-status { margin-bottom: 2rem; padding: 1rem; border-radius: 12px; font-weight: 600; }
     .in-stock { background: rgba(40, 167, 69, 0.1); color: var(--success-color); border: 1px solid rgba(40, 167, 69, 0.3); }
     .low-stock { background: rgba(255, 193, 7, 0.1); color: #856404; border: 1px solid rgba(255, 193, 7, 0.3); }
@@ -80,42 +96,38 @@
     .sold-out-title { font-size: 1.5rem; font-weight: 700; margin-bottom: 0.5rem; }
     .stock-message { margin-bottom: 1rem; font-weight: 500; }
     .variant-stock-status { font-size: 1rem; margin-top: 1rem; font-weight: 600; }
-
-    /* Variants Section */
     .variants-section { margin-bottom: 2rem; }
     .variants-title { font-size: 1.3rem; font-weight: 700; color: var(--gray-900); margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem; }
     .color-option, .size-option { cursor: pointer; padding: 0.75rem; border-radius: 8px; margin-right: 0.5rem; margin-bottom: 0.5rem; display: inline-block; border: 2px solid var(--gray-300); transition: all 0.3s ease; position: relative; }
     .color-option.selected, .size-option.selected { border: 2px solid var(--primary-blue); background: rgba(0, 123, 255, 0.1); }
     .color-option.disabled, .size-option.disabled { opacity: 0.4; cursor: not-allowed; background: var(--gray-100); }
     .color-option.disabled:hover, .size-option.disabled:hover { transform: none; }
-    .color-circle { width: 32px; height: 32px; border-radius: 50%; border: 2px solid #ccc; display: inline-block; margin: 0 auto; }
+    .color-circle { width: 32px; height: 32px; border-radius: 50%; border: 2px solid #ccc; display: flex; align-items: center; justify-content: center; margin: 0 auto; position: relative; font-size: 0.6rem; font-family: monospace; color: #fff; text-shadow: 0 0 2px rgba(0, 0, 0, 0.5); }
     .variant-stock { font-size: 0.9rem; color: var(--gray-600); margin-top: 0.25rem; }
-    
-    /* Stock indicator on variants */
     .stock-indicator { position: absolute; top: -5px; right: -5px; width: 12px; height: 12px; border-radius: 50%; }
     .stock-indicator.in-stock { background: var(--success-color); }
     .stock-indicator.out-of-stock { background: var(--danger-color); }
     .stock-indicator.low-stock { background: var(--warning-color); }
-
-    /* Cart Section */
     .cart-section { margin-bottom: 2rem; }
-    .add-to-cart-btn { background: linear-gradient(135deg, var(--primary-blue), #0056b3); color: white; border: none; padding: 1rem 2rem; border-radius: 12px; font-weight: 700; font-size: 1.1rem; cursor: pointer; transition: all 0.3s ease; width: 100%; display: flex; align-items: center; justify-content: center; gap: 0.5rem; }
-    .add-to-cart-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0, 123, 255, 0.3); }
-    .add-to-cart-btn:disabled { background: var(--gray-400); cursor: not-allowed; transform: none; }
-
-    /* Notify Section */
+    .wishlist-btn { background: var(--gray-100); color: var(--gray-900); border: 2px solid var(--gray-300); padding: 1rem 2rem; border-radius: 12px; font-weight: 600; font-size: 1rem; cursor: pointer; transition: all 0.3s ease; width: 100%; display: flex; align-items: center; justify-content: center; gap: 0.5rem; margin-top: 1rem; }
+    .wishlist-btn:hover { background: linear-gradient(45deg, #14B8A6, #4B0082); color: white; border-color: transparent; transform: translateY(-2px); }
+    .wishlist-btn.active { background: linear-gradient(45deg, #4B0082, #14B8A6); color: white; border-color: transparent; }
+    .wishlist-btn:disabled { background: var(--gray-400); cursor: not-allowed; transform: none; }
     .notify-section { display: flex; gap: 1rem; margin-top: 1rem; }
     .notify-input { flex: 1; padding: 0.75rem 1rem; border: 2px solid var(--gray-300); border-radius: 10px; font-size: 1rem; transition: border-color 0.3s ease; }
     .notify-input:focus { outline: none; border-color: var(--primary-blue); }
     .notify-btn { background: var(--orange-color); color: white; border: none; padding: 0.75rem 2rem; border-radius: 10px; font-weight: 600; cursor: pointer; transition: all 0.3s ease; white-space: nowrap; }
     .notify-btn:hover { background: #e8690b; transform: translateY(-2px); }
-
-    /* Selected variant display */
     .selected-variant-display { margin-bottom: 1rem; padding: 1rem; background: var(--gray-50); border-radius: 10px; border: 1px solid var(--gray-200); }
     .selected-variant-display h6 { margin-bottom: 0.5rem; color: var(--gray-700); }
     .selected-item { display: inline-block; background: var(--primary-blue); color: white; padding: 0.5rem 1rem; border-radius: 8px; font-size: 0.9rem; font-weight: 500; }
-
-    /* Responsive Design */
+    .accordion { margin-bottom: 2rem; }
+    .accordion-item { background-color: var(--primary-white); border: 1px solid var(--gray-200); border-radius: 12px; margin-bottom: 1rem; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05); }
+    .accordion-button { font-size: 1rem; font-weight: 600; color: var(--gray-900); padding: 1rem 1.5rem; border-radius: 12px; transition: all 0.3s ease; }
+    .accordion-button:not(.collapsed) { background: linear-gradient(45deg, #e6f0fa, #f0f8ff); color: var(--primary-blue); box-shadow: inset 0 0 10px rgba(0, 123, 255, 0.1); }
+    .accordion-button:hover { background: linear-gradient(45deg, #f0f8ff, #e6f0fa); transform: translateY(-1px); }
+    .accordion-button:focus { box-shadow: none; outline: none; }
+    .accordion-body { color: var(--gray-700); font-size: 1rem; line-height: 1.7; padding: 1.5rem; }
     @media (max-width: 992px) {
         .image-gallery { flex-direction: column; }
         .image-thumbnails { flex-direction: row; margin-right: 0; margin-bottom: 1rem; overflow-x: auto; padding-bottom: 0.5rem; }
@@ -131,12 +143,12 @@
         .product-title { font-size: 1.5rem; }
         .current-price { font-size: 1.75rem; }
         .notify-section { flex-direction: column; }
+        .accordion-button { padding: 0.75rem 1rem; }
+        .accordion-body { padding: 1rem; }
     }
     @media (max-width: 576px) {
         .product-rating { flex-direction: column; align-items: flex-start; gap: 0.5rem; }
     }
-
-    /* Loading Animation */
     .btn-loading { position: relative; color: transparent; }
     .btn-loading::after { content: ''; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 20px; height: 20px; border: 2px solid transparent; border-top: 2px solid white; border-radius: 50%; animation: spin 1s linear infinite; }
     @keyframes spin { 0% { transform: translate(-50%, -50%) rotate(0deg); } 100% { transform: translate(-50%, -50%) rotate(360deg); } }
@@ -184,7 +196,32 @@
             <div class="col-lg-6">
                 <div class="product-info">
                     <h1 class="product-title">{{ product.name }}</h1>
-                    <p class="product-description">{{ product.description|default:"No description available." }}</p>
+                    <div class="accordion" id="productAccordion">
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="descriptionHeading">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#descriptionCollapse" aria-expanded="false" aria-controls="descriptionCollapse">
+                                    Description
+                                </button>
+                            </h2>
+                            <div id="descriptionCollapse" class="accordion-collapse collapse" aria-labelledby="descriptionHeading">
+                                <div class="accordion-body">
+                                    {{ product.description|default:"No description available." }}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="materialsHeading">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#materialsCollapse" aria-expanded="false" aria-controls="materialsCollapse">
+                                    Materials
+                                </button>
+                            </h2>
+                            <div id="materialsCollapse" class="accordion-collapse collapse" aria-labelledby="materialsHeading">
+                                <div class="accordion-body">
+                                    {{ product.materials|default:"No materials information available." }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                     <div class="product-rating">
                         <div class="rating-badge">
                             <i class="bi bi-star-fill"></i>
@@ -202,13 +239,15 @@
                         <span class="rating-text">({{ product.reviews.count|default:0 }} reviews)</span>
                     </div>
                     <div class="product-price">
-                        <span class="current-price">₹{{ product.price|floatformat:0 }}</span>
                         {% if discount %}
-                            <span class="original-price">₹{{ product.original_price|floatformat:0 }}</span>
+                            <span class="current-price">₹{{ discounted_price|floatformat:0 }}</span>
+                            <span class="original-price">₹{{ original_price|floatformat:0 }}</span>
                             <div class="discount-info">
                                 <i class="bi bi-tag-fill"></i>
-                                Save ₹{{ discount|floatformat:0 }}
+                                Save ₹{{ discount|floatformat:0 }} ({{ offer.discount_percentage|floatformat:0 }}% off - {{ offer_type }})
                             </div>
+                        {% else %}
+                            <span class="current-price">₹{{ original_price|floatformat:0 }}</span>
                         {% endif %}
                     </div>
                     
@@ -263,8 +302,12 @@
                             </div>
                         {% endif %}
                         <div class="cart-section">
-                            <button type="button" class="add-to-cart-btn" id="addToCartBtn" data-product-id="{{ product.id }}" disabled>
+                            <button type="button" class="add-to-cart-btn gradient-btn" id="addToCartBtn" data-product-id="{{ product.id }}" disabled>
                                 <i class="bi bi-cart-plus"></i> Add to Cart
+                            </button>
+                            <button type="button" class="wishlist-btn {% if is_in_wishlist %}active{% endif %}" id="wishlistBtn" data-product-id="{{ product.id }}">
+                                <i class="bi {% if is_in_wishlist %}bi-heart-fill{% else %}bi-heart{% endif %}"></i>
+                                {% if is_in_wishlist %} Remove from Wishlist {% else %} Add to Wishlist {% endif %}
                             </button>
                             <p id="addToCartMessage" class="mt-2"></p>
                         </div>
@@ -322,13 +365,12 @@ let selectedColorId = null;
 let selectedColorName = null;
 let cartItemCount = 0;
 
-// Variant data with images
 const variantData = {
-    {% for variant in product.variants.all %}
+    {% for variant in variants %}
         '{{ variant.size.name }}_{{ variant.color_variant.id }}': {
             colorId: '{{ variant.color_variant.id }}',
             colorName: '{{ variant.color_variant.color_name }}',
-            colorHex: '{{ variant.color_variant.hex_code|default:"" }}',
+            colorHex: '{{ variant.color_variant.color_hex|default:"" }}',
             size: '{{ variant.size.name }}',
             stock: {{ variant.stock|default:0 }},
             images: [
@@ -345,6 +387,8 @@ const variantData = {
 };
 
 function getAvailableColorsForSize(size) {
+    console.log('getAvailableColorsForSize called with size:', size); // Debug
+    console.log('variantData:', variantData); // Debug
     const colors = [];
     for (const key in variantData) {
         const variant = variantData[key];
@@ -352,19 +396,23 @@ function getAvailableColorsForSize(size) {
             colors.push(variant);
         }
     }
+    console.log('Available colors for size', size, ':', colors); // Debug
     return colors;
 }
 
 function getVariantStock(size, colorId) {
     const key = `${size}_${colorId}`;
-    return variantData[key] ? variantData[key].stock : 0;
+    console.log('getVariantStock called with key:', key); // Debug
+    const stock = variantData[key] ? variantData[key].stock : 0;
+    console.log('Stock for', key, ':', stock); // Debug
+    return stock;
 }
 
 function updateThumbnails(colorId) {
+    console.log('updateThumbnails called with colorId:', colorId); // Debug
     const thumbnailsContainer = document.getElementById('imageThumbnails');
     thumbnailsContainer.innerHTML = '';
 
-    // Find the variant with the selected colorId
     let images = [];
     for (const key in variantData) {
         if (variantData[key].colorId === colorId) {
@@ -374,7 +422,6 @@ function updateThumbnails(colorId) {
     }
 
     if (images.length === 0) {
-        // Fallback to default images (first 3 from all images)
         const defaultImages = [
             {% for img in product.product_images.all|slice:":3" %}
                 {
@@ -398,29 +445,24 @@ function updateThumbnails(colorId) {
         thumbnailsContainer.appendChild(thumbnail);
     });
 
-    // Update main image to the first image of the selected color
     if (images.length > 0) {
         document.getElementById('mainImage').src = images[0].url;
     }
 }
 
 function selectSize(radio, size) {
+    console.log('selectSize called with size:', size, 'checked:', radio.checked); // Debug
     selectedSize = radio.checked ? size : null;
     
-    // Show available colors for the selected size
     showAvailableColors(selectedSize);
     
-    // Reset color selection if size changes
     selectedColorId = null;
     selectedColorName = null;
     
-    // Update thumbnails to default (first 3 images)
     updateThumbnails(null);
     
-    // Update selected variant display
     updateSelectedVariantDisplay();
     
-    // Enable/disable add to cart button
     document.getElementById('addToCartBtn').disabled = !selectedSize || !selectedColorId;
 }
 
@@ -428,14 +470,11 @@ function showAvailableColors(size) {
     const colorSection = document.getElementById('colorSection');
     const colorOptions = document.getElementById('colorOptions');
     
-    // Clear existing color options
     colorOptions.innerHTML = '';
     
     if (size) {
-        // Get available colors for the selected size
         const availableColors = getAvailableColorsForSize(size);
         
-        // Add color options
         availableColors.forEach(color => {
             const stock = getVariantStock(size, color.colorId);
             const colorOption = document.createElement('div');
@@ -447,37 +486,42 @@ function showAvailableColors(size) {
                 colorOption.onclick = () => selectColor(colorOption, color.colorId, color.colorName);
             }
             
+            const hex = color.colorHex || '#ffffff';
+            const r = parseInt(hex.slice(1, 3), 16);
+            const g = parseInt(hex.slice(3, 5), 16);
+            const b = parseInt(hex.slice(5, 7), 16);
+            const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+            const textColor = brightness > 128 ? '#000000' : '#ffffff';
+            
             colorOption.innerHTML = `
-                <div class="color-circle" style="background-color: ${color.colorHex};"></div>
+                <div class="color-circle" style="background-color: ${color.colorHex || '#ffffff'}"></div>
                 <small class="d-block mt-1 text-muted">${color.colorName}</small>
                 <div class="stock-indicator ${stock > 10 ? 'in-stock' : stock > 0 ? 'low-stock' : 'out-of-stock'}" 
-                     title="${stock > 0 ? stock + ' in stock' : 'Out of stock'}"></div>
+                    title="${stock > 0 ? stock + ' in stock' : 'Out of stock'}"></div>
             `;
             
             colorOptions.appendChild(colorOption);
         });
         
-        colorSection.style.display = 'block';
+        colorSection.style.display = availableColors.length > 0 ? 'block' : 'none';
+        console.log('Color section display:', colorSection.style.display); // Debug
     } else {
         colorSection.style.display = 'none';
     }
 }
 
 function selectColor(element, colorId, colorName) {
-    // Clear previous selection
+    console.log('selectColor called with colorId:', colorId, 'colorName:', colorName); // Debug
     document.querySelectorAll('.color-option').forEach(opt => opt.classList.remove('selected'));
     element.classList.add('selected');
     
     selectedColorId = colorId;
     selectedColorName = colorName;
     
-    // Update thumbnails for selected color
     updateThumbnails(colorId);
     
-    // Update selected variant display
     updateSelectedVariantDisplay();
     
-    // Enable/disable add to cart button
     document.getElementById('addToCartBtn').disabled = !selectedSize || !selectedColorId;
 }
 
@@ -490,7 +534,6 @@ function updateSelectedVariantDisplay() {
     if (selectedSize && selectedColorId) {
         info.textContent = `${selectedColorName} - ${selectedSize}`;
         
-        // Get and display stock status
         const stock = getVariantStock(selectedSize, selectedColorId);
         
         if (stock > 0) {
@@ -565,7 +608,6 @@ document.getElementById('addToCartBtn').addEventListener('click', function () {
         return;
     }
 
-    // Check cart limit
     if (cartItemCount >= 5) {
         Swal.fire({
             icon: 'warning',
@@ -607,13 +649,11 @@ document.getElementById('addToCartBtn').addEventListener('click', function () {
                 timer: 1500
             });
             
-            // Update cart count display if it exists
             const cartCount = document.getElementById('cartCount');
             if (cartCount && data.cart_count !== undefined) {
                 cartCount.textContent = data.cart_count;
             }
             
-            // Reset selections after adding to cart
             selectedSize = null;
             selectedColorId = null;
             selectedColorName = null;
@@ -623,7 +663,6 @@ document.getElementById('addToCartBtn').addEventListener('click', function () {
             document.getElementById('addToCartBtn').disabled = true;
             document.querySelectorAll('.color-option').forEach(opt => opt.classList.remove('selected'));
             
-            // Reset thumbnails to default (first 3 images)
             updateThumbnails(null);
         } else {
             messageBox.textContent = data.message || 'Failed to add to cart.';
@@ -651,13 +690,80 @@ document.getElementById('addToCartBtn').addEventListener('click', function () {
     });
 });
 
-// Initialize on page load
+document.getElementById('wishlistBtn').addEventListener('click', function () {
+    const productId = this.dataset.productId;
+    const isInWishlist = this.classList.contains('active');
+    const action = isInWishlist ? 'remove' : 'add';
+    const url = isInWishlist ? `/remove-from-wishlist/${productId}/` : `/add-to-wishlist/${productId}/`;
+
+    this.classList.add('btn-loading');
+    this.disabled = true;
+
+    fetch(url, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: JSON.stringify({})
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.success) {
+            this.classList.toggle('active');
+            const icon = this.querySelector('i');
+            icon.classList.toggle('bi-heart');
+            icon.classList.toggle('bi-heart-fill');
+            this.innerHTML = `<i class="bi ${isInWishlist ? 'bi-heart' : 'bi-heart-fill'}"></i> ${isInWishlist ? 'Add to Wishlist' : 'Remove from Wishlist'}`;
+
+            Swal.fire({
+                icon: 'success',
+                title: data.message,
+                toast: true,
+                position: 'top-end',
+                showConfirmButton: false,
+                timer: 1500,
+                timerProgressBar: true
+            });
+
+            const wishlistCount = document.getElementById('wishlistCount');
+            if (wishlistCount && data.wishlist_count !== undefined) {
+                wishlistCount.textContent = data.wishlist_count;
+            }
+        } else {
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: data.message || 'Failed to update wishlist.',
+                timer: 1500,
+                showConfirmButton: false
+            });
+        }
+    })
+    .catch(error => {
+        console.error('Error updating wishlist:', error);
+        Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: 'Something went wrong while updating the wishlist.',
+            timer: 1500,
+            showConfirmButton: false
+        });
+    })
+    .finally(() => {
+        this.classList.remove('btn-loading');
+        this.disabled = false;
+    });
+});
+
 document.addEventListener('DOMContentLoaded', () => {
-    // Initially hide color section and disable add to cart
     document.getElementById('colorSection').style.display = 'none';
     document.getElementById('addToCartBtn').disabled = true;
-
-    // Set default thumbnails (first 3 images)
     updateThumbnails(null);
 });
 </script>

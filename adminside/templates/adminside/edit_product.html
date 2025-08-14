@@ -1,352 +1,333 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Edit Product - {{ product.name }}</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+{% extends 'adminside/base.html' %}
+
+{% block extra_head %}
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Cropper.js for image cropping -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css" rel="stylesheet"/>
     <style>
-        body { background-color: #f8f9fa; }
-        .page-header {
-            background: white; padding: 30px; border-radius: 15px;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08); border: 1px solid #e9ecef; margin-bottom: 30px;
+        /* Adjust content to prevent overlap with fixed sidebar */
+        .edit-product-content {
+            margin-left: 280px; /* Matches sidebar width */
+            padding: 24px;
+            transition: margin-left 0.3s ease;
+            background-color: #f9fafb; /* Light gray background */
         }
-        .page-title {
-            font-size: 2.2rem; font-weight: 700; color: #212529; margin: 0;
-            display: flex; align-items: center; gap: 15px;
+
+        @media (max-width: 768px) {
+            .edit-product-content {
+                margin-left: 0; /* No sidebar overlap on mobile */
+                padding: 16px;
+            }
         }
-        .page-title i { color: #000; }
-        .page-subtitle {
-            color: #6c757d; font-size: 1rem; margin-top: 8px; margin-bottom: 0;
-        }
-        .edit-product-container {
-            background: white; border-radius: 15px;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08); border: 1px solid #e9ecef; overflow: hidden;
-        }
-        .form-header {
-            background: #000; color: white; padding: 25px 30px; border-bottom: 1px solid #e9ecef;
-        }
-        .form-title {
-            font-size: 1.4rem; font-weight: 600; margin: 0; display: flex; align-items: center; gap: 10px;
-        }
-        .product-form { padding: 40px; }
-        .form-section {
-            margin-bottom: 40px; padding-bottom: 30px; border-bottom: 1px solid #e9ecef;
-        }
-        .form-section:last-child { border-bottom: none; margin-bottom: 0; }
-        .form-section .form-group .errorlist {
-            color: #dc3545; font-size: 0.9rem; margin-top: 5px; list-style: none; padding: 0;
-        }
-        .section-title {
-            font-size: 1.2rem; font-weight: 600; color: #212529; margin-bottom: 20px;
-            display: flex; align-items: center; gap: 10px;
-        }
-        .section-title i { color: #000; }
+
+        /* Image upload area */
         .image-upload-area {
-            border: 2px dashed #dee2e6; border-radius: 15px; padding: 40px; text-align: center;
-            background: #f8f9fa; transition: all 0.3s ease; cursor: pointer; margin-bottom: 20px;
+            border: 2px dashed #e5e7eb; /* gray-200 */
+            border-radius: 0.75rem; /* rounded-xl */
+            padding: 1rem;
+            background: #f9fafb; /* gray-50 */
+            transition: all 0.3s ease;
+            cursor: pointer;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            flex-wrap: wrap;
         }
-        .image-upload-area:hover { border-color: #000; background: #f1f3f4; }
-        .image-upload-area.dragover { border-color: #000; background: #e9ecef; }
-        .upload-icon { font-size: 3rem; color: #6c757d; margin-bottom: 15px; }
-        .upload-text { color: #495057; font-weight: 500; margin-bottom: 10px; }
-        .upload-subtext { color: #6c757d; font-size: 0.9rem; }
-        .variant-image-input { display: none; }
+        .image-upload-area:hover {
+            border-color: #4B0082; /* indigo-900 */
+            background: #f1f5f9; /* gray-100 */
+        }
+        .image-upload-area.dragover {
+            border-color: #4B0082; /* indigo-900 */
+            background: #e5e7eb; /* gray-200 */
+        }
+
+        /* Image preview grid */
         .image-preview-grid {
-            display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 15px; margin-top: 20px;
+            display: flex;
+            flex-direction: row;
+            overflow-x: auto;
+            gap: 1rem;
+            margin-top: 1rem;
+            padding-bottom: 0.5rem;
         }
         .image-preview-item {
-            background: white; border-radius: 10px; padding: 10px;
-            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.05); border: 1px solid #e9ecef; position: relative;
+            background: #ffffff;
+            border-radius: 0.5rem;
+            padding: 0.75rem;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.05);
+            border: 1px solid #e5e7eb; /* gray-200 */
+            position: relative;
+            flex: 0 0 auto;
+            width: 150px;
         }
         .preview-image {
-            width: 100%; max-width: 120px; height: auto; border-radius: 8px; display: block; margin: auto;
+            width: 100%;
+            max-width: 120px;
+            height: auto;
+            border-radius: 0.375rem;
+            display: block;
+            margin: auto;
         }
-        .crop-button {
-            background: #000; color: white; border: none; padding: 8px 15px; border-radius: 6px;
-            font-weight: 500; transition: all 0.3s ease; width: 100%; margin-top: 10px;
-        }
-        .crop-button:hover { background: #333; transform: translateY(-2px); }
-        .crop-button:disabled { аналогично: #6c757d; cursor: not-allowed; }
-        .form-group { margin-bottom: 25px; }
-        .form-label {
-            font-weight: 600; color: #212529; margin-bottom: 8px; display: block; font-size: 0.95rem;
-        }
-        .form-control {
-            width: 100%; padding: 15px 20px; border: 2px solid #e9ecef; border-radius: 10px;
-            background: #f8f9fa; color: #495057; font-size: 1rem; transition: all 0.3s ease;
-            height: 40px;
-        }
-        .form-control:focus {
-            border-color: #000; box-shadow: 0 0 0 0.2rem rgba(0, 0, 0, 0.1); background: white; outline: none;
-        }
-        .form-control textarea { min-height: 120px; resize: vertical; }
-        .submit-section {
-            text-align: center; padding-top: 30px; border-top: 1px solid #e9ecef; margin-top: 40px;
-        }
-        .submit-btn {
-            background: linear-gradient(135deg, #28a745 0%, #218838 100%); color: white; border: none;
-            padding: 18px 50px; border-radius: 12px; font-size: 1.1rem; font-weight: 700;
-            text-transform: uppercase; letter-spacing: 1px; transition: all 0.3s ease; cursor: pointer;
-        }
-        .submit-btn:hover { transform: translateY(-3px); box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3); }
-        .cancel-btn {
-            background: #f8f9fa; color: #495057; border: 2px solid #e9ecef; padding: 10px 20px;
-            border-radius: 12px; font-size: 1.1rem; font-weight: 600; text-decoration: none;
-            margin-right: 10px; transition: all 0.3s ease; display: inline-block;
-        }
-        .cancel-btn:hover { background: #e9ecef; color: #495057; text-decoration: none; transform: translateY(-2px); }
-        .error-message {
-            color: #dc3545; font-size: 0.9rem; margin-top: 10px; padding: 10px;
-            background: #f8d7da; border: 1px solid #f5c6cb; border-radius: 5px;
-        }
-        .variant-row {
-            margin-bottom: 15px; padding: 15px; background: #f8f9fa; border-radius: 10px;
-            border: 1px solid #e9ecef;
-        }
-        .delete-variant {
-            background: #dc3545; color: white; border: none; padding: 8px 15px; border-radius: 10px;
-            font-weight: 600; transition: all 0.3s ease;
-        }
-        .delete-variant:hover { background: #c82333; transform: translateY(-2px); }
-        .replace-image-btn {
-            background: #007bff; color: white; border: none; padding: 8px 15px; border-radius: 10px;
-            font-weight: 600; transition: all 0.3s ease; margin-top: 5px;
-        }
-        .replace-image-btn:hover { background: #0056b3; transform: translateY(-2px); }
-        #cropperModal {
-            display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(0, 0, 0, 0.6); justify-content: center; align-items: center; z-index: 9999;
-        }
+
+        /* Cropper modal */
         .cropper-container {
-            background: white; padding: 20px; border-radius: 10px; max-width: 90%; max-height: 90%;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2); display: flex; flex-direction: column;
+            background: #ffffff;
+            padding: 1.5rem;
+            border-radius: 0.5rem;
+            max-width: 90%;
+            max-height: 90%;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            display: flex;
+            flex-direction: column;
         }
-        #cropperImage { max-width: 100%; max-height: 80vh; display: block; }
-        .cropper-container > div { text-align: right; margin-top: 10px; }
-        @media (max-width: 768px) {
-            .product-form { padding: 30px 20px; }
-            .image-preview-grid { grid-template-columns: 1fr; }
-            .submit-section { text-align: center; }
-            .cancel-btn, .submit-btn { width: 100%; margin: 5px 0; }
-            .variant-row .col-md-4, .variant-row .col-md-3, .variant-row .col-md-2 { margin-bottom: 10px; }
+        #cropperImage {
+            max-width: 100%;
+            max-height: 80vh;
+            display: block;
+        }
+
+        /* Buttons */
+        .delete-image-btn, .replace-image-btn {
+            width: 100%;
+            margin-top: 0.5rem;
+            padding: 0.5rem;
+            border-radius: 0.375rem;
+            font-size: 0.875rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        .delete-image-btn {
+            background: #dc3545;
+            color: white;
+            border: none;
+        }
+        .delete-image-btn:hover {
+            background: #c82333;
+            transform: translateY(-2px);
+        }
+        .replace-image-btn {
+            background: #007bff;
+            color: white;
+            border: none;
+        }
+        .replace-image-btn:hover {
+            background: #0056b3;
+            transform: translateY(-2px);
         }
     </style>
-</head>
-<body>
-    <div class="container my-5">
-        <div class="page-header">
-            <h1 class="page-title"><i class="bi bi-pencil-square"></i> Edit Product: {{ product.name }}</h1>
-            <p class="page-subtitle">Update product details and variant images</p>
-        </div>
+{% endblock %}
 
-        {% if messages %}
-            <div class="alert-container">
-                {% for message in messages %}
-                    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
-                        {{ message }}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                    </div>
-                {% endfor %}
-            </div>
-        {% endif %}
+{% block content %}
+    <div class="edit-product-content">
+        <div class="container mx-auto">
+            <h1 class="text-4xl font-extrabold text-gray-900 mb-8 flex items-center gap-3">
+                <i class="bi bi-pencil-square"></i> Edit Product: {{ product.name }}
+            </h1>
 
-        <div class="edit-product-container">
-            <form id="product-form" method="POST" enctype="multipart/form-data" class="product-form">
-                {% csrf_token %}
-                {{ product_form.media }}
-                {{ variant_formset.management_form }}
-
-                <!-- Product Details -->
-                <div class="form-section">
-
-                    <h4 class="section-title"><i class="bi bi-info-circle"></i> Product Details</h4>
-                    <div class="form-group">
-                        <label for="{{ product_form.name.id_for_label }}" class="form-label">{{ product_form.name.label }}</label>
-                        {{ product_form.name }}
-                        {% if product_form.name.errors %}
-                            <div class="text-danger">{{ product_form.name.errors }}</div>
-                        {% endif %}
-                    </div>
-                    <div class="form-group">
-                        <label for="id_category" class="form-label">Category</label>
-                        <select name="category" class="form-control" id="id_category">
-                            <option value="">Select Category</option>
-                            {% for category in product_form.category.field.queryset %}
-                                <option value="{{ category.id }}" {% if category.id == product_form.instance.category.id %}selected{% endif %}>
-                                    {{ category.name }}
-                                </option>
-                            {% endfor %}
-                        </select>
-                        {% if product_form.category.errors %}
-                            <div class="text-danger">{{ product_form.category.errors }}</div>
-                        {% endif %}
-                    </div>
-                    <div class="form-group">
-                        <label for="{{ product_form.description.id_for_label }}" class="form-label">{{ product_form.description.label }}</label>
-                        {{ product_form.description }}
-                        {% if product_form.description.errors %}
-                            <div class="text-danger">{{ product_form.description.errors }}</div>
-                        {% endif %}
-                    </div>
-                    <div class="form-group">
-                        <label for="{{ product_form.price.id_for_label }}" class="form-label">{{ product_form.price.label }}</label>
-                        {{ product_form.price }}
-                        {% if product_form.price.errors %}
-                            <div class="text-danger">{{ product_form.price.errors }}</div>
-                        {% endif %}
-                    </div>
-                    <div class="form-group">
-                        <label for="{{ product_form.materials.id_for_label }}" class="form-label">{{ product_form.materials.label }}</label>
-                        {{ product_form.materials }}
-                        {% if product_form.materials.errors %}
-                            <div class="text-danger">{{ product_form.materials.errors }}</div>
-                        {% endif %}
-                        <small class="form-text text-muted">Optional: Enter materials used (e.g., Cotton, Polyester)</small>
-                    </div>
-                    <div class="form-group form-check">
-                        {{ product_form.is_active }}
-                        <label for="{{ product_form.is_active.id_for_label }}" class="form-check-label">{{ product_form.is_active.label }}</label>
-                        {% if product_form.is_active.errors %}
-                            <div class="text-danger">{{ product_form.is_active.errors }}</div>
-                        {% endif %}
-                    </div>
-                    <div class="form-group form-check">
-                        {{ product_form.is_listed }}
-                        <label for="{{ product_form.is_listed.id_for_label }}" class="form-check-label">{{ product_form.is_listed.label }}</label>
-                        {% if product_form.is_listed.errors %}
-                            <div class="text-danger">{{ product_form.is_listed.errors }}</div>
-                        {% endif %}
-                    </div>
-                    <div class="form-group form-check">
-                        {{ product_form.is_deleted }}
-                        <label for="{{ product_form.is_deleted.id_for_label }}" class="form-check-label">{{ product_form.is_deleted.label }}</label>
-                        {% if product_form.is_deleted.errors %}
-                            <div class="text-danger">{{ product_form.is_deleted.errors }}</div>
-                        {% endif %}
-                    </div>
-                </div>
-
-                <!-- Product Variants -->
-                <div class="form-section" id="variant-container">
-                    <h4 class="section-title"><i class="bi bi-layers"></i> Product Variants</h4>
-                    {% if variant_formset.non_form_errors %}
-                        <div class="alert alert-danger">
-                            {{ variant_formset.non_form_errors }}
-                        </div>
-                    {% endif %}
-                    {% for form in variant_formset %}
-                        <div class="variant-row row" data-variant-index="{{ forloop.counter0 }}">
-                            {{ form.id }}
-                            <div class="col-md-2 form-group">
-                                <label for="{{ form.color_name.id_for_label }}" class="form-label">{{ form.color_name.label }}</label>
-                                {{ form.color_name }}
-                                {% if form.color_name.errors %}
-                                    <div class="text-danger small">{{ form.color_name.errors }}</div>
-                                {% endif %}
-                            </div>
-                            <div class="col-md-2 form-group">
-                                <label for="{{ form.color_hex.id_for_label }}" class="form-label">{{ form.color_hex.label }}</label>
-                                {{ form.color_hex }}
-                                {% if form.color_hex.errors %}
-                                    <div class="text-danger small">{{ form.color_hex.errors }}</div>
-                                {% endif %}
-                                <small class="form-text text-muted">Optional hex color</small>
-                            </div>
-                            <div class="col-md-2 form-group">
-                                <label for="id_variants-{{ forloop.counter0 }}-size" class="form-label">Size</label>
-                                <select name="variants-{{ forloop.counter0 }}-size" class="form-control" id="id_variants-{{ forloop.counter0 }}-size">
-                                    <option value="">Select Size</option>
-                                    {% for size in form.size.field.queryset %}
-                                        <option value="{{ size.id }}" {% if size.id == form.instance.size.id %}selected{% endif %}>
-                                            {{ size.name }}
-                                        </option>
-                                    {% endfor %}
-                                </select>
-                                {% if form.size.errors %}
-                                    <div class="text-danger small">{{ form.size.errors }}</div>
-                                {% endif %}
-                            </div>
-                            <div class="col-md-2 form-group">
-                                <label for="{{ form.stock.id_for_label }}" class="form-label">{{ form.stock.label }}</label>
-                                {{ form.stock }}
-                                {% if form.stock.errors %}
-                                    <div class="text-danger small">{{ form.stock.errors }}</div>
-                                {% endif %}
-                            </div>
-                            <div class="col-md-12 form-group">
-                                <div class="image-upload-area variant-upload-area" data-variant-index="{{ forloop.counter0 }}">
-                                    <i class="bi bi-upload upload-icon"></i>
-                                    <p class="upload-text">Drag and drop variant images or click to upload</p>
-                                    <p class="upload-subtext">Exactly 4 images required (JPEG/PNG)</p>
-                                    <input type="file" class="variant-image-input" name="variant-{{ forloop.counter0 }}-images" accept="image/jpeg,image/png,image/jpg" multiple hidden>
-                                </div>
-                                <div class="image-preview-grid variant-image-preview" data-variant-index="{{ forloop.counter0 }}">
-                                    {% for img in form.instance.color_variant.images.all %}
-                                        <div class="image-preview-item" data-image-index="{{ forloop.counter0 }}" data-image-id="{{ img.id }}">
-                                            <img src="{{ img.image.url }}" class="preview-image" alt="Variant Image {{ forloop.counter0 }}">
-                                            <button type="button" class="btn btn-sm btn-danger delete-image-btn" data-image-id="{{ img.id }}" data-variant-index="{{ forloop.parentloop.counter0 }}">
-                                                <i class="bi bi-trash"></i> Delete
-                                            </button>
-                                            <button type="button" class="btn btn-sm replace-image-btn" data-image-id="{{ img.id }}" data-variant-index="{{ forloop.parentloop.counter0 }}" data-image-index="{{ forloop.counter0 }}">
-                                                <i class="bi bi-arrow-repeat"></i> Replace
-                                            </button>
-                                        </div>
-                                    {% endfor %}
-                                </div>
-                                <div class="error-message variant-image-error" data-variant-index="{{ forloop.counter0 }}" style="display: none;"></div>
-                                <div class="text-success variant-image-status" data-variant-index="{{ forloop.counter0 }}" style="display: {% if form.instance.color_variant.images.count == 4 %}block{% else %}none{% endif %};">
-                                    <i class="bi bi-check-circle"></i> 4 images ready for upload
-                                </div>
-                            </div>
-                            <div class="col-md-1 form-group">
-                                {% if forloop.counter0 > 0 %}
-                                    <button type="button" class="delete-variant btn btn-danger btn-sm mt-4">
-                                        <i class="bi bi-trash"></i>
-                                    </button>
-                                {% endif %}
-                                {{ form.DELETE.as_hidden }}
-                            </div>
+            <!-- Messages -->
+            {% if messages %}
+                <div class="mb-6">
+                    {% for message in messages %}
+                        <div class="bg-white border border-gray-200 rounded-xl shadow-lg p-4 mb-2 text-sm text-gray-800 {% if message.tags == 'error' %}bg-red-50 text-red-700 border-red-200{% else %}bg-green-50 text-green-700 border-green-200{% endif %}">
+                            {{ message }}
+                            <button type="button" class="float-right text-current hover:text-gray-900" data-bs-dismiss="alert" aria-label="Close">
+                                <i class="bi bi-x"></i>
+                            </button>
                         </div>
                     {% endfor %}
-                    <button type="button" id="add-variant-btn" class="btn btn-secondary mt-2">
-                        <i class="bi bi-plus"></i> Add Variant
-                    </button>
                 </div>
+            {% endif %}
 
-                <!-- Submit Section -->
-                <div class="submit-section">
-                    <a href="{% url 'adminside:product_list' %}" class="cancel-btn">
-                        <i class="bi bi-x-circle"></i> Cancel
-                    </a>
-                    <button type="submit" class="submit-btn" id="submit-btn">
-                        <i class="bi bi-check-circle"></i> Update Product
-                    </button>
-                </div>
-            </form>
-        </div>
+            <!-- Product Form -->
+            <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-200">
+                <form id="product-form" method="POST" enctype="multipart/form-data" class="product-form">
+                    {% csrf_token %}
+                    {{ product_form.media }}
+                    {{ variant_formset.management_form }}
 
-        <!-- Cropper Modal -->
-        <div id="cropperModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 9999; align-items: center; justify-content: center;">
-            <div class="cropper-container" style="background: white; padding: 20px; border-radius: 8px; max-width: 90%; max-height: 90%;">
-                <h5 id="crop-title">Crop Image</h5>
-                <img id="cropperImage" src="" style="max-width: 500px; max-height: 400px;">
-                <div style="margin-top: 15px; text-align: center;">
-                    <button type="button" id="cancelCropBtn" class="btn btn-secondary me-2">Cancel</button>
-                    <button type="button" id="cropImageBtn" class="btn btn-primary">Crop and Continue</button>
+                    <!-- Product Details Section -->
+                    <div class="mb-8 pb-6 border-b border-gray-200">
+                        <h4 class="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                            <i class="bi bi-info-circle"></i> Product Details
+                        </h4>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div class="form-group">
+                                <label class="block text-sm font-semibold text-gray-800 mb-2">{{ product_form.name.label }}</label>
+                                {{ product_form.name }}
+                                {% if product_form.name.errors %}
+                                    <div class="text-red-600 text-sm mt-2">{{ product_form.name.errors }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="form-group">
+                                <label class="block text-sm font-semibold text-gray-800 mb-2">{{ product_form.category.label }}</label>
+                                {{ product_form.category }}
+                                {% if product_form.category.errors %}
+                                    <div class="text-red-600 text-sm mt-2">{{ product_form.category.errors }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="form-group md:col-span-2">
+                                <label class="block text-sm font-semibold text-gray-800 mb-2">{{ product_form.description.label }}</label>
+                                {{ product_form.description }}
+                                {% if product_form.description.errors %}
+                                    <div class="text-red-600 text-sm mt-2">{{ product_form.description.errors }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="form-group">
+                                <label class="block text-sm font-semibold text-gray-800 mb-2">{{ product_form.price.label }}</label>
+                                {{ product_form.price }}
+                                {% if product_form.price.errors %}
+                                    <div class="text-red-600 text-sm mt-2">{{ product_form.price.errors }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="form-group">
+                                <label class="block text-sm font-semibold text-gray-800 mb-2">{{ product_form.materials.label }}</label>
+                                {{ product_form.materials }}
+                                {% if product_form.materials.errors %}
+                                    <div class="text-red-600 text-sm mt-2">{{ product_form.materials.errors }}</div>
+                                {% endif %}
+                                <small class="text-gray-600 text-sm">Optional: Enter materials used (e.g., Cotton, Polyester)</small>
+                            </div>
+                            <div class="form-group flex items-center gap-2">
+                                {{ product_form.is_active }}
+                                <label class="text-sm font-semibold text-gray-800">{{ product_form.is_active.label }}</label>
+                                {% if product_form.is_active.errors %}
+                                    <div class="text-red-600 text-sm mt-2">{{ product_form.is_active.errors }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="form-group flex items-center gap-2">
+                                {{ product_form.is_listed }}
+                                <label class="text-sm font-semibold text-gray-800">{{ product_form.is_listed.label }}</label>
+                                {% if product_form.is_listed.errors %}
+                                    <div class="text-red-600 text-sm mt-2">{{ product_form.is_listed.errors }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="form-group flex items-center gap-2">
+                                {{ product_form.is_deleted }}
+                                <label class="text-sm font-semibold text-gray-800">{{ product_form.is_deleted.label }}</label>
+                                {% if product_form.is_deleted.errors %}
+                                    <div class="text-red-600 text-sm mt-2">{{ product_form.is_deleted.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Product Variants Section -->
+                    <div class="mb-8" id="variant-container">
+                        <h4 class="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                            <i class="bi bi-layers"></i> Product Variants
+                        </h4>
+                        {% if variant_formset.non_form_errors %}
+                            <div class="bg-red-50 text-red-700 border border-red-200 rounded-xl p-4 mb-4">
+                                {{ variant_formset.non_form_errors }}
+                            </div>
+                        {% endif %}
+                        {% for form in variant_formset %}
+                            <div class="variant-row grid grid-cols-1 md:grid-cols-6 gap-6 mb-4 p-4 bg-gray-50 rounded-xl border border-gray-200" data-variant-index="{{ forloop.counter0 }}">
+                                {{ form.id }}
+                                {{ form.DELETE.as_hidden }}
+                                <div class="form-group">
+                                    <label class="block text-sm font-semibold text-gray-800 mb-2">{{ form.color_name.label }}</label>
+                                    {{ form.color_name }}
+                                    {% if form.color_name.errors %}
+                                        <div class="text-red-600 text-sm mt-2">{{ form.color_name.errors }}</div>
+                                    {% endif %}
+                                </div>
+                                <div class="form-group">
+                                    <label class="block text-sm font-semibold text-gray-800 mb-2">{{ form.color_hex.label }}</label>
+                                    {{ form.color_hex }}
+                                    {% if form.color_hex.errors %}
+                                        <div class="text-red-600 text-sm mt-2">{{ form.color_hex.errors }}</div>
+                                    {% endif %}
+                                    <small class="text-gray-600 text-sm">Optional hex color</small>
+                                </div>
+                                <div class="form-group">
+                                    <label class="block text-sm font-semibold text-gray-800 mb-2">{{ form.size.label }}</label>
+                                    {{ form.size }}
+                                    {% if form.size.errors %}
+                                        <div class="text-red-600 text-sm mt-2">{{ form.size.errors }}</div>
+                                    {% endif %}
+                                </div>
+                                <div class="form-group">
+                                    <label class="block text-sm font-semibold text-gray-800 mb-2">{{ form.stock.label }}</label>
+                                    {{ form.stock }}
+                                    {% if form.stock.errors %}
+                                        <div class="text-red-600 text-sm mt-2">{{ form.stock.errors }}</div>
+                                    {% endif %}
+                                </div>
+                                <div class="form-group md:col-span-2">
+                                    <div class="image-upload-area variant-upload-area" data-variant-index="{{ forloop.counter0 }}">
+                                        <i class="bi bi-upload text-4xl text-gray-600 mb-3"></i>
+                                        <p class="text-gray-800 font-medium">Drag and drop variant images or click to upload</p>
+                                        <p class="text-gray-600 text-sm">Upload any number of images (JPEG/PNG/WebP)</p>
+                                        <input type="file" class="variant-image-input" name="variant-{{ forloop.counter0 }}-images" accept="image/jpeg,image/png,image/webp" multiple hidden>
+                                    </div>
+                                    <div class="image-preview-grid variant-image-preview" data-variant-index="{{ forloop.counter0 }}">
+                                        {% if form.instance.color_variant %}
+                                            {% for img in form.instance.color_variant.images.all %}
+                                                <div class="image-preview-item" data-image-index="{{ forloop.counter0 }}" data-image-id="{{ img.id }}">
+                                                    <img src="{{ img.image.url }}" class="preview-image" alt="Variant Image {{ forloop.counter0 }}">
+                                                    <button type="button" class="delete-image-btn" data-image-id="{{ img.id }}" data-variant-index="{{ forloop.parentloop.counter0 }}">
+                                                        <i class="bi bi-trash"></i> Delete
+                                                    </button>
+                                                    <button type="button" class="replace-image-btn" data-image-id="{{ img.id }}" data-variant-index="{{ forloop.parentloop.counter0 }}" data-image-index="{{ forloop.counter0 }}">
+                                                        <i class="bi bi-arrow-repeat"></i> Replace
+                                                    </button>
+                                                </div>
+                                            {% endfor %}
+                                        {% endif %}
+                                    </div>
+                                    <div class="text-red-600 text-sm mt-2 variant-image-error" data-variant-index="{{ forloop.counter0 }}" style="display: none;"></div>
+                                    <div class="text-teal-600 text-sm mt-2 variant-image-status" data-variant-index="{{ forloop.counter0 }}" style="display: none;"></div>
+                                </div>
+                                <div class="form-group flex items-end">
+                                    <button type="button" class="delete-variant bg-red-600 text-white p-2 rounded-lg hover:bg-red-700 transition-colors text-sm">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        {% endfor %}
+                        <button type="button" id="add-variant-btn" class="bg-indigo-900 text-white p-2 rounded-lg hover:bg-teal-500 transition-colors text-sm mt-2">
+                            <i class="bi bi-plus"></i> Add Variant
+                        </button>
+                    </div>
+
+                    <!-- Submit Section -->
+                    <div class="pt-6 border-t border-gray-200 text-center">
+                        <a href="{% url 'adminside:product_list' %}" class="bg-gray-100 text-gray-800 p-2 rounded-lg hover:bg-gray-200 transition-colors text-sm mr-2">
+                            <i class="bi bi-x-circle"></i> Cancel
+                        </a>
+                        <button type="submit" class="bg-indigo-900 text-white p-2 rounded-lg hover:bg-teal-500 transition-colors text-sm" id="submit-btn">
+                            <i class="bi bi-check-circle"></i> Update Product
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Cropper Modal -->
+            <div id="cropperModal" class="hidden fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center z-[9999]">
+                <div class="cropper-container">
+                    <h5 id="crop-title" class="text-lg font-semibold text-gray-900 mb-4">Crop Image</h5>
+                    <img id="cropperImage" src="" class="max-w-full max-h-[80vh]">
+                    <div class="mt-4 text-right">
+                        <button type="button" id="cancelCropBtn" class="bg-gray-100 text-gray-800 p-2 rounded-lg hover:bg-gray-200 transition-colors text-sm mr-2">Cancel</button>
+                        <button type="button" id="cropImageBtn" class="bg-indigo-900 text-white p-2 rounded-lg hover:bg-teal-500 transition-colors text-sm">Crop and Continue</button>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
 
     <script>
         const form = document.getElementById('product-form');
-               const cropperModal = document.getElementById('cropperModal');
+        const cropperModal = document.getElementById('cropperModal');
         const cropperImage = document.getElementById('cropperImage');
         const cropBtn = document.getElementById('cropImageBtn');
         const cancelCropBtn = document.getElementById('cancelCropBtn');
@@ -356,60 +337,52 @@
         const addVariantBtn = document.getElementById('add-variant-btn');
         const variantTotalForms = document.querySelector('#id_variants-TOTAL_FORMS');
         const variantInitialForms = document.querySelector('#id_variants-INITIAL_FORMS');
+        const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 
         let cropper;
         let currentFileIndex = 0;
         let filesToCrop = [];
         let isProcessingImages = false;
-        let currentContext = null; // {type: 'variant', index: N, replaceImageIndex: null, replaceImageId: null}
-        let variantCroppedImages = {}; // { [variantIndex]: [File, ...], ... }
+        let currentContext = null;
+        let variantCroppedImages = {};
 
         // Initialize formset management
         if (variantTotalForms) {
-            variantTotalForms.value = variantTotalForms.value || '1';
-            variantInitialForms.value = variantInitialForms.value || '0';
+            console.log('Initial TOTAL_FORMS:', variantTotalForms.value);
         }
 
         // Initialize variant image storage
         function initializeVariantImages() {
             document.querySelectorAll('.variant-row').forEach(row => {
                 const index = row.dataset.variantIndex;
-                variantCroppedImages[index] = variantCroppedImages[index] || [];
-                // Initialize with existing images to prevent overwriting
-                const previewContainer = document.querySelector(`.variant-image-preview[data-variant-index="${index}"]`);
-                const existingImages = previewContainer.querySelectorAll('.image-preview-item');
-                existingImages.forEach((item, i) => {
-                    if (!variantCroppedImages[index][i]) {
-                        variantCroppedImages[index][i] = null; // Placeholder for existing images
-                    }
-                });
+                variantCroppedImages[index] = [];
             });
         }
         initializeVariantImages();
 
-        // Log initial select values for debugging
-        console.log('Initial category value:', document.querySelector('#id_category').value);
-        document.querySelectorAll('select[name$="-size"]').forEach(select => {
-            console.log(`Initial size value for ${select.name}: ${select.value}`);
-        });
+        // Event Listeners
+        variantContainer.addEventListener('dragover', handleDragOver);
+        variantContainer.addEventListener('dragleave', handleDragLeave);
+        variantContainer.addEventListener('drop', handleDrop);
+        variantContainer.addEventListener('click', handleClick);
+        variantContainer.addEventListener('change', handleFileInputChange);
 
-        // Drag and Drop for Variant Images
-        variantContainer.addEventListener('dragover', e => {
+        function handleDragOver(e) {
             const uploadArea = e.target.closest('.variant-upload-area');
             if (uploadArea && !isProcessingImages) {
                 e.preventDefault();
                 uploadArea.classList.add('dragover');
             }
-        });
+        }
 
-        variantContainer.addEventListener('dragleave', e => {
+        function handleDragLeave(e) {
             const uploadArea = e.target.closest('.variant-upload-area');
             if (uploadArea) {
                 uploadArea.classList.remove('dragover');
             }
-        });
+        }
 
-        variantContainer.addEventListener('drop', e => {
+        function handleDrop(e) {
             const uploadArea = e.target.closest('.variant-upload-area');
             if (uploadArea && !isProcessingImages) {
                 e.preventDefault();
@@ -417,110 +390,109 @@
                 const variantIndex = uploadArea.dataset.variantIndex;
                 handleFiles(e.dataTransfer.files, { type: 'variant', index: variantIndex, replaceImageIndex: null, replaceImageId: null });
             }
-        });
+        }
 
-        variantContainer.addEventListener('click', e => {
+        function handleClick(e) {
             const uploadArea = e.target.closest('.variant-upload-area');
             const deleteBtn = e.target.closest('.delete-image-btn');
             const replaceBtn = e.target.closest('.replace-image-btn');
-            
+            const deleteVariantBtn = e.target.closest('.delete-variant');
+
             if (uploadArea && !isProcessingImages) {
                 const variantIndex = uploadArea.dataset.variantIndex;
                 const input = uploadArea.querySelector('.variant-image-input');
                 input.click();
             }
+
             if (deleteBtn) {
+                e.preventDefault();
                 const imageId = deleteBtn.dataset.imageId;
                 const variantIndex = deleteBtn.dataset.variantIndex;
                 deleteImage(imageId, variantIndex);
             }
+
             if (replaceBtn) {
-    const variantIndex = replaceBtn.dataset.variantIndex;
-    const imageIndex = parseInt(replaceBtn.dataset.imageIndex);
-    const imageId = replaceBtn.dataset.imageId;
-    console.log(`Initiating replace for variant ${variantIndex}, image index ${imageIndex}, image ID ${imageId}`);
-    
-    // Remove any existing delete_image input for this image
-    const existingDeleteInput = document.querySelector(`input[name="variant-${variantIndex}-delete_image_${imageId}"]`);
-    if (existingDeleteInput) {
-        existingDeleteInput.remove();
-        console.log(`Removed existing delete_image input for image ID ${imageId}`);
-    }
+                e.preventDefault();
+                const variantIndex = replaceBtn.dataset.variantIndex;
+                const imageIndex = parseInt(replaceBtn.dataset.imageIndex);
+                const imageId = replaceBtn.dataset.imageId;
+                console.log(`Initiating replace for variant ${variantIndex}, image index ${imageIndex}, image ID ${imageId}`);
 
-    // Create new delete_image input for replacement
-    const deleteInput = document.createElement('input');
-    deleteInput.type = 'hidden';
-    deleteInput.name = `variant-${variantIndex}-delete_image_${imageId}`;
-    deleteInput.value = '1';
-    form.appendChild(deleteInput);
-    console.log(`Added delete input for image ID ${imageId}`);
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.accept = ALLOWED_IMAGE_TYPES.join(',');
+                input.style.display = 'none';
+                input.addEventListener('change', () => {
+                    if (input.files.length === 1) {
+                        console.log(`Selected file for replacement: ${input.files[0].name}`);
+                        if (imageId && imageId !== 'undefined') {
+                            const deleteInput = document.createElement('input');
+                            deleteInput.type = 'hidden';
+                            deleteInput.name = `variant-${variantIndex}-delete_image_${imageId}`;
+                            deleteInput.value = '1';
+                            form.appendChild(deleteInput);
+                            console.log(`Added delete input for image ID ${imageId}`);
+                        }
+                        handleFiles(input.files, {
+                            type: 'variant',
+                            index: variantIndex,
+                            replaceImageIndex: imageIndex,
+                            replaceImageId: imageId
+                        });
+                    }
+                    input.remove();
+                });
+                document.body.appendChild(input);
+                input.click();
+            }
 
-    // Trigger file selection
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = 'image/jpeg,image/png,image/jpg';
-    input.style.display = 'none';
-    input.addEventListener('change', () => {
-        if (input.files.length === 1) {
-            console.log(`Selected file for replacement: ${input.files[0].name}`);
-            handleFiles(input.files, { type: 'variant', index: variantIndex, replaceImageIndex: imageIndex, replaceImageId: imageId });
-        } else {
-            console.log('No file or multiple files selected for replacement');
-            // Remove delete_image input if no file is selected
-            deleteInput.remove();
-            console.log(`Removed delete_image input for image ID ${imageId} due to canceled replacement`);
-            showImageError('Please select exactly one image to replace.', { type: 'variant', index: variantIndex });
+            if (deleteVariantBtn) {
+                e.preventDefault();
+                const row = deleteVariantBtn.closest('.variant-row');
+                const index = row.dataset.variantIndex;
+                const deleteInput = row.querySelector('input[name$="-DELETE"]');
+                if (deleteInput) {
+                    deleteInput.value = 'on';
+                    row.style.display = 'none';
+                    console.log(`Marked variant ${index} for deletion`);
+                } else {
+                    row.remove();
+                    console.log(`Removed variant ${index} from DOM`);
+                }
+                delete variantCroppedImages[index];
+                removeHiddenImageInputs({ type: 'variant', index });
+            }
         }
-        input.remove();
-    });
-    document.body.appendChild(input);
-    input.click();
-}
-        });
 
-        variantContainer.addEventListener('change', e => {
+        function handleFileInputChange(e) {
             if (e.target.classList.contains('variant-image-input') && !isProcessingImages) {
                 const variantIndex = e.target.closest('.variant-upload-area').dataset.variantIndex;
                 handleFiles(e.target.files, { type: 'variant', index: variantIndex, replaceImageIndex: null, replaceImageId: null });
             }
-        });
+        }
 
         function handleFiles(files, context) {
-            const imageFiles = Array.from(files).filter(f => f.type.startsWith('image/') && ['image/jpeg', 'image/png', 'image/jpg'].includes(f.type));
-            const requiredCount = 4;
-            const previewContainer = getPreviewContainer(context);
-            let existingImages = previewContainer.querySelectorAll('.image-preview-item').length;
-
+            const imageFiles = Array.from(files).filter(f => ALLOWED_IMAGE_TYPES.includes(f.type));
+            if (imageFiles.length === 0) {
+                showImageError('Please select at least one valid image (JPEG, PNG, or WebP).', context);
+                return;
+            }
             if (context.replaceImageIndex !== null) {
-                // Handle single image replacement
                 if (imageFiles.length !== 1) {
                     showImageError('Please select exactly one image to replace.', context);
                     return;
                 }
-                filesToCrop = imageFiles;
-                currentContext = context;
-                console.log(`Starting crop for replacement: variant ${context.index}, image ${context.replaceImageIndex}, ID ${context.replaceImageId || 'none'}`);
-                startCropping();
-            } else {
-                // Handle multiple image upload
-                const totalImages = existingImages + imageFiles.length;
-                if (totalImages !== requiredCount) {
-                    showImageError(`Please select exactly ${requiredCount - existingImages} more images to reach ${requiredCount}. You selected ${imageFiles.length}.`, context);
-                    return;
-                }
-                filesToCrop = imageFiles;
-                currentContext = context;
-                console.log(`Starting crop for ${imageFiles.length} new images for variant ${context.index}`);
-                startCropping();
             }
+            filesToCrop = imageFiles;
+            currentContext = context;
+            console.log(`Starting crop for ${imageFiles.length} images for variant ${context.index}`);
+            startCropping();
         }
 
         function startCropping() {
             isProcessingImages = true;
             currentFileIndex = 0;
-            const previewContainer = getPreviewContainer(currentContext);
             hideImageError(currentContext);
-            hideImageStatus(currentContext);
             updateUploadAreaState(currentContext);
             const input = document.querySelector(`.variant-image-input[name="variant-${currentContext.index}-images"]`);
             if (input) input.value = '';
@@ -528,19 +500,16 @@
         }
 
         function openCropper(file) {
-            cropTitle.textContent = currentContext.replaceImageIndex !== null 
+            cropTitle.textContent = currentContext.replaceImageIndex !== null
                 ? `Crop Replacement Image for Variant ${parseInt(currentContext.index) + 1}, Image ${currentContext.replaceImageIndex + 1}`
-                : `Crop Image ${currentFileIndex + 1} of ${filesToCrop.length} for Variant ${parseInt(currentContext.index) + 1}`;
-            
+                : `Crop Image ${currentFileIndex + 1} for Variant ${parseInt(currentContext.index) + 1}`;
             const reader = new FileReader();
             reader.onload = () => {
                 cropperImage.src = reader.result;
-                cropperModal.style.display = 'flex';
-                
+                cropperModal.classList.remove('hidden');
                 if (cropper) {
                     cropper.destroy();
                 }
-                
                 cropper = new Cropper(cropperImage, {
                     aspectRatio: 1,
                     viewMode: 1,
@@ -548,9 +517,6 @@
                     responsive: true,
                     scalable: true,
                     zoomable: true,
-                    ready: function () {
-                        console.log('Cropper ready for image', currentFileIndex + 1);
-                    }
                 });
             };
             reader.readAsDataURL(file);
@@ -558,56 +524,44 @@
 
         cropBtn.addEventListener('click', () => {
             if (!cropper) return;
-            
-            const canvas = cropper.getCroppedCanvas({ 
-                width: 500, 
+            const canvas = cropper.getCroppedCanvas({
+                width: 500,
                 height: 500,
                 imageSmoothingEnabled: true,
                 imageSmoothingQuality: 'high'
             });
-            
             canvas.toBlob(blob => {
-                const fileName = `cropped_image_${currentContext.replaceImageIndex !== null ? currentContext.replaceImageIndex + 1 : currentFileIndex + 1}.jpg`;
-                const file = new File([blob], fileName, { 
+                const fileName = `cropped_image_${currentContext.replaceImageIndex !== null ? currentContext.replaceImageIndex + 1 : currentFileIndex + 1}_${Date.now()}.jpg`;
+                const file = new File([blob], fileName, {
                     type: 'image/jpeg',
                     lastModified: Date.now()
                 });
-                
-                variantCroppedImages[currentContext.index] = variantCroppedImages[currentContext.index] || new Array(4).fill(null);
-                
+                variantCroppedImages[currentContext.index] = variantCroppedImages[currentContext.index] || [];
                 if (currentContext.replaceImageIndex !== null) {
-                    // Replace specific image
-                    console.log(`Replacing image at index ${currentContext.replaceImageIndex} for variant ${currentContext.index}`);
                     variantCroppedImages[currentContext.index][currentContext.replaceImageIndex] = file;
                     const previewContainer = getPreviewContainer(currentContext);
                     const previewItem = previewContainer.querySelector(`.image-preview-item[data-image-index="${currentContext.replaceImageIndex}"]`);
                     if (previewItem) {
                         previewItem.querySelector('img').src = canvas.toDataURL();
-                        previewItem.querySelector('img').alt = `Variant Image ${currentContext.replaceImageIndex + 1}`;
-                        console.log(`Updated preview for variant ${currentContext.index}, image ${currentContext.replaceImageIndex}`);
-                    } else {
-                        console.log(`No preview item found for variant ${currentContext.index}, image ${currentContext.replaceImageIndex}`);
+                        previewItem.dataset.isReplaced = 'true';
+                        previewItem.dataset.replacementIndex = currentContext.replaceImageIndex;
+                        console.log(`Updated preview for variant ${currentContext.index}, image index ${currentContext.replaceImageIndex}`);
                     }
-                    cropperModal.style.display = 'none';
+                    cropperModal.classList.add('hidden');
                     if (cropper) {
                         cropper.destroy();
                         cropper = null;
                     }
                     finishImageProcessing();
                 } else {
-                    // Add new image
-                    console.log(`Adding new image ${currentFileIndex + 1} for variant ${currentContext.index}`);
-                    variantCroppedImages[currentContext.index][currentFileIndex] = file;
-                    previewImage(canvas.toDataURL(), currentFileIndex + 1, currentContext);
-                    
-                    cropperModal.style.display = 'none';
+                    variantCroppedImages[currentContext.index].push(file);
+                    previewImage(canvas.toDataURL(), variantCroppedImages[currentContext.index].length, currentContext);
+                    cropperModal.classList.add('hidden');
                     if (cropper) {
                         cropper.destroy();
                         cropper = null;
                     }
-                    
                     currentFileIndex++;
-                    
                     if (currentFileIndex < filesToCrop.length) {
                         openCropper(filesToCrop[currentFileIndex]);
                     } else {
@@ -618,12 +572,13 @@
         });
 
         cancelCropBtn.addEventListener('click', () => {
-            cropperModal.style.display = 'none';
+            cropperModal.classList.add('hidden');
             if (cropper) {
                 cropper.destroy();
                 cropper = null;
             }
-            resetImageProcessing(currentContext);
+            isProcessingImages = false;
+            updateUploadAreaState(currentContext);
         });
 
         function finishImageProcessing() {
@@ -634,437 +589,222 @@
             console.log('Image processing completed for', currentContext);
         }
 
-        function resetImageProcessing(context) {
-            isProcessingImages = false;
-            if (context.replaceImageIndex === null) {
-                variantCroppedImages[context.index] = new Array(4).fill(null);
-            }
-            const input = document.querySelector(`.variant-image-input[name="variant-${context.index}-images"]`);
-            if (input) input.value = '';
-            updateUploadAreaState(context);
-            hideImageError(context);
-            hideImageStatus(context);
-        }
-
         function previewImage(dataURL, index, context) {
             const wrapper = document.createElement('div');
             wrapper.className = 'image-preview-item';
             wrapper.dataset.imageIndex = index - 1;
-            wrapper.style.cssText = 'display: inline-block; margin: 5px; border: 2px solid #28a745; border-radius: 8px; overflow: hidden; position: relative;';
-            
+            wrapper.dataset.isNew = 'true';
             const img = document.createElement('img');
             img.src = dataURL;
-            img.style.cssText = 'width: 100px; height: 100px; object-fit: cover; display: block;';
+            img.className = 'preview-image';
             img.alt = `Variant Image ${index}`;
-            
-            const label = document.createElement('div');
-            label.textContent = `Image ${index}`;
-            label.style.cssText = 'position: absolute; bottom: 0; left: 0; right: 0; background: rgba(40, 167, 69, 0.9); color: white; text-align: center; padding: 2px 4px; font-size: 12px;';
-            
             const deleteBtn = document.createElement('button');
             deleteBtn.type = 'button';
-            deleteBtn.className = 'btn btn-sm btn-danger delete-image-btn';
+            deleteBtn.className = 'delete-image-btn';
             deleteBtn.dataset.variantIndex = context.index;
             deleteBtn.dataset.imageIndex = index - 1;
             deleteBtn.innerHTML = '<i class="bi bi-trash"></i> Delete';
-            
             const replaceBtn = document.createElement('button');
             replaceBtn.type = 'button';
-            replaceBtn.className = 'btn btn-sm replace-image-btn';
+            replaceBtn.className = 'replace-image-btn';
             replaceBtn.dataset.variantIndex = context.index;
             replaceBtn.dataset.imageIndex = index - 1;
             replaceBtn.innerHTML = '<i class="bi bi-arrow-repeat"></i> Replace';
-            
             wrapper.appendChild(img);
-            wrapper.appendChild(label);
             wrapper.appendChild(deleteBtn);
             wrapper.appendChild(replaceBtn);
             getPreviewContainer(context).appendChild(wrapper);
             console.log(`Previewed new image ${index} for variant ${context.index}`);
         }
 
-      function deleteImage(imageId, variantIndex) {
-    if (imageId) {
-        const deleteInput = document.createElement('input');
-        deleteInput.type = 'hidden';
-        deleteInput.name = `variant-${variantIndex}-delete_image_${imageId}`;
-        deleteInput.value = '1';
-        form.appendChild(deleteInput);
-        console.log(`Marked image ID ${imageId} for deletion in variant ${variantIndex}`);
-    }
-    
-    const previewContainer = document.querySelector(`.variant-image-preview[data-variant-index="${variantIndex}"]`);
-    const previewItem = previewContainer.querySelector(`.image-preview-item[data-image-id="${imageId}"]`);
-    if (previewItem) {
-        const imageIndex = parseInt(previewItem.dataset.imageIndex);
-        if (variantCroppedImages[variantIndex] && imageIndex >= 0) {
-            console.log(`Setting variantCroppedImages[${variantIndex}][${imageIndex}] to null`);
-            variantCroppedImages[variantIndex][imageIndex] = null;
-            updateHiddenImageInputs({ type: 'variant', index: variantIndex });
+        function deleteImage(imageId, variantIndex) {
+            console.log(`Deleting image ID ${imageId} from variant ${variantIndex}`);
+            const previewContainer = document.querySelector(`.variant-image-preview[data-variant-index="${variantIndex}"]`);
+            const previewItem = previewContainer.querySelector(`.image-preview-item[data-image-id="${imageId}"]`);
+            if (previewItem) {
+                if (previewItem.dataset.isReplaced === 'true') {
+                    variantCroppedImages[variantIndex][previewItem.dataset.replacementIndex] = null;
+                    console.log(`Removed replacement image at index ${previewItem.dataset.replacementIndex} for variant ${variantIndex}`);
+                } else if (imageId) {
+                    const deleteInput = document.createElement('input');
+                    deleteInput.type = 'hidden';
+                    deleteInput.name = `variant-${variantIndex}-delete_image_${imageId}`;
+                    deleteInput.value = '1';
+                    form.appendChild(deleteInput);
+                    console.log(`Marked image ID ${imageId} for deletion in variant ${variantIndex}`);
+                }
+                previewItem.remove();
+                console.log(`Removed preview item for image ID ${imageId}`);
+            }
+            updateUploadAreaState({ type: 'variant', index: variantIndex });
+            showImageStatus({ type: 'variant', index: variantIndex });
         }
-        previewItem.remove();
-        
-        // Reindex remaining images
-        const remainingItems = previewContainer.querySelectorAll('.image-preview-item');
-        remainingItems.forEach((item, newIndex) => {
-            item.dataset.imageIndex = newIndex;
-            item.querySelector('.replace-image-btn').dataset.imageIndex = newIndex;
-            item.querySelector('.delete-image-btn').dataset.imageIndex = newIndex;
-            item.querySelector('div').textContent = `Image ${newIndex + 1}`;
-        });
-        console.log(`Deleted image ID ${imageId || 'new'} from variant ${variantIndex}. Remaining images: ${remainingItems.length}`);
-        
-        // Compact variantCroppedImages
-        variantCroppedImages[variantIndex] = (variantCroppedImages[variantIndex] || []).filter(img => img !== null);
-        console.log(`Compacted variantCroppedImages[${variantIndex}]:`, variantCroppedImages[variantIndex].map(f => f ? f.name : null));
-        updateHiddenImageInputs({ type: 'variant', index: variantIndex });
-    }
-    
-    updateUploadAreaState({ type: 'variant', index: variantIndex });
-    hideImageStatus({ type: 'variant', index: variantIndex });
-}
 
         function getPreviewContainer(context) {
             return document.querySelector(`.variant-image-preview[data-variant-index="${context.index}"]`);
         }
 
         function updateHiddenImageInputs(context) {
-    removeHiddenImageInputs(context);
-    let images = (variantCroppedImages[context.index] || []).filter(img => img !== null);
-    console.log(`Updating hidden inputs for variant ${context.index}. Images:`, images.map(f => f ? f.name : null));
-    images.forEach((file, index) => {
-        const dataTransfer = new DataTransfer();
-        dataTransfer.items.add(file);
-        const input = document.createElement('input');
-        input.type = 'file';
-        input.name = `variant-${context.index}-images`;
-        input.files = dataTransfer.files;
-        input.style.display = 'none';
-        input.setAttribute('data-cropped-image', `variant-${context.index}-${index}`);
-        form.appendChild(input);
-        console.log(`Created hidden input for variant ${context.index}, image ${index + 1}: ${file.name}, ${file.size} bytes`);
-    });
-}
+            removeHiddenImageInputs(context);
+            const images = (variantCroppedImages[context.index] || []).filter(file => file && ALLOWED_IMAGE_TYPES.includes(file.type));
+            images.forEach((file, index) => {
+                if (!file) {
+                    console.warn(`Skipping invalid file at index ${index} for variant ${context.index}`);
+                    return;
+                }
+                const dataTransfer = new DataTransfer();
+                dataTransfer.items.add(file);
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.name = `variant-${context.index}-images`;
+                input.files = dataTransfer.files;
+                input.style.display = 'none';
+                input.setAttribute('data-cropped-image', `variant-${context.index}-${index}`);
+                form.appendChild(input);
+                console.log(`Hidden input created for ${input.name}:`, file.name, file.size, 'bytes', file.type);
+            });
+        }
 
         function removeHiddenImageInputs(context) {
             document.querySelectorAll(`input[data-cropped-image^="variant-${context.index}-"]`).forEach(el => el.remove());
-            console.log(`Removed hidden inputs for variant ${context.index}`);
         }
 
         function updateUploadAreaState(context) {
             const uploadArea = document.querySelector(`.variant-upload-area[data-variant-index="${context.index}"]`);
+            const images = (variantCroppedImages[context.index] || []).filter(file => file && ALLOWED_IMAGE_TYPES.includes(file.type));
             const previewContainer = getPreviewContainer(context);
-            const existingImages = previewContainer.querySelectorAll('.image-preview-item').length;
-            const requiredCount = 4;
-            
-            if (existingImages >= requiredCount) {
-                uploadArea.style.opacity = '0.5';
-                uploadArea.style.pointerEvents = 'none';
-                uploadArea.querySelector('.upload-text').textContent = `${requiredCount} images ready for upload`;
-            } else {
-                uploadArea.style.opacity = '1';
-                uploadArea.style.pointerEvents = 'auto';
-                uploadArea.querySelector('.upload-text').textContent = `Drag and drop ${requiredCount - existingImages} more images or click to upload`;
-            }
+            const totalImages = images.length + previewContainer.querySelectorAll('.image-preview-item:not([data-is-replaced="true"])').length;
+            uploadArea.style.opacity = '1';
+            uploadArea.style.pointerEvents = 'auto';
+            uploadArea.querySelector('.text-gray-800').textContent = totalImages > 0
+                ? `${totalImages} image${totalImages === 1 ? '' : 's'} uploaded. Add more or click to replace.`
+                : 'Drag and drop images or click to upload';
         }
 
         function showImageError(message, context) {
             const errorElement = document.querySelector(`.variant-image-error[data-variant-index="${context.index}"]`);
-            errorElement.textContent = message;
-            errorElement.style.display = 'block';
-            const statusElement = document.querySelector(`.variant-image-status[data-variant-index="${context.index}"]`);
-            statusElement.style.display = 'none';
+            if (errorElement) {
+                errorElement.textContent = message;
+                errorElement.style.display = 'block';
+            }
         }
 
         function hideImageError(context) {
             const errorElement = document.querySelector(`.variant-image-error[data-variant-index="${context.index}"]`);
-            errorElement.style.display = 'none';
+            if (errorElement) {
+                errorElement.style.display = 'none';
+            }
         }
 
         function showImageStatus(context) {
             const statusElement = document.querySelector(`.variant-image-status[data-variant-index="${context.index}"]`);
             const previewContainer = getPreviewContainer(context);
-            if (previewContainer.querySelectorAll('.image-preview-item').length === 4) {
+            const totalImages = previewContainer.querySelectorAll('.image-preview-item').length;
+            if (statusElement && totalImages > 0) {
+                statusElement.textContent = `${totalImages} image${totalImages === 1 ? '' : 's'} ready for upload`;
                 statusElement.style.display = 'block';
-            } else {
+            } else if (statusElement) {
                 statusElement.style.display = 'none';
             }
         }
 
-        function hideImageStatus(context) {
-            const statusElement = document.querySelector(`.variant-image-status[data-variant-index="${context.index}"]`);
-            statusElement.style.display = 'none';
-        }
-
-        // Form submission with updated validation - FIXED: Removed extra period
-        form.addEventListener('submit', function(e) {
-    console.log('Form submission attempted');
-    
-    // Remove all existing delete_image inputs to prevent unintended deletions
-    document.querySelectorAll('input[name^="variant-"][name$="-delete_image_"]').forEach(input => {
-        input.remove();
-        console.log(`Removed stale delete_image input: ${input.name}`);
-    });
-
-    // Re-create delete_image inputs only for images explicitly marked for deletion
-    document.querySelectorAll('.variant-row').forEach(row => {
-        const index = row.dataset.variantIndex;
-        const previewContainer = document.querySelector(`.variant-image-preview[data-variant-index="${index}"]`);
-        const deleteInputs = []; // Track images to delete
-        
-        previewContainer.querySelectorAll('.image-preview-item').forEach(item => {
-            const imageId = item.dataset.imageId;
-            const isDeleted = !item.parentElement.contains(item); // Check if image was removed from preview
-            if (imageId && isDeleted) {
-                const deleteInput = document.createElement('input');
-                deleteInput.type = 'hidden';
-                deleteInput.name = `variant-${index}-delete_image_${imageId}`;
-                deleteInput.value = '1';
-                form.appendChild(deleteInput);
-                console.log(`Re-added delete_image input for image ID ${imageId} in variant ${index}`);
-                deleteInputs.push(imageId);
-            }
-        });
-
-        // Validate image count after accounting for deletions
-        const imageCount = previewContainer.querySelectorAll('.image-preview-item').length;
-        const deleteCount = deleteInputs.length;
-        const newImages = (variantCroppedImages[index] || []).filter(img => img !== null).length;
-        const totalImages = imageCount - deleteCount + newImages;
-
-        if (totalImages !== 4) {
-            showImageError(`Exactly 4 images are required for variant ${parseInt(index) + 1}. Currently ${totalImages} images.`, { type: 'variant', index });
-            hasErrors = true;
-        }
-    });
-
-    // Existing validation logic for variants
-    let hasErrors = false;
-    let activeVariants = 0;
-    document.querySelectorAll('.variant-row').forEach(row => {
-        const index = row.dataset.variantIndex;
-        const colorNameInput = row.querySelector(`input[name="variants-${index}-color_name"]`);
-        const deleteInput = row.querySelector(`input[name="variants-${index}-DELETE"]`);
-        const previewContainer = row.querySelector(`.variant-image-preview[data-variant-index="${index}"]`);
-        const imageCount = previewContainer.querySelectorAll('.image-preview-item').length;
-        
-        if (deleteInput && deleteInput.value === 'on') {
-            return;
-        }
-
-        const isNewVariant = !row.querySelector(`input[name="variants-${index}-id"]`) || !row.querySelector(`input[name="variants-${index}-id"]`).value;
-        const hasContent = colorNameInput.value.trim() || imageCount > 0;
-
-        if (isNewVariant && !hasContent) {
-            return;
-        }
-
-        activeVariants++;
-
-        if (!colorNameInput.value.trim()) {
-            showImageError('Color name is required for each variant.', { type: 'variant', index });
-            hasErrors = true;
-        }
-        if (imageCount !== 4) {
-            showImageError(`Exactly 4 images are required for variant ${parseInt(index) + 1}. Currently ${imageCount} images.`, { type: 'variant', index });
-            hasErrors = true;
-        }
-        console.log(`Variant ${index}: ${imageCount} images`);
-    });
-
-    if (activeVariants === 0) {
-        const errorElement = document.createElement('div');
-        errorElement.className = 'alert alert-danger';
-        errorElement.textContent = 'At least one variant is required.';
-        variantContainer.insertBefore(errorElement, variantContainer.firstChild);
-        hasErrors = true;
-    }
-
-    if (hasErrors) {
-        e.preventDefault();
-        submitBtn.disabled = false;
-        submitBtn.innerHTML = '<i class="bi bi-check-circle"></i> Update Product';
-        return false;
-    }
-
-    // Rest of the submission logic
-    console.log('Variant images:', variantCroppedImages);
-    document.querySelectorAll('.variant-image-input').forEach(input => {
-        input.value = '';
-    });
-
-    Object.keys(variantCroppedImages).forEach(index => {
-        updateHiddenImageInputs({ type: 'variant', index });
-    });
-
-    const formData = new FormData(form);
-    console.log('Form data being submitted:');
-    for (let [key, value] of formData.entries()) {
-        if (value instanceof File) {
-            console.log(key, ':', value.name, value.size, 'bytes', value.type);
-        } else {
-            console.log(key, ':', value);
-        }
-    }
-
-    submitBtn.disabled = true;
-    submitBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Updating Product...';
-    return true;
-});
-
-        // Add variant handler
+        // Add variant functionality
         if (addVariantBtn) {
             addVariantBtn.addEventListener('click', () => {
-                const totalForms = parseInt(variantTotalForms.value);
-                const firstForm = variantContainer.querySelector('.variant-row');
-                const formTemplate = firstForm.cloneNode(true);
-
-                formTemplate.dataset.variantIndex = totalForms;
-                formTemplate.querySelectorAll('[name], [id]').forEach(element => {
-                    if (element.name) {
-                        element.name = element.name.replace(/variants-\d+-/, `variants-${totalForms}-`);
-                    }
-                    if (element.id) {
-                        element.id = element.id.replace(/id_variants-\d+-/, `id_variants-${totalForms}-`);
-                    }
-                    if (!element.name || (!element.name.includes('-id') && !element.name.includes('-DELETE'))) {
-                        if (element.type !== 'hidden' && element.tagName !== 'SELECT') {
-                            element.value = '';
-                        }
-                        if (element.tagName === 'SELECT') {
-                            element.selectedIndex = 0;
-                        }
-                    }
-                });
-
-                formTemplate.querySelectorAll('label[for]').forEach(label => {
-                    label.setAttribute('for', label.getAttribute('for').replace(/id_variants-\d+-/, `id_variants-${totalForms}-`));
-                });
-
-                formTemplate.querySelectorAll('.text-danger').forEach(error => error.remove());
-
-                const deleteBtn = formTemplate.querySelector('.delete-variant');
-                if (deleteBtn) {
-                    deleteBtn.style.display = 'block';
-                }
-
-                const uploadArea = formTemplate.querySelector('.variant-upload-area');
-                uploadArea.dataset.variantIndex = totalForms;
-                const imageInput = formTemplate.querySelector('.variant-image-input');
-                imageInput.name = `variant-${totalForms}-images`;
-                formTemplate.querySelector('.variant-image-preview').dataset.variantIndex = totalForms;
-                formTemplate.querySelector('.variant-image-error').dataset.variantIndex = totalForms;
-                formTemplate.querySelector('.variant-image-status').dataset.variantIndex = totalForms;
-                formTemplate.querySelector('.variant-image-preview').innerHTML = '';
-                formTemplate.querySelector('.variant-image-status').style.display = 'none';
-
-                variantContainer.insertBefore(formTemplate, addVariantBtn);
-                variantTotalForms.value = totalForms + 1;
-                variantCroppedImages[totalForms] = new Array(4).fill(null);
-
-                // Log select values after cloning
-                formTemplate.querySelectorAll('select').forEach(select => {
-                    console.log(`New variant select ${select.name}: ${select.value}`);
-                });
+                const currentTotal = parseInt(variantTotalForms.value);
+                const newIndex = currentTotal;
+                const newVariantRow = createNewVariantRow(newIndex);
+                variantContainer.insertBefore(newVariantRow, addVariantBtn);
+                variantTotalForms.value = currentTotal + 1;
+                variantCroppedImages[newIndex] = [];
+                console.log(`Added new variant with index ${newIndex}. Total forms: ${variantTotalForms.value}`);
             });
         }
 
-        // Delete variant handler
-        variantContainer.addEventListener('click', (e) => {
-            if (e.target.closest('.delete-variant')) {
-                const row = e.target.closest('.variant-row');
-                const index = row.dataset.variantIndex;
-                const deleteInput = row.querySelector('input[name$="-DELETE"]');
-                
-                if (deleteInput) {
-                    deleteInput.value = 'on';
-                    row.style.display = 'none';
-                    delete variantCroppedImages[index];
-                } else {
-                    row.remove();
-                    delete variantCroppedImages[index];
-                    const totalForms = parseInt(variantTotalForms.value);
-                    variantTotalForms.value = Math.max(1, totalForms - 1);
+        function createNewVariantRow(index) {
+            const template = document.querySelector('.variant-row');
+            const newRow = template.cloneNode(true);
+            newRow.dataset.variantIndex = index;
+            newRow.querySelectorAll('[name], [id]').forEach(element => {
+                if (element.name) {
+                    element.name = element.name.replace(/variants-\d+-/, `variants-${index}-`);
                 }
+                if (element.id) {
+                    element.id = element.id.replace(/id_variants-\d+-/, `id_variants-${index}-`);
+                }
+                if (element.type !== 'hidden') {
+                    if (element.tagName === 'SELECT') {
+                        element.selectedIndex = 0;
+                    } else if (element.type !== 'checkbox') {
+                        element.value = '';
+                    }
+                }
+            });
+            newRow.querySelectorAll('label[for]').forEach(label => {
+                label.setAttribute('for', label.getAttribute('for').replace(/id_variants-\d+-/, `id_variants-${index}-`));
+            });
+            newRow.querySelectorAll('.text-red-600').forEach(error => error.remove());
+            const previewContainer = newRow.querySelector('.variant-image-preview');
+            previewContainer.innerHTML = '';
+            previewContainer.dataset.variantIndex = index;
+            newRow.querySelector('.variant-upload-area').dataset.variantIndex = index;
+            newRow.querySelector('.variant-image-input').name = `variant-${index}-images`;
+            newRow.querySelector('.variant-image-error').dataset.variantIndex = index;
+            newRow.querySelector('.variant-image-status').dataset.variantIndex = index;
+            newRow.querySelector('.variant-image-status').style.display = 'none';
+            newRow.querySelector('.text-gray-800').textContent = 'Drag and drop images or click to upload';
+            return newRow;
+        }
+
+        // Form submission validation
+        form.addEventListener('submit', function(e) {
+            console.log('Form submission attempted');
+            let hasErrors = false;
+            let activeVariants = 0;
+            document.querySelectorAll('.bg-red-50').forEach(alert => {
+                if (alert.textContent.includes('At least one variant is required')) {
+                    alert.remove();
+                }
+            });
+            document.querySelectorAll('.variant-row').forEach(row => {
+                const index = row.dataset.variantIndex;
+                const colorNameInput = row.querySelector(`input[name="variants-${index}-color_name"]`);
+                const deleteInput = row.querySelector(`input[name="variants-${index}-DELETE"]`);
+                if ((deleteInput && deleteInput.value === 'on') || row.style.display === 'none') {
+                    return;
+                }
+                const hasContent = colorNameInput.value.trim();
+                if (!hasContent) {
+                    return;
+                }
+                activeVariants++;
+                if (!colorNameInput.value.trim()) {
+                    showImageError('Color name is required for each variant.', { type: 'variant', index });
+                    hasErrors = true;
+                }
+            });
+            if (activeVariants === 0) {
+                const errorAlert = document.createElement('div');
+                errorAlert.className = 'bg-red-50 text-red-700 border border-red-200 rounded-xl p-4 mb-4';
+                errorAlert.textContent = 'At least one variant is required.';
+                variantContainer.insertBefore(errorAlert, variantContainer.firstChild);
+                hasErrors = true;
             }
+            if (hasErrors) {
+                e.preventDefault();
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="bi bi-check-circle"></i> Update Product';
+                return false;
+            }
+            Object.keys(variantCroppedImages).forEach(index => {
+                updateHiddenImageInputs({ type: 'variant', index });
+            });
+            document.querySelectorAll('.variant-image-input').forEach(input => {
+                input.value = '';
+            });
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Updating Product...';
+            return true;
         });
-
-
-        // Disable session storage for edit mode to prevent conflicts with existing images
-        // window.addEventListener('beforeunload', function() {
-        //     if (Object.keys(variantCroppedImages).length > 0) {
-        //         const imageData = { variants: {} };
-        //         const promises = [];
-        //         Object.entries(variantCroppedImages).forEach(([index, files]) => {
-        //             imageData.variants[index] = [];
-        //             files.filter(file => file !== null).forEach(file => {
-        //                 promises.push(new Promise(resolve => {
-        //                     const reader = new FileReader();
-        //                     reader.onload = () => resolve(reader.result);
-        //                     reader.readAsDataURL(file);
-        //                 }));
-        //             });
-        //             imageData.variants[index] = promises.slice(-files.filter(file => file !== null).length);
-        //         });
-        //         Promise.all(promises).then(results => {
-        //             let i = 0;
-        //             Object.keys(variantCroppedImages).forEach(index => {
-        //                 const len = variantCroppedImages[index].filter(file => file !== null).length;
-        //                 imageData.variants[index] = results.slice(i, i + len);
-        //                 i += len;
-        //             });
-        //             sessionStorage.setItem('croppedImages', JSON.stringify(imageData));
-        //         });
-        //     }
-        // });
-
-        // window.addEventListener('load', function() {
-        //     const savedImages = sessionStorage.getItem('croppedImages');
-        //     if (savedImages) {
-        //         try {
-        //             const imageData = JSON.parse(savedImages);
-        //             Object.entries(imageData.variants).forEach(([index, dataURLs]) => {
-        //                 const context = { type: 'variant', index };
-        //                 const previewContainer = getPreviewContainer(context);
-        //                 const existingImages = previewContainer.querySelectorAll('.image-preview-item').length;
-        //                 if (existingImages === 0) {
-        //                     dataURLs.forEach((dataURL, i) => {
-        //                         const blob = dataURLtoBlob(dataURL);
-        //                         const file = new File([blob], `cropped_image_${i + 1}.jpg`, { type: 'image/jpeg' });
-        //                         variantCroppedImages[index] = variantCroppedImages[index] || new Array(4).fill(null);
-        //                         variantCroppedImages[index][i] = file;
-        //                         previewImage(dataURL, i + 1, context);
-        //                     });
-                            // updateHiddenImageInputs(context);
-        //                     updateUploadAreaState(context);
-        //                     if (dataURLs.length === 4) {
-        //                         showImageStatus(context);
-        //                     }
-        //                 }
-        //             });
-        //             sessionStorage.removeItem('croppedImages');
-        //         } catch (e) {
-        //             console.log('Could not restore images:', e);
-        //         }
-        //     }
-
-        //     document.querySelectorAll('.variant-row').forEach(row => {
-        //         const index = row.dataset.variantIndex;
-        //         updateUploadAreaState({ type: 'variant', index });
-        //     });
-        // });
-
-        // function dataURLtoBlob(dataURL) {
-        //     const arr = dataURL.split(',');
-        //     const mime = arr[0].match(/:(.*?);/)[1];
-        //     const bstr = atob(arr[1]);
-        //     let n = bstr.length;
-        //     const u8arr = new Uint8Array(n);
-        //     while (n--) {
-        //         u8arr[n] = bstr.charCodeAt(n);
-        //     }
-        //     return new Blob([u8arr], { type: mime });
-        // }
     </script>
-</body>
-</html>
+{% endblock %}

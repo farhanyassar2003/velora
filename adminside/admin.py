@@ -111,3 +111,22 @@ class OrderItemAdmin(admin.ModelAdmin):
     )
     list_filter = ('is_cancelled', 'is_returned')
     search_fields = ('order__order_id', 'product__name', 'size__name')
+    
+from django.contrib import admin
+from .models import ProductOffer, CategoryOffer
+
+@admin.register(ProductOffer)
+class ProductOfferAdmin(admin.ModelAdmin):
+    list_display = ('name', 'product', 'discount_percentage', 'start_date', 'end_date', 'is_active')
+    list_filter = ('is_active', 'start_date', 'end_date', 'product')
+    search_fields = ('name', 'product__name')
+    date_hierarchy = 'start_date'
+    ordering = ('-start_date',)
+
+@admin.register(CategoryOffer)
+class CategoryOfferAdmin(admin.ModelAdmin):
+    list_display = ('name', 'category', 'discount_percentage', 'start_date', 'end_date', 'is_active')
+    list_filter = ('is_active', 'start_date', 'end_date', 'category')
+    search_fields = ('name', 'category__name')
+    date_hierarchy = 'start_date'
+    ordering = ('-start_date',)

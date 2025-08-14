@@ -269,14 +269,12 @@ class ProductImageForm(forms.ModelForm):
 
 # Formsets
 ProductVariantFormSet = inlineformset_factory(
-    Product, ProductVariant,
+    Product,
+    ProductVariant,
     form=ProductVariantForm,
-    extra=1,
-    can_delete=True,
-    min_num=1,
-    validate_min=True
+    extra=1,  # Start with one empty form
+    can_delete=True
 )
-
 ProductImageFormSet = inlineformset_factory(
     Product, ProductImage,
     form=ProductImageForm,
@@ -286,3 +284,4 @@ ProductImageFormSet = inlineformset_factory(
     min_num=3,
     validate_min=True
 )
+

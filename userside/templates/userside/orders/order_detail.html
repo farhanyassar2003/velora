@@ -1,12 +1,10 @@
 {% extends "base.html" %}
 
 {% block extra_head %}
-    <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Bootstrap Icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
-    <!-- Google Fonts: Inter -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <style>
         :root {
             --primary-black: #000000;
@@ -27,7 +25,6 @@
             background-color: var(--gray-50);
             color: var(--gray-900);
         }
-        /* Page Header */
         .page-header {
             background: linear-gradient(135deg, var(--primary-black) 0%, var(--gray-800) 100%);
             color: var(--primary-white);
@@ -48,12 +45,11 @@
             max-width: 600px;
             margin: 0 auto;
         }
-        /* Section Styling */
         .order-detail-section {
             padding: 2rem 0;
         }
         .card {
-            border-radius: 1rem; /* 16px */
+            border-radius: 1rem;
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
             border: 1px solid var(--gray-200);
         }
@@ -77,7 +73,7 @@
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
         }
         .btn-danger-outline {
-            color: #dc3545; /* Bootstrap danger color */
+            color: #dc3545;
             border: 1px solid #dc3545;
             background-color: transparent;
             padding: 0.5rem 1rem;
@@ -102,6 +98,18 @@
             background-color: var(--gray-100);
             color: var(--primary-black);
         }
+        .btn-retry-payment {
+            background-color: #007bff;
+            color: var(--primary-white);
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        .btn-retry-payment:hover {
+            background-color: #0056b3;
+            color: var(--primary-white);
+        }
         .form-control-sm {
             padding: 0.5rem 0.75rem;
             font-size: 0.875rem;
@@ -109,10 +117,17 @@
         }
         .order-item-card {
             display: flex;
-            flex-direction: column;
-            align-items: flex-start;
+            flex-direction: row;
+            align-items: center;
             padding: 1.5rem;
             margin-bottom: 1rem;
+        }
+        .order-item-card .product-image {
+            width: 80px;
+            height: 80px;
+            object-fit: cover;
+            border-radius: 0.5rem;
+            margin-right: 1.5rem;
         }
         .order-item-card .product-info {
             flex-grow: 1;
@@ -127,6 +142,8 @@
             display: flex;
             gap: 0.5rem;
             align-items: center;
+            flex-grow: 1;
+            flex-wrap: wrap;
         }
         .order-item-card .actions .form-control {
             flex-grow: 1;
@@ -144,17 +161,36 @@
             vertical-align: baseline;
             border-radius: 0.25rem;
         }
-        .status-badge-pending { background-color: #ffc107; color: #212529; } /* Warning */
-        .status-badge-processing { background-color: #0dcaf0; } /* Info */
-        .status-badge-shipped { background-color: #0d6efd; } /* Primary */
-        .status-badge-delivered { background-color: #198754; } /* Success */
-        .status-badge-cancelled { background-color: #6c757d; } /* Secondary */
-        .status-badge-returned { background-color: #dc3545; } /* Danger */
-
-        /* Responsive Design */
+        .status-badge-pending { background-color: #ffc107; color: #212529; }
+        .status-badge-shipped { background-color: #0d6efd; }
+        .status-badge-out_for_delivery { background-color: #0dcaf0; }
+        .status-badge-delivered { background-color: #198754; }
+        .status-badge-cancelled { background-color: #6c757d; }
+        .status-badge-returned { background-color: #dc3545; }
+        .address-section {
+            margin-bottom: 1.5rem;
+        }
+        .address-section h3 {
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+        }
+        .address-section p {
+            font-size: 0.9rem;
+            color: var(--gray-600);
+            margin-bottom: 0.5rem;
+        }
         @media (max-width: 768px) {
             .page-title {
                 font-size: 2rem;
+            }
+            .order-item-card {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            .order-item-card .product-image {
+                margin-right: 0;
+                margin-bottom: 1rem;
             }
             .order-item-card .actions {
                 flex-direction: column;
@@ -173,121 +209,255 @@
                 padding: 2rem 0 1rem;
             }
         }
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1055;
+        }
     </style>
 {% endblock %}
 
 {% block content %}
-    <!-- Page Header -->
     <div class="page-header">
         <div class="container">
             <h1 class="page-title">Order #{{ order.order_id }}</h1>
-            <p class="page-subtitle">Details for your order placed on {{ order.created_at|date:"F j, Y" }}.</p>
+            <p class="page-subtitle">Details for your order placed on {{ order_time_ist|date:"F j, Y, H:i" }} IST.</p>
         </div>
     </div>
 
-    <!-- Order Detail Section -->
     <section class="order-detail-section">
-    <div class="container">
-        <div class="row justify-content-center">
-            <div class="col-lg-8">
-                <div class="card p-4 mb-4">
-                    <h2 class="fs-4 fw-bold text-primaryBlack mb-3">Order Summary</h2>
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                        <span class="text-gray-700">Order ID:</span>
-                        <span class="fw-semibold text-primaryBlack">{{ order.order_id }}</span>
-                    </div>
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                        <span class="text-gray-700">Status:</span>
-                        <span class="fw-semibold text-primaryBlack">
-                            <span class="status-badge
-                                {% if order.status == 'pending' %}status-badge-pending
-                                {% elif order.status == 'processing' %}status-badge-processing
-                                {% elif order.status == 'shipped' %}status-badge-shipped
-                                {% elif order.status == 'delivered' %}status-badge-delivered
-                                {% elif order.status == 'cancelled' %}status-badge-cancelled
-                                {% elif order.status == 'returned' %}status-badge-returned
-                                {% endif %}">
-                                {{ order.get_status_display }}
+        <div class="container">
+            <div class="row justify-content-center">
+                <div class="col-lg-8">
+                    <div class="card p-4 mb-4">
+                        <h2 class="fs-4 fw-bold text-primaryBlack mb-3">Order Summary</h2>
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="text-gray-700">Order ID:</span>
+                            <span class="fw-semibold text-primaryBlack">{{ order.order_id }}</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="text-gray-700">Status:</span>
+                            <span class="fw-semibold text-primaryBlack">
+                                <span class="status-badge
+                                    {% if order.status == 'pending' %}status-badge-pending
+                                    {% elif order.status == 'shipped' %}status-badge-shipped
+                                    {% elif order.status == 'out_for_delivery' %}status-badge-out_for_delivery
+                                    {% elif order.status == 'delivered' %}status-badge-delivered
+                                    {% elif order.status == 'cancelled' %}status-badge-cancelled
+                                    {% elif order.status == 'returned' %}status-badge-returned
+                                    {% endif %}">
+                                    {{ order.get_status_display }}
+                                </span>
                             </span>
-                        </span>
-                    </div>
-
-                    <div class="d-flex justify-content-between align-items-center mb-4">
-                        <span class="text-gray-700">Order Date:</span>
-                        <span class="fw-semibold text-primaryBlack">{{ order.created_at|date:"F j, Y, H:i" }}</span>
-                    </div>
-
-                    <h3 class="fs-5 fw-bold text-primaryBlack mb-3 border-top pt-3">Items in this Order</h3>
-                    <div class="space-y-3">
-                        {% for item in order.items.all %}
-                            <div class="card order-item-card mb-3">
-                                <div class="product-info w-100">
-                                    <h4 class="font-semibold fs-6 text-primaryBlack mb-1">{{ item.product.name }} (x{{ item.quantity }})</h4>
-                                    <p class="text-sm text-gray-600 mb-2">Price: ₹{{ item.product.price|floatformat:2 }} each</p>
-                                    <p class="text-sm text-gray-600 mb-0">Subtotal: ₹{{ item.total|floatformat:2 }}</p>
-                                </div>
-
-                                <div class="actions w-100 mt-2">
-                                    {% if item.is_returned %}
-                                        <p class="text-muted mt-2">
-                                            <i class="bi bi-info-circle me-1"></i>Item Returned<br>
-                                            <strong>Reason:</strong> {{ item.return_reason }}
-                                        </p>
-                                    {% elif item.is_cancelled %}
-                                        <p class="text-muted mt-2">
-                                            <i class="bi bi-info-circle me-1"></i>Item Cancelled
-                                        </p>
-                                    {% else %}
-                                        {% if order.status != 'delivered' %}
-                                            <form method="POST" action="{% url 'userside:cancel_order_item' item.id %}" class="flex-grow-1 mb-2">
-                                                {% csrf_token %}
-                                                <input type="text" name="reason" placeholder="Optional reason" class="form-control form-control-sm">
-                                                <button type="submit" class="btn btn-danger-outline btn-sm mt-1">
-                                                    <i class="bi bi-x-circle me-1"></i>Cancel Item
-                                                </button>
-                                            </form>
-                                        {% elif order.status == 'delivered' %}
-                                            <form method="POST" action="{% url 'userside:return_order_item' item.id %}" class="flex-grow-1">
-                                                {% csrf_token %}
-                                                <input type="text" name="reason" required placeholder="Reason for return" class="form-control form-control-sm mb-2">
-                                                <button type="submit" class="btn btn-secondary-outline btn-sm">
-                                                    <i class="bi bi-arrow-return-left me-1"></i>Return Item
-                                                </button>
-                                            </form>
-                                        {% endif %}
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="text-gray-700">Order Date:</span>
+                            <span class="fw-semibold text-primaryBlack">{{ order_time_ist|date:"F j, Y, H:i" }} IST</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="text-gray-700">Payment Method:</span>
+                            <span class="fw-semibold text-primaryBlack">{{ payment_method }}</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="text-gray-700">Payment Status:</span>
+                            <span class="fw-semibold text-primaryBlack">
+                                {% if is_paid %}
+                                    Paid
+                                {% else %}
+                                    Not Paid
+                                    {% if order.payment_method == 'Online' %}
+                                        <a href="{% url 'userside:initiate_payment' order.id %}" class="btn btn-retry-payment btn-sm ms-2">
+                                            <i class="bi bi-arrow-repeat me-1"></i>Retry Payment
+                                        </a>
                                     {% endif %}
-                                </div>
+                                {% endif %}
+                            </span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="text-gray-700">Total Amount:</span>
+                            <span class="fw-semibold text-primaryBlack">₹{{ order.total|floatformat:2 }}</span>
+                        </div>
+                        {% if address %}
+                            <div class="address-section mt-4 pt-3 border-top">
+                                <h3 class="fs-5 fw-bold text-primaryBlack">Shipping Address</h3>
+                                <p>{{ address.address_line1 }}</p>
+                                {% if address.address_line2 %}<p>{{ address.address_line2 }}</p>{% endif %}
+                                <p>{{ address.city }}, {{ address.state }} {{ address.postal_code }}</p>
+                                <p>{{ address.country }}</p>
                             </div>
-                        {% endfor %}
-                    </div>
-
-                    <div class="d-flex flex-column flex-md-row justify-content-between align-items-center gap-3 mt-4 pt-4 border-top">
-                        {% if order.status != 'delivered' %}
-                            <form method="POST" action="{% url 'userside:cancel_entire_order' order.order_id %}" class="flex-grow-1 w-100 w-md-auto">
-                                {% csrf_token %}
-                                <div class="input-group">
-                                    <input type="text" name="reason" placeholder="Optional reason for full cancellation" class="form-control form-control-sm">
-                                    <button type="submit" class="btn btn-danger-outline btn-sm">
-                                        <i class="bi bi-x-octagon me-1"></i>Cancel Entire Order
-                                    </button>
-                                </div>
-                            </form>
                         {% else %}
-                            <div class="alert alert-info w-100 text-center">
-                                This order has been delivered and can no longer be cancelled.
+                            <div class="alert alert-warning mt-4">
+                                No shipping address provided for this order.
                             </div>
                         {% endif %}
-                        <a href="#" class="btn btn-primary-black btn-sm flex-grow-1 w-100 w-md-auto">
-                            <i class="bi bi-file-earmark-arrow-down me-2"></i>Download Invoice (PDF)
-                        </a>
+
+                        <h3 class="fs-5 fw-bold text-primaryBlack mb-3 mt-4 pt-3 border-top">Items in this Order</h3>
+                        <div class="space-y-3">
+                            {% for item in order.items.all %}
+                                <div class="card order-item-card mb-3">
+                                    <img src="{% if item.product and item.product.product_images.exists %}{{ item.product.get_primary_image }}{% else %}/static/images/placeholder.jpg{% endif %}" alt="{{ item.product.name|default:'Product' }}" class="product-image">
+                                    <div class="product-info">
+                                        <h4 class="font-semibold fs-6 text-primaryBlack mb-1">
+                                            {{ item.product.name|default:"Deleted Product" }} (x{{ item.quantity }})
+                                            {% if item.variant %}
+                                                - {{ item.variant.color_variant.color_name }} ({{ item.size }})
+                                            {% elif item.size %}
+                                                - {{ item.size }}
+                                            {% endif %}
+                                        </h4>
+                                        <p class="text-sm text-gray-600 mb-2">Price: ₹{{ item.price|floatformat:2 }} each</p>
+                                        <p class="text-sm text-gray-600 mb-0">Subtotal: ₹{{ item.total|floatformat:2 }}</p>
+                                    </div>
+                                    <div class="actions w-100 mt-2">
+                                        {% if item.is_returned %}
+                                            <p class="text-muted mt-2">
+                                                <i class="bi bi-info-circle me-1"></i>Item Returned<br>
+                                                <strong>Reason:</strong> {{ item.return_reason|default:"No reason provided" }}
+                                            </p>
+                                        {% elif item.is_cancelled %}
+                                            <p class="text-muted mt-2">
+                                                <i class="bi bi-info-circle me-1"></i>Item Cancelled<br>
+                                                <strong>Reason:</strong> {{ item.cancel_reason|default:"No reason provided" }}
+                                            </p>
+                                        {% else %}
+                                            {% if order.status != 'delivered' and order.status != 'cancelled' and order.status != 'returned' %}
+                                                <form action="{% url 'userside:cancel_order_item' item.id %}" method="post" class="cancel-item-form">
+                                                    {% csrf_token %}
+                                                    <div class="d-flex gap-2 align-items-center">
+                                                        <input type="text" name="reason" class="form-control form-control-sm" placeholder="Reason for cancellation" required>
+                                                        <button type="submit" class="btn btn-danger-outline btn-sm">
+                                                            <i class="bi bi-x-circle me-1"></i>Cancel Item
+                                                        </button>
+                                                    </div>
+                                                </form>
+                                            {% endif %}
+                                            {% if order.status == 'delivered' and not item.is_returned and not item.is_cancelled %}
+                                                <form action="{% url 'userside:return_order_item' item.id %}" method="post" class="return-item-form">
+                                                    {% csrf_token %}
+                                                    <div class="d-flex gap-2 align-items-center">
+                                                        <input type="text" name="reason" class="form-control form-control-sm" placeholder="Reason for return" required>
+                                                        <button type="submit" class="btn btn-secondary-outline btn-sm">
+                                                            <i class="bi bi-arrow-return-left me-1"></i>Return Item
+                                                        </button>
+                                                    </div>
+                                                </form>
+                                            {% endif %}
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+
+                        <div class="d-flex flex-column flex-md-row justify-content-between align-items-center gap-3 mt-4 pt-4 border-top">
+                            {% if order.status != 'delivered' and order.status != 'cancelled' and order.status != 'returned' and not all_items_cancelled %}
+                                <form action="{% url 'userside:cancel_entire_order' order.order_id %}" method="post" class="cancel-order-form w-100 w-md-auto">
+                                    {% csrf_token %}
+                                    <div class="d-flex gap-2 align-items-center">
+                                        <input type="text" name="reason" class="form-control form-control-sm" placeholder="Reason for cancelling order" required>
+                                        <button type="submit" class="btn btn-danger-outline btn-sm flex-grow-1 w-100 w-md-auto">
+                                            <i class="bi bi-x-octagon me-1"></i>Cancel Entire Order
+                                        </button>
+                                    </div>
+                                </form>
+                            {% elif order.status == 'cancelled' or all_items_cancelled %}
+                                <div class="alert alert-warning w-100 text-center">
+                                    {% if order.status == 'cancelled' %}
+                                        This order has been cancelled.
+                                    {% elif all_items_cancelled %}
+                                        All items in this order have been cancelled individually.
+                                    {% endif %}
+                                </div>
+                            {% else %}
+                                <div class="alert alert-info w-100 text-center">
+                                    This order's current status ({{ order.get_status_display }}) prevents full cancellation.
+                                </div>
+                            {% endif %}
+                            <a href="{% url 'userside:download_invoice' order.id %}" class="btn btn-primary-black btn-sm flex-grow-1 w-100 w-md-auto">
+                                <i class="bi bi-file-earmark-arrow-down me-2"></i>Download Invoice (PDF)
+                            </a>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
+    </section>
+
+    <div class="toast-container">
+        <div id="actionToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true" data-bs-autohide="true" data-bs-delay="3000">
+            <div class="toast-header">
+                <strong class="me-auto">Notification</strong>
+                <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+            <div class="toast-body"></div>
+        </div>
     </div>
-</section>
 
-
-    <!-- Bootstrap JS (Bundle includes Popper) -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const cancelOrderForm = document.querySelector('.cancel-order-form');
+            const cancelItemForms = document.querySelectorAll('.cancel-item-form');
+            const returnItemForms = document.querySelectorAll('.return-item-form');
+            const toastEl = document.getElementById('actionToast');
+            const toastBody = toastEl.querySelector('.toast-body');
+            const toast = new bootstrap.Toast(toastEl);
+
+            function showToast(message) {
+                toastBody.textContent = message;
+                toast.show();
+            }
+
+            function handleFormSubmission(form, successMessage, errorMessage) {
+                form.addEventListener('submit', function (e) {
+                    e.preventDefault();
+                    const reason = form.querySelector('input[name="reason"]').value.trim();
+                    if (!reason) {
+                        showToast('Please provide a reason.');
+                        return;
+                    }
+
+                    Swal.fire({
+                        title: 'Are you sure?',
+                        text: `You are about to submit this action with reason: "${reason}"`,
+                        icon: 'warning',
+                        showCancelButton: true,
+                        confirmButtonText: 'Yes, proceed',
+                        cancelButtonText: 'No, cancel',
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            fetch(form.action, {
+                                method: 'POST',
+                                body: new FormData(form),
+                                headers: {
+                                    'X-CSRFToken': form.querySelector('[name=csrfmiddlewaretoken]').value
+                                }
+                            }).then(response => {
+                                if (response.ok) {
+                                    showToast(successMessage);
+                                    setTimeout(() => location.reload(), 2000);
+                                } else {
+                                    showToast(errorMessage);
+                                }
+                            }).catch(() => {
+                                showToast(errorMessage);
+                            });
+                        }
+                    });
+                });
+            }
+
+            if (cancelOrderForm) {
+                handleFormSubmission(cancelOrderForm, 'Order cancelled successfully.', 'Failed to cancel order.');
+            }
+
+            cancelItemForms.forEach(form => {
+                handleFormSubmission(form, 'Item cancelled successfully.', 'Failed to cancel item.');
+            });
+
+            returnItemForms.forEach(form => {
+                handleFormSubmission(form, 'Item return requested successfully.', 'Failed to request item return.');
+            });
+        });
+    </script>
 {% endblock %}

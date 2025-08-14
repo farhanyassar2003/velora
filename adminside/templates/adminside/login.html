@@ -22,47 +22,48 @@
 
         body {
             font-family: 'Inter', sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: #f8f9fa;
             min-height: 100vh;
             display: flex;
             flex-direction: column;
         }
 
         .admin-header {
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-            padding: 20px 0;
+            background: #ffffff;
+            border-bottom: 1px solid #dee2e6;
+            padding: 25px 0;
             text-align: center;
         }
 
         .brand-logo {
-            color: white;
-            font-size: 2.5rem;
-            font-weight: 700;
-            text-transform: lowercase;
-            letter-spacing: 2px;
+            color: #1a1a1a;
+            font-size: 2.8rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 3px;
             text-decoration: none;
             display: inline-flex;
             align-items: center;
-            gap: 10px;
+            gap: 12px;
+            transition: color 0.3s ease;
         }
 
         .brand-logo:hover {
-            color: rgba(255, 255, 255, 0.9);
+            color: #333333;
             text-decoration: none;
         }
 
         .brand-icon {
-            width: 40px;
-            height: 40px;
-            background: linear-gradient(45deg, #ff6b6b, #feca57);
-            border-radius: 10px;
+            width: 48px;
+            height: 48px;
+            background: #1a1a1a;
+            border-radius: 12px;
             display: flex;
             align-items: center;
             justify-content: center;
-            color: white;
-            font-size: 1.2rem;
+            color: #ffffff;
+            font-size: 1.4rem;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
         }
 
         .login-section {
@@ -70,172 +71,223 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 40px 20px;
+            padding: 50px 20px;
         }
 
         .login-card {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(20px);
-            border-radius: 20px;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            padding: 50px 40px;
+            background: #ffffff;
+            border-radius: 24px;
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.08);
+            border: 1px solid #e5e5e5;
+            padding: 60px 48px;
             width: 100%;
-            max-width: 450px;
+            max-width: 480px;
             text-align: center;
+            transition: transform 0.3s ease;
+        }
+
+        .login-card:hover {
+            transform: translateY(-5px);
         }
 
         .login-title {
-            color: #2c3e50;
-            font-size: 2rem;
-            font-weight: 600;
-            margin-bottom: 10px;
-            letter-spacing: 1px;
+            color: #1a1a1a;
+            font-size: 2.2rem;
+            font-weight: 700;
+            margin-bottom: 12px;
+            letter-spacing: 1.2px;
         }
 
         .login-subtitle {
-            color: #7f8c8d;
-            font-size: 0.95rem;
-            margin-bottom: 40px;
+            color: #5c5c5c;
+            font-size: 1rem;
+            margin-bottom: 48px;
             font-weight: 400;
+            line-height: 1.6;
         }
 
         .form-floating {
-            margin-bottom: 25px;
+            margin-bottom: 30px;
         }
 
         .form-control {
-            border: 2px solid #e9ecef;
-            border-radius: 15px;
-            padding: 15px 20px;
-            font-size: 1rem;
+            border: 2px solid #dee2e6;
+            border-radius: 12px;
+            padding: 16px 24px;
+            font-size: 1.05rem;
             transition: all 0.3s ease;
-            background: rgba(248, 249, 250, 0.8);
+            background: #ffffff;
+            color: #1a1a1a;
+            height: 60px;
         }
 
         .form-control:focus {
-            border-color: #667eea;
-            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
-            background: white;
+            border-color: #1a1a1a;
+            box-shadow: 0 0 0 0.25rem rgba(26, 26, 26, 0.15);
+            background: #ffffff;
+        }
+
+        .input-group {
+            margin-bottom: 30px;
+            display: flex;
+            align-items: stretch;
+        }
+
+        .input-group-text {
+            background: #f1f3f5;
+            border: 2px solid #dee2e6;
+            border-right: none;
+            border-radius: 12px 0 0 12px;
+            color: #1a1a1a;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 18px;
+            height: 60px;
+            font-size: 1.2rem;
+        }
+
+        .input-group .form-control {
+            border: 2px solid #dee2e6;
+            border-left: none;
+            border-radius: 0 12px 12px 0;
+            padding: 16px 24px;
+            font-size: 1.05rem;
+            height: 60px;
+        }
+
+        .input-group .form-control:focus {
+            border: 2px solid #1a1a1a;
+            border-left: none;
         }
 
         .form-floating > label {
             color: #6c757d;
             font-weight: 500;
-        }
-
-        .input-group {
-            margin-bottom: 25px;
-        }
-
-        .input-group-text {
-            background: rgba(102, 126, 234, 0.1);
-            border: 2px solid #e9ecef;
-            border-right: none;
-            border-radius: 15px 0 0 15px;
-            color: #667eea;
-        }
-
-        .input-group .form-control {
-            border-left: none;
-            border-radius: 0 15px 15px 0;
-        }
-
-        .input-group .form-control:focus {
-            border-left: 2px solid #667eea;
+            padding: 16px 24px;
+            font-size: 0.95rem;
         }
 
         .login-btn {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: #1a1a1a;
             border: none;
-            border-radius: 15px;
-            padding: 15px 40px;
-            font-size: 1.1rem;
+            border-radius: 12px;
+            padding: 16px 48px;
+            font-size: 1.15rem;
             font-weight: 600;
-            color: white;
+            color: #ffffff;
             width: 100%;
             transition: all 0.3s ease;
             text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-top: 20px;
+            letter-spacing: 1.5px;
+            margin-top: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
         }
 
         .login-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
-            background: linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%);
+            background: #22c55e; /* Clearly visible green */
+            color: #ffffff;
+            transform: translateY(-3px);
+            box-shadow: 0 12px 30px rgba(34, 197, 94, 0.3);
         }
 
         .login-btn:active {
             transform: translateY(0);
+            box-shadow: 0 6px 20px rgba(34, 197, 94, 0.2);
         }
 
         .error-alert {
-            background: linear-gradient(135deg, #ff6b6b, #ee5a52);
-            color: white;
+            background: #1a1a1a;
+            color: #ffffff;
             border: none;
-            border-radius: 15px;
-            padding: 15px 20px;
-            margin-bottom: 25px;
+            border-radius: 12px;
+            padding: 16px 24px;
+            margin-bottom: 30px;
             font-weight: 500;
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 12px;
+            font-size: 0.95rem;
         }
 
         .admin-features {
-            margin-top: 30px;
-            padding-top: 30px;
-            border-top: 1px solid rgba(0, 0, 0, 0.1);
+            margin-top: 40px;
+            padding-top: 40px;
+            border-top: 1px solid rgba(0, 0, 0, 0.08);
         }
 
         .feature-list {
             display: flex;
             justify-content: space-around;
             flex-wrap: wrap;
-            gap: 20px;
-            margin-top: 20px;
+            gap: 24px;
+            margin-top: 24px;
         }
 
         .feature-item {
             display: flex;
             flex-direction: column;
             align-items: center;
-            color: #6c757d;
-            font-size: 0.85rem;
+            color: #5c5c5c;
+            font-size: 0.9rem;
             text-align: center;
+            font-weight: 500;
         }
 
         .feature-icon {
-            width: 40px;
-            height: 40px;
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            border-radius: 10px;
+            width: 44px;
+            height: 44px;
+            background: #1a1a1a;
+            border-radius: 12px;
             display: flex;
             align-items: center;
             justify-content: center;
-            color: white;
-            margin-bottom: 8px;
-            font-size: 1.1rem;
+            color: #ffffff;
+            margin-bottom: 10px;
+            font-size: 1.2rem;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
         }
 
         .security-badge {
-            background: rgba(40, 167, 69, 0.1);
-            color: #28a745;
-            padding: 8px 16px;
-            border-radius: 20px;
-            font-size: 0.8rem;
+            background: #f1f3f5;
+            color: #1a1a1a;
+            padding: 10px 20px;
+            border-radius: 24px;
+            font-size: 0.85rem;
             font-weight: 600;
-            margin-top: 20px;
+            margin-top: 24px;
             display: inline-flex;
             align-items: center;
-            gap: 5px;
+            gap: 8px;
+            border: 1px solid #dee2e6;
         }
 
         @media (max-width: 768px) {
             .login-card {
-                margin: 20px;
-                padding: 40px 30px;
+                margin: 24px;
+                padding: 48px 36px;
+            }
+
+            .brand-logo {
+                font-size: 2.4rem;
+            }
+
+            .login-title {
+                font-size: 1.9rem;
+            }
+
+            .feature-list {
+                justify-content: center;
+                gap: 18px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .login-card {
+                padding: 36px 24px;
             }
 
             .brand-logo {
@@ -243,26 +295,7 @@
             }
 
             .login-title {
-                font-size: 1.7rem;
-            }
-
-            .feature-list {
-                justify-content: center;
-                gap: 15px;
-            }
-        }
-
-        @media (max-width: 480px) {
-            .login-card {
-                padding: 30px 25px;
-            }
-
-            .brand-logo {
-                font-size: 1.8rem;
-            }
-
-            .login-title {
-                font-size: 1.5rem;
+                font-size: 1.6rem;
             }
         }
 
@@ -275,22 +308,40 @@
         .btn-loading::after {
             content: "";
             position: absolute;
-            width: 20px;
-            height: 20px;
+            width: 24px;
+            height: 24px;
             top: 50%;
             left: 50%;
-            margin-left: -10px;
-            margin-top: -10px;
-            border: 2px solid #ffffff;
+            margin-left: -12px;
+            margin-top: -12px;
+            border: 3px solid #ffffff;
             border-radius: 50%;
             border-top-color: transparent;
-            animation: spin 1s linear infinite;
+            animation: spin 0.8s linear infinite;
         }
 
         @keyframes spin {
             to {
                 transform: rotate(360deg);
             }
+        }
+
+        /* Validation feedback */
+        .invalid-feedback {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9rem;
+            margin-top: 8px;
+            color: #dc3545;
+        }
+
+        .invalid-feedback i {
+            font-size: 1rem;
+        }
+
+        .valid {
+            color: #22c55e;
         }
     </style>
 </head>
@@ -409,23 +460,120 @@
     
     <!-- Custom JavaScript -->
     <script>
-        // Add loading state to login button
-        document.getElementById('loginForm').addEventListener('submit', function() {
-            const loginBtn = document.getElementById('loginBtn');
-            loginBtn.classList.add('btn-loading');
-            loginBtn.disabled = true;
+    // Validation object
+    const validation = {
+        username: {
+            required: true,
+            minLength: 3,
+            pattern: /^[a-zA-Z0-9@._-]+$/,
+            messages: {
+                required: 'Email or username is required',
+                minLength: 'Must be at least 3 characters long',
+                pattern: 'Please enter a valid email or username',
+                valid: 'Looks good!'
+            }
+        },
+        password: {
+            required: true,
+            minLength: 6,
+            messages: {
+                required: 'Password is required',
+                minLength: 'Password must be at least 6 characters long',
+                valid: 'Password looks good!'
+            }
+        }
+    };
+
+    // Utility functions
+    function isValidEmail(email) {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        return emailRegex.test(email);
+    }
+
+    function showValidationMessage(fieldId, message, isValid) {
+        let messageElement = document.getElementById(`${fieldId}-message`);
+        if (!messageElement) {
+            messageElement = document.createElement('div');
+            messageElement.id = `${fieldId}-message`;
+            messageElement.className = 'invalid-feedback';
+            messageElement.style.display = 'flex';
+            document.getElementById(fieldId).parentElement.appendChild(messageElement);
+        }
+        const messageSpan = messageElement.querySelector('span') || document.createElement('span');
+        const messageIcon = messageElement.querySelector('i') || document.createElement('i');
+        
+        messageSpan.textContent = message;
+        messageIcon.className = isValid ? 'bi bi-check-circle' : 'bi bi-exclamation-circle';
+        messageElement.innerHTML = '';
+        messageElement.appendChild(messageIcon);
+        messageElement.appendChild(messageSpan);
+        
+        messageElement.classList.remove('valid', 'invalid');
+        messageElement.classList.add(isValid ? 'valid' : 'invalid');
+        messageElement.style.display = isValid ? 'none' : 'flex';
+    }
+
+    // Password toggle
+    function togglePassword(fieldId, button) {
+        const field = document.getElementById(fieldId);
+        const icon = button.querySelector('i');
+        if (field.type === 'password') {
+            field.type = 'text';
+            icon.className = 'bi bi-eye-slash';
+        } else {
+            field.type = 'password';
+            icon.className = 'bi bi-eye';
+        }
+    }
+
+    // Form validation
+    document.addEventListener('DOMContentLoaded', function() {
+        const form = document.getElementById('loginForm');
+        const usernameField = document.getElementById('id_username');
+        const passwordField = document.getElementById('id_password');
+        const submitBtn = document.getElementById('submitBtn');
+
+        function validateField(field, rules) {
+            const value = field.value.trim();
+            let message = '';
+            let isValid = true;
+
+            if (rules.required && !value) {
+                message = rules.messages.required;
+                isValid = false;
+            } else if (rules.minLength && value.length < rules.minLength) {
+                message = rules.messages.minLength;
+                isValid = false;
+            } else if (rules.pattern && !rules.pattern.test(value)) {
+                message = rules.messages.pattern;
+                isValid = false;
+            } else {
+                message = rules.messages.valid;
+            }
+
+            showValidationMessage(field.id, message, isValid);
+            return isValid;
+        }
+
+        usernameField.addEventListener('input', () => validateField(usernameField, validation.username));
+        passwordField.addEventListener('input', () => validateField(passwordField, validation.password));
+
+        form.addEventListener('submit', function(e) {
+            const isUsernameValid = validateField(usernameField, validation.username);
+            const isPasswordValid = validateField(passwordField, validation.password);
+            if (!isUsernameValid || !isPasswordValid) {
+                e.preventDefault();
+                submitBtn.classList.remove('loading');
+                submitBtn.disabled = false;
+            } else {
+                submitBtn.classList.add('loading');
+                submitBtn.disabled = true;
+            }
         });
 
-        // Add focus effects to inputs
-        document.querySelectorAll('.form-control').forEach(input => {
-            input.addEventListener('focus', function() {
-                this.parentElement.parentElement.classList.add('focused');
-            });
-            
-            input.addEventListener('blur', function() {
-                this.parentElement.parentElement.classList.remove('focused');
-            });
-        });
-    </script>
+        // Auto-focus first field
+        usernameField.focus();
+    });
+</script>
 </body>
 </html>

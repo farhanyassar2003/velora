@@ -9,9 +9,11 @@ urlpatterns = [
     path('register/', views.register, name='register'),
     path('login/', views.user_login, name='login'),
     path('logout/', views.logout_view, name='logout'),
-    path('otp/', views.otp_page, name='otp_page'),
     path('verify_otp/', views.otp_verify, name='verify_otp'),
     path('dashboard/', views.login_redirect, name='login_redirect'),
+    path('validate_referral_code/', views.validate_referral_code, name='validate_referral_code'),
+    path('forgot_password/', views.forgot_password, name='forgot_password'),
+    path('reset_password/', views.reset_password, name='reset_password'),
 
     # ===========================# Home & Landing Page URLs# ===========================
     path('', views.landing_page, name='landing_page'),
@@ -26,6 +28,7 @@ urlpatterns = [
     # ===========================# Category URLs# ===========================
     path('category/<str:category_name>/', views.category_redirect, name='category_redirect'),
     path('category/<int:id>/', views.category_products, name='category_products'),
+    path('apply_referral_coupon/', views.apply_referral_coupon, name='apply_referral_coupon'),
 
     # ===========================# User Profile & Address Management URLs# ===========================
     path('profile/', views.user_profile, name='user_profile'),
@@ -48,6 +51,8 @@ urlpatterns = [
     path('checkout/', views.checkout_view, name='checkout'),
     path('place-order/', views.place_order, name='place_order'),
     path('order-success/<int:order_id>/', views.order_success, name='order_success'),
+    path('apply-coupon/', views.apply_coupon, name='apply_coupon'),
+    path('remove-coupon/', views.remove_coupon, name='remove_coupon'),
 
     # ===========================# Order Management URLs# ===========================
     path('orders/', views.order_list, name='order_list'),
@@ -55,7 +60,11 @@ urlpatterns = [
     path('orders/<str:order_id>/cancel/', views.cancel_entire_order, name='cancel_entire_order'),
     path('orders/item/<int:item_id>/cancel/', views.cancel_order_item, name='cancel_order_item'),
     path('orders/item/<int:item_id>/return/', views.return_order_item, name='return_order_item'),
-
+    path('payment/<int:order_id>/', views.initiate_payment, name='initiate_payment'),
+    path('order/failure/<int:order_id>/', views.order_failure, name='order_failure'),
+    path('payment/verify/<int:order_id>/', views.verify_payment, name='verify_payment'),
+    path('order/<int:order_id>/invoice/', views.download_invoice, name='download_invoice'),
+    path('wallet/', views.wallet, name='wallet'),
 
     # ===========================# Wishlist URLs# ===========================
     path('add-to-wishlist/<int:product_id>/', views.add_to_wishlist, name='add_to_wishlist'),

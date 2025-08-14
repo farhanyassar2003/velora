@@ -7,7 +7,7 @@ urlpatterns = [
     # ===========================# Admin Authentication# ===========================
     path('', views.admin_login, name='admin_login'),
     path('logout/', views.admin_logout_view, name='admin_logout'),
-    path('dashboard/', views.admin_dashboard, name='admin_dashboard'),
+    path('dashboard/', views.sales_report, name='sales_report'),
 
     # ===========================# User Management# ===========================
     path('users/', views.user_list, name='user_list'),
@@ -33,6 +33,22 @@ urlpatterns = [
     path('orders/', views.admin_order_list, name='admin_order_list'),
     path('orders/<str:order_id>/', views.admin_order_detail, name='admin_order_detail'),
     path('order/<str:order_id>/confirm-return/', views.confirm_return, name='confirm_return'),
+    path('product-offers/', views.product_offers, name='product_offers'),
+    path('category-offers/', views.category_offers, name='category_offers'),
+    path('manage-offer/product/', views.manage_offer, {'offer_type': 'product'}, name='manage_product_offer'),
+    path('manage-offer/category/', views.manage_offer, {'offer_type': 'category'}, name='manage_category_offer'),
+    path('manage-offer/referral/', views.manage_offer, {'offer_type': 'referral'}, name='manage_referral_offer'),
+    path('delete-offer/<str:offer_type>/<int:offer_id>/', views.delete_offer, name='delete_offer'),
+    path('toggle-active-offer/<str:offer_type>/<int:offer_id>/', views.toggle_active_offer, name='toggle_active_offer'),
+    
+    path('wallets/', views.wallet_list, name='wallet_list'),
+    path('transactions/', views.transaction_list, name='transaction_list'),
+    path('transactions/<str:transaction_id>/', views.transaction_detail, name='transaction_detail'),
+    
+    # AJAX endpoint for generating referral links
+    path('coupon-management/', views.coupon_management, name='coupon_management'),
+    
 ]
+  
 
 

@@ -1,288 +1,44 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Velora - User Management</title>
-    <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Bootstrap Icons -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
-    <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 {% extends 'adminside/base.html' %}
+{% load static %}
 
-{% block content %}
+{% block extra_head %}
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #f8f9fa;
-            color: #212529;
-        }
-
-        /* Main Content */
-        .main-content {
-            margin-left: 280px;
-            min-height: 100vh;
-            background: #f8f9fa;
-        }
-
-        .top-bar {
-            background: white;
-            padding: 20px 30px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-            border-bottom: 1px solid #e9ecef;
-        }
-
-        .page-title {
-            font-size: 2rem;
-            font-weight: 700;
-            color: #212529;
-            margin: 0;
-            display: flex;
-            align-items: center;
-            gap: 15px;
-        }
-
-        .page-title i {
-            color: #000;
-        }
-
-        .page-subtitle {
-            color: #6c757d;
-            font-size: 0.95rem;
-            margin-top: 5px;
-        }
-
+        /* Ensure content respects sidebar width */
         .content-area {
-            padding: 30px;
+            margin-left: 280px;
+            padding: 24px;
+            transition: margin-left 0.3s ease;
+            background-color: #f9fafb; /* Light gray background */
         }
 
-        /* Filter Section */
-        .filter-container {
-            background: white;
-            padding: 25px 30px;
-            border-radius: 15px;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
-            border: 1px solid #e9ecef;
-            margin-bottom: 30px;
+        @media (max-width: 768px) {
+            .content-area {
+                margin-left: 0;
+                padding: 16px;
+            }
         }
 
-        .filter-title {
-            font-size: 1.1rem;
-            font-weight: 600;
-            color: #212529;
-            margin-bottom: 20px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
+        /* Custom hover effect for cards */
+        .metric-card {
+            transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+        }
+        .metric-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            border-color: #4B0082; /* Indigo-900 */
         }
 
-        .filter-form {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            flex-wrap: wrap;
-        }
-
-        .filter-input {
-            min-width: 250px;
-            padding: 12px 16px;
-            border: 2px solid #e9ecef;
-            border-radius: 10px;
-            background: #f8f9fa;
-            color: #495057;
-            font-weight: 500;
-            transition: all 0.3s ease;
-        }
-
-        .filter-input:focus {
-            border-color: #000;
-            box-shadow: 0 0 0 0.2rem rgba(0, 0, 0, 0.1);
-            background: white;
-            outline: none;
-        }
-
-        .filter-btn {
-            background: #000;
-            color: white;
-            border: none;
-            padding: 12px 24px;
-            border-radius: 10px;
-            font-weight: 600;
-            transition: all 0.3s ease;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            font-size: 0.9rem;
-        }
-
-        .filter-btn:hover {
-            background: #333;
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
-        }
-
-        .clear-btn {
-            background: #f8f9fa;
-            color: #495057;
-            border: 2px solid #e9ecef;
-            padding: 10px 20px;
-            border-radius: 10px;
-            font-weight: 600;
-            transition: all 0.3s ease;
-        }
-
-        .clear-btn:hover {
-            background: #e9ecef;
-            border-color: #000;
-            color: #000;
-        }
-
-        /* Users Table */
-        .users-container {
-            background: white;
-            border-radius: 15px;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
-            border: 1px solid #e9ecef;
-            overflow: hidden;
-        }
-
-        .table-header {
-            padding: 25px 30px;
-            border-bottom: 1px solid #e9ecef;
-            background: #f8f9fa;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-
-        .table-title {
-            font-size: 1.4rem;
-            font-weight: 600;
-            color: #212529;
-            margin: 0;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .users-count {
-            background: #000;
-            color: white;
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-size: 0.8rem;
-            font-weight: 600;
-        }
-
-        .users-table {
-            margin: 0;
-            border: none;
-            width: 100%;
-        }
-
-        .users-table thead th {
-            background: #000;
-            color: white;
-            border: none;
-            padding: 20px 25px;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            font-size: 0.85rem;
-            text-align: center;
-        }
-
-        .users-table tbody td {
-            padding: 20px 25px;
-            border-top: 1px solid #e9ecef;
-            border-bottom: none;
-            vertical-align: middle;
-            text-align: center;
-        }
-
-        .users-table tbody tr:hover {
-            background: #f8f9fa;
-        }
-
-        /* User Info */
-        .user-id {
-            background: #000;
-            color: white;
-            padding: 6px 12px;
-            border-radius: 8px;
-            font-weight: 600;
-            font-size: 0.85rem;
-            display: inline-block;
-        }
-
-        .user-name {
-            font-weight: 600;
-            color: #212529;
-            font-size: 1rem;
-        }
-
-        .user-email {
-            color: #6c757d;
-            font-size: 0.9rem;
-        }
-
-        .user-mobile {
-            font-weight: 500;
-            color: #495057;
-        }
-
-        /* Action Buttons */
-        .action-buttons {
-            display: flex;
-            gap: 8px;
-            justify-content: center;
-        }
-
+        /* Custom button animations */
         .action-btn {
-            padding: 8px 16px;
-            border-radius: 8px;
-            border: none;
-            font-weight: 600;
-            font-size: 0.85rem;
             transition: all 0.3s ease;
-            cursor: pointer;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
         }
-
-        .block-btn {
-            background: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
-        }
-
-        .block-btn:hover:not(:disabled) {
-            background: #dc3545;
-            color: white;
+        .action-btn:hover:not(:disabled) {
             transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(220, 53, 69, 0.3);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
         }
-
-        .unblock-btn {
-            background: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
-        }
-
-        .unblock-btn:hover:not(:disabled) {
-            background: #28a745;
-            color: white;
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(40, 167, 69, 0.3);
-        }
-
         .action-btn:disabled {
             opacity: 0.5;
             cursor: not-allowed;
@@ -290,299 +46,215 @@
             box-shadow: none !important;
         }
 
-        /* Status Badge */
-        .status-badge {
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-size: 0.8rem;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
+        /* Custom styling for SweetAlert */
+        .swal2-popup {
+            border-radius: 12px !important;
+        }
+        .swal2-confirm, .swal2-cancel {
+            border-radius: 8px !important;
+            font-weight: 600 !important;
         }
 
-        .status-active {
-            background: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
+        /* Custom styling for form inputs and buttons */
+        .form-input {
+            height: 2rem; /* Reduced height for smaller inputs */
+            font-size: 0.875rem; /* Smaller font size */
         }
-
-        .status-blocked {
-            background: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
-        }
-
-        /* Empty State */
-        .empty-state {
-            text-align: center;
-            padding: 60px 30px;
-            color: #6c757d;
-        }
-
-        .empty-state i {
-            font-size: 4rem;
-            color: #dee2e6;
-            margin-bottom: 20px;
-        }
-
-        .empty-state h3 {
-            color: #495057;
-            margin-bottom: 10px;
-        }
-
-        /* Mobile Sidebar Toggle */
-        .sidebar-toggle {
-            display: none;
-            background: #000;
-            color: white;
-            border: none;
-            padding: 10px 15px;
-            border-radius: 5px;
-            margin-right: 15px;
-        }
-
-        /* Responsive Design */
-        @media (max-width: 768px) {
-            .sidebar-toggle {
-                display: inline-block;
-            }
-
-            .sidebar {
-                transform: translateX(-100%);
-            }
-
-            .sidebar.show {
-                transform: translateX(0);
-            }
-
-            .main-content {
-                margin-left: 0;
-            }
-
-            .content-area {
-                padding: 20px 15px;
-            }
-
-            .top-bar {
-                padding: 15px 20px;
-            }
-
-            .page-title {
-                font-size: 1.5rem;
-            }
-
-            .filter-form {
-                flex-direction: column;
-                align-items: stretch;
-            }
-
-            .filter-input {
-                min-width: auto;
-                width: 100%;
-            }
-
-            .users-table thead th,
-            .users-table tbody td {
-                padding: 15px 10px;
-                font-size: 0.85rem;
-            }
-
-            .action-buttons {
-                flex-direction: column;
-            }
-
-            .table-header {
-                flex-direction: column;
-                gap: 15px;
-                text-align: center;
-            }
+        .form-button {
+            height: 2rem; /* Match input height */
+            font-size: 0.875rem; /* Smaller font size */
+            padding: 0 1.5rem; /* Reduced padding for smaller buttons */
         }
     </style>
-</head>
-<body>
+{% endblock %}
 
-    <!-- Main Content -->
-    <div class="main-content">
-        <!-- Top Bar -->
-        <div class="top-bar d-flex align-items-center">
-            <button class="sidebar-toggle" onclick="toggleSidebar()">
-                <i class="bi bi-list"></i>
-            </button>
-            <div>
-                <h1 class="page-title">
-                    <i class="bi bi-people"></i>
-                    User Management
-                </h1>
-                <p class="page-subtitle">Manage user accounts, permissions, and access control</p>
+{% block content %}
+<div class="content-area">
+    <div class="container mx-auto">
+        <h1 class="text-4xl font-extrabold text-gray-900 mb-8">User Management</h1>
+        <p class="text-gray-600 mb-8">Manage user accounts, permissions, and access control</p>
+
+        <!-- Filter Section -->
+        {% if form %}
+        <div class="mb-8 bg-white p-6 rounded-xl shadow-lg border border-gray-200">
+            <div class="flex items-center mb-4">
+                <svg class="w-5 h-5 text-indigo-900 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path>
+                </svg>
+                <h2 class="text-xl font-semibold text-gray-900">Search & Filter Users</h2>
+            </div>
+            
+            <form method="get" action="{% url 'adminside:user_list' %}" class="flex flex-col md:flex-row gap-4 items-center">
+                <div class="flex flex-1 gap-4 items-center">
+                    <div class="flex-1">
+                        <label class="block text-sm font-semibold text-gray-800 mb-2" for="id_search">Search</label>
+                        <input type="text" name="search" id="id_search" value="{{ form.search.value|default_if_none:'' }}" class="form-input w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-900 focus:border-indigo-900" placeholder="Search users...">
+                    </div>
+                    <div class="flex-1">
+                        <label class="block text-sm font-semibold text-gray-800 mb-2" for="id_status">Status</label>
+                        <select name="status" id="id_status" class="form-input w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-900 focus:border-indigo-900">
+                            {% for value, label in form.status.field.choices %}
+                                <option value="{{ value }}" {% if form.status.value == value %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="flex gap-3">
+                        <button type="submit" class="form-button bg-indigo-900 text-white rounded-lg hover:bg-teal-500 transition-colors font-semibold flex items-center">
+                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                            </svg>
+                            Search
+                        </button>
+                        {% if request.GET.search or request.GET.status != 'all' and request.GET.status %}
+                        <button type="button" onclick="clearSearch()" class="form-button bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors font-semibold flex items-center">
+                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                            Clear
+                        </button>
+                        {% endif %}
+                    </div>
+                </div>
+            </form>
+        </div>
+        {% else %}
+        <div class="mb-8 bg-white p-6 rounded-xl shadow-lg border border-gray-200">
+            <div class="text-center py-8">
+                <svg class="w-12 h-12 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.35 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                </svg>
+                <h3 class="text-lg font-medium text-gray-900 mb-2">Filter Not Available</h3>
+                <p class="text-gray-600">No filter form is currently available.</p>
             </div>
         </div>
+        {% endif %}
 
-        <!-- Content Area -->
-        <div class="content-area">
-            <!-- Filter Section -->
-            {% if form %}
-            <div class="filter-container">
-                <div class="filter-title">
-                    <i class="bi bi-funnel"></i>
-                    Search & Filter Users
+        <!-- Users Table -->
+        <div class="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
+            <div class="px-6 py-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
+                <div class="flex items-center">
+                    <svg class="w-5 h-5 text-indigo-900 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"></path>
+                    </svg>
+                    <h3 class="text-xl font-semibold text-gray-900">User List</h3>
                 </div>
-                <form method="get" action="{% url 'adminside:user_list' %}" class="filter-form">
-                    {{ form.as_p }}
-                    <button type="submit" class="filter-btn">
-                        <i class="bi bi-search"></i>
-                        Search
-                    </button>
-                    <button type="button" class="clear-btn" onclick="clearSearch()">
-                        <i class="bi bi-x-circle"></i>
-                        Clear
-                    </button>
-                </form>
+                {% if users %}
+                <span class="bg-indigo-900 text-white px-3 py-1 rounded-full text-sm font-semibold">
+                    {{ users|length }} Users
+                </span>
+                {% endif %}
             </div>
-            {% else %}
-            <div class="filter-container">
-                <div class="empty-state">
-                    <i class="bi bi-exclamation-triangle"></i>
-                    <h5>Filter Not Available</h5>
-                    <p>No filter form is currently available.</p>
+
+            {% if users %}
+            <div class="overflow-x-auto">
+                <table class="w-full table-auto">
+                    <thead>
+                        <tr class="bg-indigo-900 text-white">
+                            <th class="px-6 py-4 text-left font-semibold">ID</th>
+                            <th class="px-6 py-4 text-left font-semibold">User Info</th>
+                            <th class="px-6 py-4 text-left font-semibold">Email</th>
+                            <th class="px-6 py-4 text-left font-semibold">Mobile</th>
+                            <th class="px-6 py-4 text-center font-semibold">Status</th>
+                            <th class="px-6 py-4 text-center font-semibold">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for user in users %}
+                        <tr class="{% cycle 'bg-white' 'bg-gray-50' %} hover:bg-blue-50 transition-colors">
+                            <td class="border-b border-gray-200 px-6 py-4">
+                                <span class="bg-indigo-900 text-white px-3 py-1 rounded-lg text-sm font-semibold">
+                                    #{{ user.id|default:"N/A" }}
+                                </span>
+                            </td>
+                            <td class="border-b border-gray-200 px-6 py-4">
+                                <div class="font-semibold text-gray-900">{{ user.username|default:"N/A" }}</div>
+                                <div class="text-sm text-gray-600">{{ user.first_name|default:"" }} {{ user.last_name|default:"" }}</div>
+                            </td>
+                            <td class="border-b border-gray-200 px-6 py-4">
+                                <div class="text-gray-700">{{ user.email|default:"N/A" }}</div>
+                            </td>
+                            <td class="border-b border-gray-200 px-6 py-4">
+                                <div class="text-gray-700 font-medium">{{ user.phone_number|default:"N/A" }}</div>
+                            </td>
+                            <td class="border-b border-gray-200 px-6 py-4 text-center">
+                                <span id="status-{{ user.id }}" class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium
+                                    {% if user.status == 'active' %}bg-green-100 text-green-800{% else %}bg-red-100 text-red-800{% endif %}">
+                                    {{ user.status|default:"active"|capfirst }}
+                                </span>
+                            </td>
+                            <td class="border-b border-gray-200 px-6 py-4">
+                                {% csrf_token %}
+                                <div class="flex justify-center">
+                                    <button type="button" 
+                                            class="action-btn toggle-user-btn px-4 py-2 rounded-lg font-medium text-sm transition-all
+                                                {% if user.status == 'active' %}bg-red-500 hover:bg-red-600 text-white{% else %}bg-green-500 hover:bg-green-600 text-white{% endif %}"
+                                            data-user-id="{{ user.id }}"
+                                            data-action="{% if user.status == 'active' %}block{% else %}unblock{% endif %}">
+                                        <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            {% if user.status == 'active' %}
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728L5.636 5.636m12.728 12.728L18.364 5.636A9 9 0 015.636 18.364"></path>
+                                            {% else %}
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                            {% endif %}
+                                        </svg>
+                                        {% if user.status == 'active' %}Block{% else %}Unblock{% endif %}
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination Section -->
+            {% if users.has_other_pages %}
+            <div class="px-6 py-4 border-t border-gray-200 bg-gray-50 flex justify-center items-center">
+                <div class="flex gap-2">
+                    {% if users.has_previous and users.number > 1 %}
+                    <a href="?page={{ users.previous_page_number }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}"
+                       class="px-3 py-1 bg-indigo-900 text-white rounded-lg hover:bg-teal-500 transition-colors text-sm">
+                        Previous
+                    </a>
+                    {% endif %}
+                    {% for num in users.paginator.page_range %}
+                    <a href="?page={{ num }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}"
+                       class="px-3 py-1 {% if users.number == num %}bg-indigo-900 text-white{% else %}bg-gray-200 text-gray-700 hover:bg-gray-300{% endif %} rounded-lg transition-colors text-sm">
+                        {{ num }}
+                    </a>
+                    {% endfor %}
+                    {% if users.has_next %}
+                    <a href="?page={{ users.next_page_number }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}"
+                       class="px-3 py-1 bg-indigo-900 text-white rounded-lg hover:bg-teal-500 transition-colors text-sm">
+                        Next
+                    </a>
+                    {% endif %}
                 </div>
             </div>
             {% endif %}
-
-
-
-            <!-- Users Table -->
-            <div class="users-container">
-                <div class="table-header">
-                    <h3 class="table-title">
-                        <i class="bi bi-list-ul"></i>
-                        User List
-                    </h3>
-                    {% if users %}
-                        <span class="users-count">{{ users|length }} Users</span>
-                    {% endif %}
-                </div>
-                
-
-
-                 {% if users %}
-                    <div class="table-responsive">
-                        <table class="table users-table">
-                            <thead>
-                                <tr>
-                                    <th>ID</th>
-                                    <th>User Info</th>
-                                    <th>Email</th>
-                                    <th>Mobile</th>
-                                    <th>Status</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for user in users %}
-                                    <tr>
-                                        <td>
-                                            <span class="user-id">#{{ user.id|default:"N/A" }}</span>
-                                        </td>
-                                        <td>
-                                            <div class="user-name">{{ user.username|default:"N/A" }}</div>
-                                            <div class="user-email">{{ user.first_name|default:"" }} {{ user.user.last_name|default:"" }}</div>
-                                        </td>
-                                        <td>
-                                            <div class="user-email">{{ user.email|default:"N/A" }}</div>
-                                        </td>
-                                        <td>
-                                            <div class="user-mobile">{{ user.phone_number|default:"N/A" }}</div>
-                                        </td>
-                                        <td>
-                                            <span id="status-{{ user.id }}" class="status-badge {% if user.status == 'active' %}status-active{% else %}status-blocked{% endif %}">
-                                                {{ user.status|default:"active" }}
-                                            </span>
-                                        </td>
-                                        <td>
-                                            {% csrf_token %}
-                                            <div class="action-buttons">
-                                                <button type="button" class="action-btn block-btn toggle-user-btn"
-                                                        data-user-id="{{ user.id }}"
-                                                        data-action="block"
-                                                        {% if user.status == 'blocked' %}disabled{% endif %}>
-                                                    <i class="bi bi-ban"></i> Block
-                                                </button>
-                                                <button type="button" class="action-btn unblock-btn toggle-user-btn"
-                                                        data-user-id="{{ user.id }}"
-                                                        data-action="unblock"
-                                                        {% if user.status == 'active' %}disabled{% endif %}>
-                                                    <i class="bi bi-check-circle"></i> Unblock
-                                                </button>
-                                            </div>
-                
-                                        </td>
-                                    </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                {% else %}
-                    <div class="empty-state">
-                        <i class="bi bi-people"></i>
-                        <h3>No Users Found</h3>
-                        <p>No users match your current search criteria.</p>
-                    </div>
-                {% endif %}
+            {% else %}
+            <div class="text-center py-12">
+                <svg class="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"></path>
+                </svg>
+                <h3 class="text-xl font-medium text-gray-900 mb-2">No Users Found</h3>
+                <p class="text-gray-600">No users match your current search criteria.</p>
             </div>
+            {% endif %}
         </div>
     </div>
-
-    <!-- Bootstrap JS -->
-  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</div>
 
 <script>
-    function toggleSidebar() {
-        const sidebar = document.getElementById('sidebar');
-        sidebar.classList.toggle('show');
-    }
-
-    // Close sidebar when clicking outside on mobile
-    document.addEventListener('click', function(event) {
-        const sidebar = document.getElementById('sidebar');
-        const toggle = document.querySelector('.sidebar-toggle');
-        
-        if (window.innerWidth <= 768) {
-            if (!sidebar.contains(event.target) && !toggle.contains(event.target)) {
-                sidebar.classList.remove('show');
-            }
-        }
-    });
-
-    // Handle window resize
-    window.addEventListener('resize', function() {
-        const sidebar = document.getElementById('sidebar');
-        if (window.innerWidth > 768) {
-            sidebar.classList.remove('show');
-        }
-    });
-
     function clearSearch() {
-        const form = document.querySelector('.filter-form');
-        if (!form) return;
-
-        form.querySelector('input[name="search"]').value = '';
-        form.querySelector('select[name="status"]').value = 'all';
-        form.submit();
+        window.location.href = "{% url 'adminside:user_list' %}";
     }
 
-    function confirmAction(form, currentStatus) {
-        const action = form.querySelector('button:not([disabled])').value;
-        const actionText = action === 'block' ? 'block' : 'unblock';
-        return confirm(`Are you sure you want to ${actionText} this user?`);
-    }
-
-    // Add classes to form fields
+    // Add styling to form fields
     document.addEventListener('DOMContentLoaded', function() {
         const formFields = document.querySelectorAll('input, select, textarea');
         formFields.forEach(field => {
-            field.classList.add('filter-input');
+            field.classList.add('w-full', 'p-2', 'border', 'border-gray-300', 'rounded-lg', 'focus:ring-2', 'focus:ring-indigo-900', 'focus:border-indigo-900', 'form-input');
         });
     });
 
@@ -599,47 +271,104 @@
                 text: `Are you sure you want to ${action} this user?`,
                 icon: action === 'block' ? 'warning' : 'question',
                 showCancelButton: true,
-                confirmButtonColor: action === 'block' ? '#d33' : '#3085d6',
-                cancelButtonColor: '#6c757d',
-                confirmButtonText: action === 'block' ? 'Yes, block them' : 'Yes, unblock them'
+                confirmButtonColor: action === 'block' ? '#ef4444' : '#4B0082',
+                cancelButtonColor: '#6b7280',
+                confirmButtonText: action === 'block' ? 'Yes, block them' : 'Yes, unblock them',
+                customClass: {
+                    popup: 'rounded-xl',
+                    confirmButton: 'rounded-lg',
+                    cancelButton: 'rounded-lg'
+                }
             }).then((result) => {
                 if (result.isConfirmed) {
+                    // Disable button during request
+                    button.prop('disabled', true).addClass('opacity-50');
+
                     $.ajax({
                         url: `/adminside/users/toggle_status/${userId}/`,
                         method: 'POST',
                         headers: {
-                            'X-CSRFToken': '{{ csrf_token }}',
+                            'X-CSRFToken': $('input[name=csrfmiddlewaretoken]').val(),
                         },
                         data: { action: action },
                         success: function (response) {
                             if (response.success) {
                                 const statusSpan = $(`#status-${userId}`);
-                                const blockBtn = $(`button[data-user-id="${userId}"][data-action="block"]`);
-                                const unblockBtn = $(`button[data-user-id="${userId}"][data-action="unblock"]`);
+                                const toggleBtn = $(`button[data-user-id="${userId}"]`);
 
                                 if (response.status === 'active') {
-                                    statusSpan.text('active').removeClass('status-blocked').addClass('status-active');
-                                    blockBtn.prop('disabled', false);
-                                    unblockBtn.prop('disabled', true);
+                                    // User is now active - show block button
+                                    statusSpan
+                                        .text('Active')
+                                        .removeClass('bg-red-100 text-red-800')
+                                        .addClass('bg-green-100 text-green-800');
+                                    
+                                    toggleBtn
+                                        .removeClass('bg-green-500 hover:bg-green-600')
+                                        .addClass('bg-red-500 hover:bg-red-600')
+                                        .html(`
+                                            <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728L5.636 5.636m12.728 12.728L18.364 5.636A9 9 0 015.636 18.364"></path>
+                                            </svg>
+                                            Block
+                                        `)
+                                        .data('action', 'block');
                                 } else {
-                                    statusSpan.text('blocked').removeClass('status-active').addClass('status-blocked');
-                                    blockBtn.prop('disabled', true);
-                                    unblockBtn.prop('disabled', false);
+                                    // User is now blocked - show unblock button
+                                    statusSpan
+                                        .text('Blocked')
+                                        .removeClass('bg-green-100 text-green-800')
+                                        .addClass('bg-red-100 text-red-800');
+                                    
+                                    toggleBtn
+                                        .removeClass('bg-red-500 hover:bg-red-600')
+                                        .addClass('bg-green-500 hover:bg-green-600')
+                                        .html(`
+                                            <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                            </svg>
+                                            Unblock
+                                        `)
+                                        .data('action', 'unblock');
                                 }
 
                                 Swal.fire({
                                     title: 'Success!',
-                                    text: `User has been ${action}ed.`,
+                                    text: `User has been ${action}ed successfully.`,
                                     icon: 'success',
-                                    timer: 1500,
-                                    showConfirmButton: false
+                                    timer: 2000,
+                                    showConfirmButton: false,
+                                    customClass: {
+                                        popup: 'rounded-xl'
+                                    }
                                 });
                             } else {
-                                Swal.fire('Error', response.error || 'Action failed. Please try again.', 'error');
+                                Swal.fire({
+                                    title: 'Error',
+                                    text: response.error || 'Action failed. Please try again.',
+                                    icon: 'error',
+                                    customClass: {
+                                        popup: 'rounded-xl',
+                                        confirmButton: 'rounded-lg'
+                                    }
+                                });
                             }
                         },
-                        error: function () {
-                            Swal.fire('Error', 'An error occurred. Please try again.', 'error');
+                        error: function (xhr, status, error) {
+                            console.error('AJAX Error:', error);
+                            Swal.fire({
+                                title: 'Error',
+                                text: 'An error occurred. Please try again.',
+                                icon: 'error',
+                                customClass: {
+                                    popup: 'rounded-xl',
+                                    confirmButton: 'rounded-lg'
+                                }
+                            });
+                        },
+                        complete: function() {
+                            // Re-enable button
+                            button.prop('disabled', false).removeClass('opacity-50');
                         }
                     });
                 }
@@ -647,7 +376,4 @@
         });
     });
 </script>
-
-</body>
-</html>
 {% endblock %}

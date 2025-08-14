@@ -1,138 +1,170 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Edit Category</title>
-    <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+{% extends 'adminside/base.html' %}
+{% load static %}
+
+{% block extra_head %}
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <style>
-        /* Custom styles for consistency and enhancement */
-        body {
-            background-color: #f8f9fa; /* Light gray background for the page */
+        /* Adjust content to prevent overlap with fixed sidebar */
+        .edit-product-content {
+            margin-left: 280px; /* Matches sidebar width */
+            padding: 24px;
+            transition: margin-left 0.3s ease;
+            background-color: #f9fafb; /* Light gray background */
         }
-        .add-category-page {
-            background: white;
-            border-radius: 15px;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
-            border: 1px solid #e9ecef;
-            padding: 30px;
-            margin-top: 30px;
-            margin-bottom: 30px;
+
+        @media (max-width: 768px) {
+            .edit-product-content {
+                margin-left: 0; /* No sidebar overlap on mobile */
+                padding: 16px;
+            }
         }
-        .add-category-page h2 {
-            font-size: 2rem;
-            font-weight: 700;
-            margin-bottom: 20px;
-            color: #343a40;
-        }
-        /* Adjust form control padding and border for a softer look */
+
+        /* Form control styling */
         .form-control {
+            width: 100%;
             padding: 10px 15px;
-            border-radius: 10px;
-            border: 1px solid #ced4da;
+            border: 1px solid #e5e7eb; /* gray-200 */
+            border-radius: 0.375rem; /* rounded-lg */
+            font-size: 0.875rem;
+            transition: all 0.3s ease;
         }
         .form-control:focus {
-            border-color: #80bdff;
-            box-shadow: 0 0 0 0.25rem rgba(0, 123, 255, 0.25);
+            border-color: #4B0082; /* indigo-900 */
+            box-shadow: 0 0 0 0.2rem rgba(75, 0, 130, 0.25);
+            outline: none;
         }
-        .btn-primary {
-            background-color: #000;
-            border-color: #000;
-            padding: 12px 24px;
-            border-radius: 10px;
-            font-weight: 600;
-            transition: all 0.3s ease;
+
+        /* Checkbox styling */
+        .form-check {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem; /* Space between checkbox and label */
         }
-        .btn-primary:hover {
-            background-color: #333;
-            border-color: #333;
+        .form-check-input {
+            width: 1.25rem;
+            height: 1.25rem;
+            border: 1px solid #e5e7eb; /* gray-200 */
+            border-radius: 0.25rem;
         }
-        .btn-secondary {
-            background-color: #6c757d;
-            border-color: #6c757d;
-            padding: 12px 24px;
-            border-radius: 10px;
-            font-weight: 600;
-            transition: all 0.3s ease;
+        .form-check-input:checked {
+            background-color: #4B0082; /* indigo-900 */
+            border-color: #4B0082;
         }
-        .btn-secondary:hover {
-            background-color: #5a6268;
-            border-color: #545b62;
-        }
-        .alert {
-            border-radius: 10px;
-        }
-        .errorlist {
-            color: #dc3545;
-            font-size: 0.9em;
-            margin-top: 5px;
-            padding-left: 0; /* Remove default ul padding */
-        }
-        .errorlist li {
-            list-style: none;
-            margin-bottom: 5px;
-        }
-        /* Specific styling for checkbox labels to align with Bootstrap's form-check */
-        .form-check .form-check-label {
-            margin-left: 0.5rem; /* Space between checkbox and label */
+        .form-check-input:focus {
+            box-shadow: 0 0 0 0.2rem rgba(75, 0, 130, 0.25);
+            outline: none;
         }
     </style>
-</head>
-<body>
-    <div class="container">
-        <div class="add-category-page">
-            <h2>Edit Category</h2>
+{% endblock %}
 
-            <form method="POST" action="{% url 'adminside:edit_category' category.id %}">
-                {% csrf_token %}
+{% block content %}
+<div class="edit-product-content">
+    <div class="container mx-auto">
+        <h1 class="text-4xl font-extrabold text-gray-900 mb-8 flex items-center gap-3">
+            <i class="bi bi-pencil-square"></i> Edit Category: {{ category.name }}
+        </h1>
 
-                {% if form.errors %}
-                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                        <h4 class="alert-heading">Please correct the following errors:</h4>
-                        <ul class="errorlist">
-                            {% for field in form %}
-                                {% for error in field.errors %}
-                                    <li><strong>{{ field.label }}:</strong> {{ error }}</li>
-                                {% endfor %}
-                            {% endfor %}
-                            {% for error in form.non_field_errors %}
-                                <li>{{ error }}</li>
-                            {% endfor %}
-                        </ul>
-                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        {% if form.errors %}
+            <div class="mb-6 bg-red-50 border border-red-200 rounded-xl shadow-lg p-4">
+                <div class="flex">
+                    <div class="flex-shrink-0">
+                        <svg class="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+                        </svg>
                     </div>
-                {% endif %}
+                    <div class="ml-3">
+                        <h3 class="text-sm font-medium text-red-800">Please correct the following errors:</h3>
+                        <div class="mt-2 text-sm text-red-700">
+                            <ul class="list-disc list-inside space-y-1">
+                                {% for field in form %}
+                                    {% for error in field.errors %}
+                                        <li>{{ field.label }}: {{ error }}</li>
+                                    {% endfor %}
+                                {% endfor %}
+                                {% for error in form.non_field_errors %}
+                                    <li>{{ error }}</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    </div>
+                    <button type="button" class="ml-auto text-red-700 hover:text-red-900" data-bs-dismiss="alert" aria-label="Close">
+                        <i class="bi bi-x"></i>
+                    </button>
+                </div>
+            </div>
+        {% endif %}
 
-                <div class="mb-3">
-                    <label for="{{ form.name.id_for_label }}" class="form-label">Name:</label>
-                    {{ form.name }}
+        <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-200">
+            <form id="category-form" method="POST" action="{% url 'adminside:edit_category' category.id %}">
+                {% csrf_token %}
+                <div class="mb-8 pb-6 border-b border-gray-200">
+                    <h4 class="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                        <i class="bi bi-info-circle"></i> Category Details
+                    </h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="form-group">
+                            <label for="{{ form.name.id_for_label }}" class="block text-sm font-semibold text-gray-800 mb-2">{{ form.name.label }}</label>
+                            {{ form.name }}
+                            {% if form.name.help_text %}
+                                <small class="text-gray-600 text-sm mt-1">{{ form.name.help_text }}</small>
+                            {% endif %}
+                            {% if form.name.errors %}
+                                <div class="text-red-600 text-sm mt-2">{{ form.name.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="form-group md:col-span-2">
+                            <label for="{{ form.description.id_for_label }}" class="block text-sm font-semibold text-gray-800 mb-2">{{ form.description.label }}</label>
+                            {{ form.description }}
+                            {% if form.description.help_text %}
+                                <small class="text-gray-600 text-sm mt-1">{{ form.description.help_text }}</small>
+                            {% endif %}
+                            {% if form.description.errors %}
+                                <div class="text-red-600 text-sm mt-2">{{ form.description.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="form-group flex items-center gap-2">
+                            {{ form.is_listed }}
+                            <label for="{{ form.is_listed.id_for_label }}" class="text-sm font-semibold text-gray-800">{{ form.is_listed.label }}</label>
+                            {% if form.is_listed.errors %}
+                                <div class="text-red-600 text-sm mt-2">{{ form.is_listed.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="form-group flex items-center gap-2">
+                            {{ form.is_deleted }}
+                            <label for="{{ form.is_deleted.id_for_label }}" class="text-sm font-semibold text-gray-800">{{ form.is_deleted.label }}</label>
+                            {% if form.is_deleted.errors %}
+                                <div class="text-red-600 text-sm mt-2">{{ form.is_deleted.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
                 </div>
 
-                <div class="mb-3">
-                    <label for="{{ form.description.id_for_label }}" class="form-label">Description:</label>
-                    {{ form.description }}
-                </div>
-
-                <div class="mb-3 form-check">
-                    {{ form.is_listed }}
-                    <label for="{{ form.is_listed.id_for_label }}" class="form-check-label">List / Unlist</label>
-                </div>
-
-                <div class="mb-3 form-check">
-                    {{ form.is_deleted }}
-                    <label for="{{ form.is_deleted.id_for_label }}" class="form-check-label">Deleted</label>
-                </div>
-
-                <div class="d-flex justify-content-start mt-4">
-                    <button type="submit" class="btn btn-primary me-2">Save</button>
-                    <a href="{% url 'adminside:category_list' %}" class="btn btn-secondary">Back to Categories</a>
+                <div class="pt-6 border-t border-gray-200 text-center">
+                    <a href="{% url 'adminside:category_list' %}" class="bg-gray-100 text-gray-800 p-2 rounded-lg hover:bg-gray-200 transition-colors text-sm mr-2">
+                        <i class="bi bi-x-circle"></i> Cancel
+                    </a>
+                    <button type="submit" class="bg-indigo-900 text-white p-2 rounded-lg hover:bg-teal-500 transition-colors text-sm">
+                        <i class="bi bi-check-circle"></i> Save Category
+                    </button>
                 </div>
             </form>
         </div>
     </div>
+</div>
 
-    <!-- Bootstrap Bundle with Popper -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
-</body>
-</html>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Style form inputs
+        const inputs = document.querySelectorAll('input.form-control, textarea.form-control');
+        inputs.forEach(input => {
+            input.classList.add('w-full', 'p-3', 'border', 'border-gray-300', 'rounded-lg', 'focus:ring-2', 'focus:ring-indigo-900', 'focus:border-indigo-900');
+        });
+        // Style textarea specifically
+        const textareas = document.querySelectorAll('textarea.form-control');
+        textareas.forEach(textarea => {
+            textarea.classList.add('min-h-24');
+        });
+    });
+</script>
+{% endblock %}

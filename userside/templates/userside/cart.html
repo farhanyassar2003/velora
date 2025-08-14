@@ -212,6 +212,17 @@
         @keyframes fadeOut {
             to { opacity: 0; }
         }
+        /* Price Display */
+        .original-price {
+            text-decoration: line-through;
+            color: var(--gray-500);
+            margin-right: 0.5rem;
+        }
+        .discount-info {
+            color: #dc3545;
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
         /* Responsive Design */
         @media (max-width: 768px) {
             .page-title {
@@ -273,7 +284,7 @@
                     <div class="col-lg-8">
                         <div class="space-y-6">
                             {% for item in cart_items %}
-                                <div class="card d-flex flex-column flex-md-row align-items-center p-4 p-md-6 mb-4 cart-item-card" data-item-id="{{ item.id }}">
+                                <div class="card d-flex flex-column flex-md-row align-items-center p-4 p-md-6 mb-4 cart-item-card" data-item-id="{{ item.id }}" data-stock="{{ item.stock|default:0 }}" data-price="{{ item.discounted_price|floatformat:2 }}">
                                     <div class="product-image-container me-md-4 me-lg-6 mb-3 mb-md-0">
                                         <img src="{% if item.product.get_primary_image %}{{ item.product.get_primary_image }}{% else %}https://via.placeholder.com/300x300/f3f4f6/9ca3af?text=Product{% endif %}"
                                              alt="{{ item.product.name }}" class="product-image">
@@ -283,7 +294,6 @@
                                             <h3 class="font-semibold fs-5 text-primaryBlack lh-sm mb-1">{{ item.product.name }}</h3>
                                             <p class="text-sm text-gray-600">Color: {{ item.color_name|default:"N/A" }}</p>
                                             <p class="text-sm text-gray-600">Size: {{ item.size|default:"N/A" }}</p>
-                                            <p class="text-sm text-gray-600">Description: {{ item.product.description|default:"No description" }}</p>
                                             <p class="text-sm text-gray-600">Material: {{ item.product.materials|default:"No material info" }}</p>
                                         </div>
                                         <div class="d-flex align-items-center justify-content-start justify-content-md-center gap-2 col-span-1 quantity-control">
@@ -296,9 +306,19 @@
                                             </form>
                                         </div>
                                         <div class="d-flex flex-column align-items-start align-items-md-end col-span-1">
-                                            <p class="fs-5 fw-bold text-primaryBlack">₹<span id="subtotal_{{ item.id }}">{{ item.subtotal|floatformat:2 }}</span></p>
-                                            <p class="text-sm text-gray-500" data-price="{{ item.product.price|floatformat:2 }}">₹{{ item.product.price|floatformat:2 }} each</p>
-                                            <p class="text-sm text-gray-600">Stock Limit: {{ item.stock|default:"N/A" }}</p>
+                                            <p class="fs-5 fw-bold text-primaryBlack">₹<span id="subtotal_{{ item.id }}">{{ item.subtotal_value|floatformat:2 }}</span></p>
+                                            <p class="text-sm text-gray-500">
+                                                {% if item.discount %}
+                                                    <span class="original-price">₹{{ item.original_price|floatformat:2 }}</span>
+                                                    <span>₹{{ item.discounted_price|floatformat:2 }}</span>
+                                                    <br>
+                                                    <span class="discount-info">Save ₹{{ item.discount|floatformat:2 }} ({{ item.offer.discount_percentage|floatformat:0 }}% off - {{ item.offer_type }})</span>
+                                                {% else %}
+                                                    <span>₹{{ item.original_price|floatformat:2 }}</span>
+                                                {% endif %}
+                                                <span> each</span>
+                                            </p>
+                                            <p class="text-sm text-gray-600" data-stock-display>Stock: {{ item.stock|default:0 }}</p>
                                         </div>
                                     </div>
                                     <a href="{% url 'userside:remove_from_cart' item.id %}" class="btn btn-link remove-btn ms-md-4 ms-lg-6 mt-3 mt-md-0">
@@ -331,10 +351,10 @@
                                 <span>Total</span>
                                 <span class="fw-semibold" id="total">₹{{ total|floatformat:2 }}</span>
                             </div>
-                            <a href="{% url 'userside:checkout' %}" class="btn-primary-black w-100 mt-4">
+                            <button onclick="proceedToCheckout()" class="btn-primary-black w-100 mt-4">
                                 Proceed to Checkout
                                 <i class="bi bi-arrow-right ms-2"></i>
-                            </a>
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -367,12 +387,32 @@
             toast.textContent = message;
             toast.className = 'toast';
             if (type === 'error') {
-                toast.style.backgroundColor = '#dc3545'; // Red for stock limit
+                toast.style.backgroundColor = '#dc3545';
             } else if (type === 'warning') {
-                toast.style.backgroundColor = '#ffc107'; // Yellow for max limit
+                toast.style.backgroundColor = '#ffc107';
             }
             toast.classList.add('show');
             setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+
+        function proceedToCheckout() {
+            let outOfStock = false;
+            document.querySelectorAll('.cart-item-card').forEach(card => {
+                const itemId = card.getAttribute('data-item-id');
+                const stock = parseInt(card.getAttribute('data-stock'), 10) || 0;
+                console.log(`Item ${itemId} stock: ${stock}`);
+                if (stock <= 0) {
+                    outOfStock = true;
+                }
+            });
+
+            if (outOfStock) {
+                console.log('Out of stock detected, showing toast');
+                showToast('One or more items are out of stock. Please remove them to proceed.', 'error');
+            } else {
+                console.log('All items in stock, proceeding to checkout');
+                window.location.href = '{% url "userside:checkout" %}';
+            }
         }
 
         function changeQuantity(itemId, action, stockLimit) {
@@ -398,7 +438,6 @@
                 newQuantity = currentQuantity - 1;
             }
 
-            // Update via AJAX using the form's action URL
             const form = document.getElementById(`quantityForm_${itemId}`);
             const formData = new FormData(form);
             formData.append('quantity', newQuantity);
@@ -476,14 +515,13 @@
             const totalDisplay = document.getElementById('total');
             if (subtotalDisplay && totalDisplay) {
                 subtotalDisplay.textContent = `₹${subtotal.toFixed(2)}`;
-                totalDisplay.textContent = `₹${subtotal.toFixed(2)}`; // Assuming no tax/shipping changes
+                totalDisplay.textContent = `₹${subtotal.toFixed(2)}`;
                 console.log(`Updated totals: Subtotal ₹${subtotal.toFixed(2)}, Total ₹${subtotal.toFixed(2)}`);
             } else {
                 console.error('Subtotal or total display elements not found');
             }
         }
 
-        // Initialize totals on page load
         document.addEventListener('DOMContentLoaded', updateCartTotals);
     </script>
 {% endblock %}
