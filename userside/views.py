@@ -841,7 +841,10 @@ def clear_filters(request):
 # ===========================# User Profile and Address Management# ===========================
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render
+from django.contrib import messages
+from django.contrib.messages import get_messages
 from adminside.models import Order, Address
+from django.contrib.auth import get_user_model
 
 @login_required(login_url='userside:login')
 def user_profile(request):
@@ -849,10 +852,18 @@ def user_profile(request):
     orders = Order.objects.filter(user=user).order_by('-created_at')
     user_addresses = Address.objects.filter(user=user)
     
-    # Fix: Count users where this user is the referrer
-    from django.contrib.auth import get_user_model
+    # Count users where this user is the referrer
     User = get_user_model()
     referred_count = User.objects.filter(referred_by=user).count()
+
+    # Clear existing messages to prevent stacking
+    storage = get_messages(request)
+    for message in storage:
+        pass  # Iterate to mark messages as used
+    storage.used = True
+
+    # Add a new message only if necessary (e.g., for a welcome message)
+    # Example: messages.success(request, "Welcome to your profile!")
 
     context = {
         'user': user,
@@ -2044,10 +2055,6 @@ def place_order(request):
 
     return redirect('userside:checkout')
 
-from django.shortcuts import render, get_object_or_404
-from django.contrib.auth.decorators import login_required
-from pytz import timezone as pytz_timezone
-
 from django.shortcuts import render, get_object_or_404, HttpResponseRedirect
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_POST
@@ -2089,6 +2096,7 @@ def order_detail(request, order_id):
         'is_paid': is_paid,
     }
     return render(request, 'userside/orders/order_detail.html', context)
+
 @login_required(login_url='userside:login')
 def initiate_payment(request, order_id):
     """Enhanced payment initiation without stock deduction"""
@@ -2464,9 +2472,8 @@ def order_failure(request, order_id):
         log_payment_event('FAILURE_PAGE_ERROR', order_id, error=str(e))
         messages.error(request, "Error loading order details.")
         return redirect('userside:checkout')
+    
 from django.http import JsonResponse, HttpResponseBadRequest
-import re
-
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from adminside.models import Address
@@ -2590,7 +2597,6 @@ def wishlist_page(request):
     wishlist_items = Wishlist.objects.filter(user=request.user).select_related('product')
     return render(request, 'userside/wishlist.html', {'wishlist_items': wishlist_items})
 
-
 from django.shortcuts import get_object_or_404, HttpResponseRedirect
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_POST
@@ -2647,7 +2653,6 @@ def return_order_item(request, item_id):
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from adminside.models import ProductVariant
-
 from django.http import JsonResponse
 from adminside.models import ProductVariant, Size
 
