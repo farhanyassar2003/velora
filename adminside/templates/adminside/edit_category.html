@@ -34,6 +34,10 @@
             box-shadow: 0 0 0 0.2rem rgba(75, 0, 130, 0.25);
             outline: none;
         }
+        .form-control.is-invalid {
+            border-color: #ef4444;
+            box-shadow: 0 0 0 0.2rem rgba(239, 68, 68, 0.25);
+        }
 
         /* Checkbox styling */
         .form-check {
@@ -54,6 +58,23 @@
         .form-check-input:focus {
             box-shadow: 0 0 0 0.2rem rgba(75, 0, 130, 0.25);
             outline: none;
+        }
+
+        /* Error message styling */
+        .error-message {
+            color: #ef4444;
+            font-size: 0.875rem;
+            margin-top: 0.5rem;
+            display: none;
+            font-weight: 500;
+        }
+        .error-message.show {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .error-message i {
+            font-size: 1rem;
         }
     </style>
 {% endblock %}
@@ -104,35 +125,37 @@
                     </h4>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div class="form-group">
-                            <label for="{{ form.name.id_for_label }}" class="block text-sm font-semibold text-gray-800 mb-2">{{ form.name.label }}</label>
-                            {{ form.name }}
-                            {% if form.name.help_text %}
-                                <small class="text-gray-600 text-sm mt-1">{{ form.name.help_text }}</small>
-                            {% endif %}
+                            <label for="categoryName" class="block text-sm font-semibold text-gray-800 mb-2">Category Name</label>
+                            <input type="text" name="name" id="categoryName" class="form-control" value="{{ category.name }}" placeholder="Enter category name">
+                            <div class="error-message" id="nameError">
+                                <i class="bi bi-exclamation-circle"></i>
+                                Category name is required.
+                            </div>
                             {% if form.name.errors %}
                                 <div class="text-red-600 text-sm mt-2">{{ form.name.errors }}</div>
                             {% endif %}
                         </div>
                         <div class="form-group md:col-span-2">
-                            <label for="{{ form.description.id_for_label }}" class="block text-sm font-semibold text-gray-800 mb-2">{{ form.description.label }}</label>
-                            {{ form.description }}
-                            {% if form.description.help_text %}
-                                <small class="text-gray-600 text-sm mt-1">{{ form.description.help_text }}</small>
-                            {% endif %}
+                            <label for="categoryDescription" class="block text-sm font-semibold text-gray-800 mb-2">Description</label>
+                            <textarea name="description" id="categoryDescription" class="form-control min-h-24" placeholder="Enter category description">{{ category.description }}</textarea>
+                            <div class="error-message" id="descriptionError">
+                                <i class="bi bi-exclamation-circle"></i>
+                                Description is required.
+                            </div>
                             {% if form.description.errors %}
                                 <div class="text-red-600 text-sm mt-2">{{ form.description.errors }}</div>
                             {% endif %}
                         </div>
                         <div class="form-group flex items-center gap-2">
-                            {{ form.is_listed }}
-                            <label for="{{ form.is_listed.id_for_label }}" class="text-sm font-semibold text-gray-800">{{ form.is_listed.label }}</label>
+                            <input type="checkbox" name="is_listed" id="categoryIsListed" class="form-check-input" {% if category.is_listed %}checked{% endif %}>
+                            <label for="categoryIsListed" class="text-sm font-semibold text-gray-800">Is Listed</label>
                             {% if form.is_listed.errors %}
                                 <div class="text-red-600 text-sm mt-2">{{ form.is_listed.errors }}</div>
                             {% endif %}
                         </div>
                         <div class="form-group flex items-center gap-2">
-                            {{ form.is_deleted }}
-                            <label for="{{ form.is_deleted.id_for_label }}" class="text-sm font-semibold text-gray-800">{{ form.is_deleted.label }}</label>
+                            <input type="checkbox" name="is_deleted" id="categoryIsDeleted" class="form-check-input" {% if category.is_deleted %}checked{% endif %}>
+                            <label for="categoryIsDeleted" class="text-sm font-semibold text-gray-800">Is Deleted</label>
                             {% if form.is_deleted.errors %}
                                 <div class="text-red-600 text-sm mt-2">{{ form.is_deleted.errors }}</div>
                             {% endif %}
@@ -154,16 +177,89 @@
 </div>
 
 <script>
+    function showError(inputId, errorId, show = true) {
+        const input = document.getElementById(inputId);
+        const error = document.getElementById(errorId);
+        
+        if (show) {
+            input.classList.add('is-invalid');
+            error.classList.add('show');
+        } else {
+            input.classList.remove('is-invalid');
+            error.classList.remove('show');
+        }
+    }
+
+    function validateField(inputId, errorId, validationFn) {
+        const input = document.getElementById(inputId);
+        const value = input.value.trim();
+        const isValid = validationFn(value);
+        
+        showError(inputId, errorId, !isValid);
+        return isValid;
+    }
+
     document.addEventListener('DOMContentLoaded', function() {
-        // Style form inputs
+        // Style form inputs (keeping original functionality)
         const inputs = document.querySelectorAll('input.form-control, textarea.form-control');
         inputs.forEach(input => {
             input.classList.add('w-full', 'p-3', 'border', 'border-gray-300', 'rounded-lg', 'focus:ring-2', 'focus:ring-indigo-900', 'focus:border-indigo-900');
         });
-        // Style textarea specifically
+        
+        // Style textarea specifically (keeping original functionality)
         const textareas = document.querySelectorAll('textarea.form-control');
         textareas.forEach(textarea => {
             textarea.classList.add('min-h-24');
+        });
+
+        // Real-time validation for category name
+        document.getElementById('categoryName').addEventListener('input', function() {
+            validateField('categoryName', 'nameError', (value) => {
+                return value.length > 0;
+            });
+        });
+
+        document.getElementById('categoryName').addEventListener('blur', function() {
+            validateField('categoryName', 'nameError', (value) => {
+                return value.length > 0;
+            });
+        });
+
+        // Real-time validation for description
+        document.getElementById('categoryDescription').addEventListener('input', function() {
+            validateField('categoryDescription', 'descriptionError', (value) => {
+                return value.length > 0;
+            });
+        });
+
+        document.getElementById('categoryDescription').addEventListener('blur', function() {
+            validateField('categoryDescription', 'descriptionError', (value) => {
+                return value.length > 0;
+            });
+        });
+
+        // Form submission validation
+        document.getElementById('category-form').addEventListener('submit', function(e) {
+            let isValid = true;
+
+            // Validate category name
+            isValid &= validateField('categoryName', 'nameError', (value) => {
+                return value.length > 0;
+            });
+
+            // Validate description
+            isValid &= validateField('categoryDescription', 'descriptionError', (value) => {
+                return value.length > 0;
+            });
+
+            if (!isValid) {
+                e.preventDefault();
+                // Focus on the first invalid field
+                const firstInvalidField = document.querySelector('.form-control.is-invalid');
+                if (firstInvalidField) {
+                    firstInvalidField.focus();
+                }
+            }
         });
     });
 </script>

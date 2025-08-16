@@ -274,6 +274,18 @@
                                 {% endif %}
                             </span>
                         </div>
+                        {% if order.coupon_discount > 0 %}
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span class="text-gray-700">Coupon Discount:</span>
+                                <span class="fw-semibold text-primaryBlack">-₹{{ order.coupon_discount|floatformat:2 }}</span>
+                            </div>
+                        {% endif %}
+                        {% if order.referral_coupon_discount > 0 %}
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span class="text-gray-700">Referral Coupon Discount:</span>
+                                <span class="fw-semibold text-primaryBlack">-₹{{ order.referral_coupon_discount|floatformat:2 }}</span>
+                            </div>
+                        {% endif %}
                         <div class="d-flex justify-content-between align-items-center mb-2">
                             <span class="text-gray-700">Total Amount:</span>
                             <span class="fw-semibold text-primaryBlack">₹{{ order.total|floatformat:2 }}</span>
@@ -426,7 +438,9 @@
                         cancelButtonText: 'No, cancel',
                     }).then((result) => {
                         if (result.isConfirmed) {
-                            fetch(form.action, {
+                            fetch
+
+(form.action, {
                                 method: 'POST',
                                 body: new FormData(form),
                                 headers: {

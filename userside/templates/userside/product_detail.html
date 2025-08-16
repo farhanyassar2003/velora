@@ -222,22 +222,6 @@
                             </div>
                         </div>
                     </div>
-                    <div class="product-rating">
-                        <div class="rating-badge">
-                            <i class="bi bi-star-fill"></i>
-                            {{ avg_rating|floatformat:1|default:"0.0" }}
-                        </div>
-                        <div class="rating-stars">
-                            {% for i in "12345" %}
-                                {% if forloop.counter <= avg_rating %}
-                                    <i class="bi bi-star-fill"></i>
-                                {% else %}
-                                    <i class="bi bi-star"></i>
-                                {% endif %}
-                            {% endfor %}
-                        </div>
-                        <span class="rating-text">({{ product.reviews.count|default:0 }} reviews)</span>
-                    </div>
                     <div class="product-price">
                         {% if discount %}
                             <span class="current-price">₹{{ discounted_price|floatformat:0 }}</span>
@@ -478,13 +462,11 @@ function showAvailableColors(size) {
         availableColors.forEach(color => {
             const stock = getVariantStock(size, color.colorId);
             const colorOption = document.createElement('div');
-            colorOption.className = `color-option ${stock === 0 ? 'disabled' : ''}`;
+            colorOption.className = 'color-option';
             colorOption.setAttribute('data-color-id', color.colorId);
             colorOption.setAttribute('data-color-name', color.colorName);
             
-            if (stock > 0) {
-                colorOption.onclick = () => selectColor(colorOption, color.colorId, color.colorName);
-            }
+            colorOption.onclick = () => selectColor(colorOption, color.colorId, color.colorName);
             
             const hex = color.colorHex || '#ffffff';
             const r = parseInt(hex.slice(1, 3), 16);
@@ -536,16 +518,15 @@ function updateSelectedVariantDisplay() {
         
         const stock = getVariantStock(selectedSize, selectedColorId);
         
-        if (stock > 0) {
-            if (stock <= 5) {
-                stockStatus.innerHTML = `<i class="bi bi-exclamation-triangle text-warning"></i> Only ${stock} left in stock`;
-            } else {
-                stockStatus.innerHTML = `<i class="bi bi-check-circle text-success"></i> ${stock} in stock`;
-            }
-            addToCartBtn.disabled = false;
-        } else {
+        if (stock === 0) {
             stockStatus.innerHTML = `<i class="bi bi-x-circle text-danger"></i> Out of stock`;
             addToCartBtn.disabled = true;
+        } else if (stock <= 5) {
+            stockStatus.innerHTML = `<i class="bi bi-exclamation-triangle text-warning"></i> Only ${stock} left in stock`;
+            addToCartBtn.disabled = false;
+        } else {
+            stockStatus.innerHTML = `<i class="bi bi-check-circle text-success"></i> ${stock} in stock`;
+            addToCartBtn.disabled = false;
         }
         
         display.style.display = 'block';

@@ -111,7 +111,9 @@
                                 <tr>
                                     <td colspan="6" class="border-b border-gray-200 px-6 py-8 text-center text-gray-600">
                                         <div class="flex flex-col items-center">
-                                            <svg class="w-12 h-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <svg
+
+class="w-12 h-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2M4 13h2m13-8-4 4-4-4m6 4V8.5"></path>
                                             </svg>
                                             <p class="text-lg font-medium">No coupons found</p>
@@ -158,23 +160,43 @@
                             <input type="hidden" name="action" value="create">
                             <div class="mb-4">
                                 <label class="block text-sm font-semibold text-gray-800 mb-2" for="id_code">Coupon Code</label>
-                                <input type="text" name="code" id="id_code" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-900 focus:border-indigo-900" placeholder="Enter coupon code (max 10 characters)" required maxlength="10">
-                                <p id="code-error" class="error-message">Coupon code is required and must be 10 characters or less.</p>
+                                <input type="text" name="code" id="id_code" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-900 focus:border-indigo-900" placeholder="Enter coupon code (max 10 characters)" maxlength="10">
+                                <p id="code-error" class="error-message flex items-center">
+                                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    </svg>
+                                    Coupon code is required and must be 10 characters or less.
+                                </p>
                             </div>
                             <div class="mb-4">
                                 <label class="block text-sm font-semibold text-gray-800 mb-2" for="id_discount_percentage">Discount Percentage</label>
-                                <input type="number" name="discount_percentage" id="id_discount_percentage" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-900 focus:border-indigo-900" placeholder="Enter discount percentage (0-100)" required min="0" max="100" step="0.01">
-                                <p id="discount_percentage-error" class="error-message">Discount percentage must be between 0 and 100.</p>
+                                <input type="number" name="discount_percentage" id="id_discount_percentage" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-900 focus:border-indigo-900" placeholder="Enter discount percentage (0-100)" min="0" max="100" step="0.01">
+                                <p id="discount_percentage-error" class="error-message flex items-center">
+                                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    </svg>
+                                    Discount percentage must be between 0 and 100.
+                                </p>
                             </div>
                             <div class="mb-4">
                                 <label class="block text-sm font-semibold text-gray-800 mb-2" for="id_valid_from">Valid From</label>
-                                <input type="date" name="valid_from" id="id_valid_from" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-900 focus:border-indigo-900" required>
-                                <p id="valid_from-error" class="error-message">Valid from date is required and cannot be in the past.</p>
+                                <input type="date" name="valid_from" id="id_valid_from" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-900 focus:border-indigo-900">
+                                <p id="valid_from-error" class="error-message flex items-center">
+                                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    </svg>
+                                    Valid from date is required and cannot be in the past.
+                                </p>
                             </div>
                             <div class="mb-4">
                                 <label class="block text-sm font-semibold text-gray-800 mb-2" for="id_valid_until">Valid Until</label>
-                                <input type="date" name="valid_until" id="id_valid_until" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-900 focus:border-indigo-900" required>
-                                <p id="valid_until-error" class="error-message">Valid until date is required and must be after valid from date.</p>
+                                <input type="date" name="valid_until" id="id_valid_until" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-900 focus:border-indigo-900">
+                                <p id="valid_until-error" class="error-message flex items-center">
+                                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    </svg>
+                                    Valid until date is required and must be after valid from date.
+                                </p>
                             </div>
                             <div class="flex justify-end space-x-3">
                                 <button type="button" id="cancel-btn" class="bg-gray-300 text-gray-700 px-6 py-3 rounded-lg hover:bg-gray-400 transition-colors font-semibold">Cancel</button>
@@ -280,44 +302,44 @@
                 }
 
                 if (!code) {
-                    showError('Coupon code is required.');
+                    document.getElementById('code-error').style.display = 'flex';
                     submitBtn.disabled = false;
                     return;
                 }
 
                 if (code.length > 10) {
-                    showError('Coupon code must be 10 characters or less.');
+                    document.getElementById('code-error').style.display = 'flex';
                     submitBtn.disabled = false;
                     return;
                 }
 
                 if (isNaN(discountPercentage) || discountPercentage <= 0 || discountPercentage > 100) {
-                    showError('Discount percentage must be between 0 and 100.');
+                    document.getElementById('discount_percentage-error').style.display = 'flex';
                     submitBtn.disabled = false;
                     return;
                 }
 
                 const today = new Date().toISOString().split('T')[0];
                 if (!validFrom) {
-                    showError('Valid from date is required.');
+                    document.getElementById('valid_from-error').style.display = 'flex';
                     submitBtn.disabled = false;
                     return;
                 }
 
                 if (validFrom < today) {
-                    showError('Valid from date cannot be in the past.');
+                    document.getElementById('valid_from-error').style.display = 'flex';
                     submitBtn.disabled = false;
                     return;
                 }
 
                 if (!validUntil) {
-                    showError('Valid until date is required.');
+                    document.getElementById('valid_until-error').style.display = 'flex';
                     submitBtn.disabled = false;
                     return;
                 }
 
                 if (validUntil < validFrom) {
-                    showError('Valid until date must be after valid from date.');
+                    document.getElementById('valid_until-error').style.display = 'flex';
                     submitBtn.disabled = false;
                     return;
                 }
@@ -555,7 +577,7 @@
                     if (input.value.trim() !== '') {
                         input.classList.add('border-green-500');
                         input.classList.remove('border-red-500');
-                    } else if (input.required) {
+                    } else {
                         input.classList.add('border-red-500');
                         input.classList.remove('border-green-500');
                     }

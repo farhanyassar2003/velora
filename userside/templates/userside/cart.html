@@ -89,6 +89,22 @@
                 transform: translateY(0);
             }
         }
+        .order-summary-sticky {
+            position: sticky;
+            top: 2rem;
+            z-index: 10;
+            max-height: calc(100vh - 4rem);
+            overflow-y: auto;
+        }
+
+        @media (max-width: 991px) {
+            .order-summary-sticky {
+                position: relative !important;
+                top: auto !important;
+                max-height: none !important;
+                margin-top: 2rem;
+            }
+        }
         /* Cart Section */
         .cart-section {
             padding: 2rem 0;
@@ -284,7 +300,11 @@
                     <div class="col-lg-8">
                         <div class="space-y-6">
                             {% for item in cart_items %}
-                                <div class="card d-flex flex-column flex-md-row align-items-center p-4 p-md-6 mb-4 cart-item-card" data-item-id="{{ item.id }}" data-stock="{{ item.stock|default:0 }}" data-price="{{ item.discounted_price|floatformat:2 }}">
+                                <div class="card d-flex flex-column flex-md-row align-items-center p-4 p-md-6 mb-4 cart-item-card" 
+                                     data-item-id="{{ item.id }}" 
+                                     data-stock="{{ item.stock|default:0 }}" 
+                                     data-price="{{ item.discounted_price|floatformat:2 }}"
+                                     data-is-listed="{% if item.is_product_listed and item.is_variant_listed and item.is_category_listed %}true{% else %}false{% endif %}">
                                     <div class="product-image-container me-md-4 me-lg-6 mb-3 mb-md-0">
                                         <img src="{% if item.product.get_primary_image %}{{ item.product.get_primary_image }}{% else %}https://via.placeholder.com/300x300/f3f4f6/9ca3af?text=Product{% endif %}"
                                              alt="{{ item.product.name }}" class="product-image">
@@ -295,9 +315,11 @@
                                             <p class="text-sm text-gray-600">Color: {{ item.color_name|default:"N/A" }}</p>
                                             <p class="text-sm text-gray-600">Size: {{ item.size|default:"N/A" }}</p>
                                             <p class="text-sm text-gray-600">Material: {{ item.product.materials|default:"No material info" }}</p>
+                                            {% if not item.is_product_listed or not item.is_variant_listed or not item.is_category_listed %}
+                                                <p class="text-sm text-danger">This item is currently unavailable</p>
+                                            {% endif %}
                                         </div>
                                         <div class="d-flex align-items-center justify-content-start justify-content-md-center gap-2 col-span-1 quantity-control">
-                                            <!-- Quantity controls with increment/decrement -->
                                             <form id="quantityForm_{{ item.id }}" action="{% url 'userside:update_cart_quantity' item.id 'update' %}" method="POST" style="display: inline-flex; align-items: center; gap: 0.5rem;">
                                                 {% csrf_token %}
                                                 <button type="button" class="btn" onclick="changeQuantity({{ item.id }}, 'decrement', {{ item.stock|default:0 }})">-</button>
@@ -331,7 +353,7 @@
 
                     <!-- Cart Summary -->
                     <div class="col-lg-4">
-                        <div class="card p-4 p-md-6 sticky-top" style="top: 2rem;">
+                        <div class="card p-4 p-md-6 order-summary-sticky">
                             <h2 class="fs-4 fw-bold text-primaryBlack mb-4 border-bottom pb-4">Order Summary</h2>
                             <div class="space-y-4 mb-4">
                                 <div class="d-flex justify-content-between align-items-center text-gray-700">
@@ -396,21 +418,29 @@
         }
 
         function proceedToCheckout() {
+            let hasUnlistedItem = false;
             let outOfStock = false;
             document.querySelectorAll('.cart-item-card').forEach(card => {
                 const itemId = card.getAttribute('data-item-id');
                 const stock = parseInt(card.getAttribute('data-stock'), 10) || 0;
-                console.log(`Item ${itemId} stock: ${stock}`);
+                const isListed = card.getAttribute('data-is-listed') === 'true';
+                console.log(`Item ${itemId} - Stock: ${stock}, Is Listed: ${isListed}`);
+                if (!isListed) {
+                    hasUnlistedItem = true;
+                }
                 if (stock <= 0) {
                     outOfStock = true;
                 }
             });
 
-            if (outOfStock) {
+            if (hasUnlistedItem) {
+                console.log('Unlisted item or category detected, showing toast');
+                showToast('One or more products are currently unavailable. Please remove them to proceed.', 'error');
+            } else if (outOfStock) {
                 console.log('Out of stock detected, showing toast');
                 showToast('One or more items are out of stock. Please remove them to proceed.', 'error');
             } else {
-                console.log('All items in stock, proceeding to checkout');
+                console.log('All items are listed and in stock, proceeding to checkout');
                 window.location.href = '{% url "userside:checkout" %}';
             }
         }

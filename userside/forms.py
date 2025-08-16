@@ -66,10 +66,18 @@ class ResetPasswordForm(SetPasswordForm):
 
 # ===========================# User Profile Management Forms# ===========================
 
+from django import forms
+from .models import CustomUser
+
 class EditProfileForm(forms.ModelForm):
     class Meta:
         model = CustomUser
-        fields = ['first_name', 'last_name', 'email','phone_number', 'profile_image']
+        fields = ['first_name', 'last_name', 'email', 'phone_number', 'profile_image']
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Ensure profile_image is not required
+        self.fields['profile_image'].required = False
 
 class ChangePasswordForm(PasswordChangeForm):
     pass

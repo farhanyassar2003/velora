@@ -1210,11 +1210,23 @@ def confirm_return(request, order_id):
 
     with transaction.atomic():
         try:
-            # Calculate refund amount for returned items
+            # Calculate refund amount for returned items, accounting for coupon discounts
             refund_amount = 0
             returned_items = order.items.filter(is_returned=True, is_refunded_to_wallet=False)
-            for item in returned_items:
-                refund_amount += item.total  # Uses discounted_price or price * quantity
+            
+            # Total value of all items before order-level discounts
+            order_total_before_discount = sum(item.total for item in order.items.all())
+            # Total discounts (coupon + referral coupon)
+            total_discount = order.coupon_discount + order.referral_coupon_discount
+            # Actual amount paid (including tax and shipping, as in order.total)
+            order_total_paid = order.total
+            
+            if order_total_before_discount > 0:  # Avoid division by zero
+                # Calculate total value of returned items
+                returned_items_total = sum(item.total for item in returned_items)
+                # Prorate the refund based on the actual amount paid
+                proration_ratio = order_total_paid / (order_total_before_discount + order.tax + order.shipping_price)
+                refund_amount = returned_items_total * proration_ratio
 
             # Credit wallet for all payment methods (COD, Wallet, Razorpay)
             if refund_amount > 0 and order.is_paid:
@@ -1230,7 +1242,7 @@ def confirm_return(request, order_id):
                 for item in returned_items:
                     item.is_refunded_to_wallet = True
                     item.save()
-                logger.info(f"Return confirmed and refund transaction created for order {order.order_id}: ₹{refund_amount} ({order.payment_method}, {order.payment_gateway or 'N/A'})")
+                logger.info(f"Return confirmed and refund transaction created for order {order.order_id}: ₹{refund_amount:.2f} ({order.payment_method}, {order.payment_gateway or 'N/A'})")
                 messages.success(request, f"Refunded ₹{refund_amount:.2f} to {order.user.email}'s wallet.")
 
             # Skip stock restoration (handled in return_order_item)
