@@ -156,6 +156,26 @@
 {% endblock %}
 
 {% block content %}
+{% if messages %}
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            {% for message in messages %}
+                console.log('Django message: {{ message }}');
+                Swal.fire({
+                    icon: '{{ message.tags }}',
+                    title: '{{ message.tags|capfirst }}',
+                    text: '{{ message }}',
+                    toast: true,
+                    position: 'top-end',
+                    showConfirmButton: false,
+                    timer: 2000,
+                    timerProgressBar: true
+                });
+            {% endfor %}
+        });
+    </script>
+{% endif %}
+
 <div class="breadcrumb-container">
     <div class="container">
         <nav aria-label="breadcrumb">
@@ -326,6 +346,7 @@
 
 <script>
 function changeMainImage(imageUrl, thumbnailElement) {
+    console.log('changeMainImage:', imageUrl); // Debug
     const mainImage = document.getElementById('mainImage');
     mainImage.src = imageUrl;
     document.querySelectorAll('.thumbnail').forEach(thumb => thumb.classList.remove('active'));
@@ -333,6 +354,7 @@ function changeMainImage(imageUrl, thumbnailElement) {
 }
 
 function openZoom() {
+    console.log('openZoom called'); // Debug
     const mainImage = document.getElementById('mainImage');
     const zoomImage = document.getElementById('zoomImage');
     const zoomModal = document.getElementById('zoomModal');
@@ -341,6 +363,7 @@ function openZoom() {
 }
 
 function closeZoom() {
+    console.log('closeZoom called'); // Debug
     document.getElementById('zoomModal').style.display = 'none';
 }
 
@@ -538,6 +561,7 @@ function updateSelectedVariantDisplay() {
 
 function notifyMe() {
     const email = document.getElementById('notifyEmail').value;
+    console.log('notifyMe called with email:', email); // Debug
     if (!email) {
         Swal.fire({
             icon: 'error',
@@ -562,6 +586,8 @@ document.getElementById('addToCartBtn').addEventListener('click', function () {
     const messageBox = document.getElementById('addToCartMessage');
     
     messageBox.textContent = '';
+
+    console.log('Add to Cart clicked: productId=', productId, 'selectedSize=', selectedSize, 'selectedColorId=', selectedColorId);
 
     if (!selectedSize) {
         messageBox.textContent = 'Please select a size.';
@@ -604,6 +630,10 @@ document.getElementById('addToCartBtn').addEventListener('click', function () {
     formData.append('quantity', 1);
     formData.append('color_id', selectedColorId);
     formData.append('size', selectedSize);
+    console.log('Sending formData:', formData.toString());
+
+    this.classList.add('btn-loading');
+    this.disabled = true;
 
     fetch(`/add-to-cart/${productId}/`, {
         method: 'POST',
@@ -614,12 +644,15 @@ document.getElementById('addToCartBtn').addEventListener('click', function () {
         body: formData
     })
     .then(response => {
+        console.log('Response status:', response.status);
         if (!response.ok) {
-            throw new Error(`HTTP error! Status: ${response.status}`);
+            console.log('Response not OK, status:', response.status);
+            return response.json().then(data => ({ data, status: response.status }));
         }
-        return response.json();
+        return response.json().then(data => ({ data, status: response.status }));
     })
-    .then(data => {
+    .then(({ data, status }) => {
+        console.log('Response data:', data);
         if (data.success) {
             cartItemCount++;
             Swal.fire({
@@ -648,17 +681,36 @@ document.getElementById('addToCartBtn').addEventListener('click', function () {
         } else {
             messageBox.textContent = data.message || 'Failed to add to cart.';
             messageBox.style.color = 'red';
-            Swal.fire({
-                icon: 'error',
-                title: 'Error',
-                text: data.message || 'Failed to add to cart.',
-                timer: 1500,
-                showConfirmButton: false
-            });
+            console.log('Error response:', data);
+            if (data.redirect) {
+                console.log('Redirect requested to:', data.redirect_url);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Unavailable',
+                    text: data.message || 'This product or category is currently unavailable.',
+                    toast: true,
+                    position: 'top-end',
+                    showConfirmButton: false,
+                    timer: 2000,
+                    timerProgressBar: true,
+                    didClose: () => {
+                        console.log('Toast closed, redirecting to:', data.redirect_url);
+                        window.location.href = "{% url 'userside:product_list' %}";
+                    }
+                });
+            } else {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: data.message || 'Failed to add to cart.',
+                    timer: 1500,
+                    showConfirmButton: false
+                });
+            }
         }
     })
     .catch(error => {
-        console.error('Error adding to cart:', error);
+        console.error('Fetch error:', error);
         messageBox.textContent = 'Something went wrong while adding to cart.';
         messageBox.style.color = 'red';
         Swal.fire({
@@ -668,6 +720,10 @@ document.getElementById('addToCartBtn').addEventListener('click', function () {
             timer: 1500,
             showConfirmButton: false
         });
+    })
+    .finally(() => {
+        this.classList.remove('btn-loading');
+        this.disabled = !selectedSize || !selectedColorId;
     });
 });
 
@@ -676,6 +732,8 @@ document.getElementById('wishlistBtn').addEventListener('click', function () {
     const isInWishlist = this.classList.contains('active');
     const action = isInWishlist ? 'remove' : 'add';
     const url = isInWishlist ? `/remove-from-wishlist/${productId}/` : `/add-to-wishlist/${productId}/`;
+
+    console.log('Wishlist action:', action, 'productId:', productId); // Debug
 
     this.classList.add('btn-loading');
     this.disabled = true;
@@ -689,12 +747,14 @@ document.getElementById('wishlistBtn').addEventListener('click', function () {
         body: JSON.stringify({})
     })
     .then(response => {
+        console.log('Wishlist response status:', response.status); // Debug
         if (!response.ok) {
             throw new Error(`HTTP error! Status: ${response.status}`);
         }
         return response.json();
     })
     .then(data => {
+        console.log('Wishlist response data:', data); // Debug
         if (data.success) {
             this.classList.toggle('active');
             const icon = this.querySelector('i');
@@ -743,6 +803,7 @@ document.getElementById('wishlistBtn').addEventListener('click', function () {
 });
 
 document.addEventListener('DOMContentLoaded', () => {
+    console.log('DOM loaded, initializing product page'); // Debug
     document.getElementById('colorSection').style.display = 'none';
     document.getElementById('addToCartBtn').disabled = true;
     updateThumbnails(null);

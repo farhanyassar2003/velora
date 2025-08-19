@@ -6,22 +6,18 @@
     <!-- Chart.js for sales chart -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        /* Adjust content to prevent overlap with fixed sidebar */
         .dashboard-content {
             margin-left: 280px;
             padding: 24px;
             transition: margin-left 0.3s ease;
             background-color: #f9fafb;
         }
-
         @media (max-width: 768px) {
             .dashboard-content {
                 margin-left: 0;
                 padding: 16px;
             }
         }
-
-        /* Custom hover effect for cards */
         .metric-card {
             transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
         }
@@ -30,8 +26,6 @@
             box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
             border-color: #4B0082;
         }
-
-        /* Enhanced styling for top products and categories */
         .top-section {
             background: linear-gradient(135deg, #4B0082 0%, #6B7280 100%);
             border-radius: 12px;
@@ -63,8 +57,6 @@
             padding: 8px;
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
         }
-
-        /* Ensure consistent input and button sizes */
         .filter-box {
             width: 100%;
         }
@@ -148,21 +140,21 @@
                 </div>
                 <div class="metric-card bg-white p-6 rounded-xl shadow-lg border border-gray-200">
                     <h2 class="text-lg font-semibold text-gray-800">Total Sales</h2>
-                    <p class="text-3xl font-bold text-gray-900 mt-2">${{ total_sales|floatformat:2 }}</p>
+                    <p class="text-3xl font-bold text-gray-900 mt-2">₹{{ total_sales|floatformat:2 }}</p>
                 </div>
                 <div class="metric-card bg-white p-6 rounded-xl shadow-lg border border-gray-200">
-                    <h2 class="text-lg font-semibold text-gray-800">Total Discount</h2>
-                    <p class="text-3xl font-bold text-gray-900 mt-2">${{ total_discount|floatformat:2 }}</p>
+                    <h2 class="text-lg font-semibold text-gray-800">Total Item Discount</h2>
+                    <p class="text-3xl font-bold text-gray-900 mt-2">₹{{ total_item_discount|floatformat:2 }}</p>
                 </div>
                 <div class="metric-card bg-white p-6 rounded-xl shadow-lg border border-gray-200">
-                    <h2 class="text-lg font-semibold text-gray-800">Coupon Discount</h2>
-                    <p class="text-3xl font-bold text-gray-900 mt-2">${{ total_coupon_discount|floatformat:2 }}</p>
+                    <h2 class="text-lg font-semibold text-gray-800">Total Coupon Discount</h2>
+                    <p class="text-3xl font-bold text-gray-900 mt-2">₹{{ total_coupon_discount|floatformat:2 }}</p>
                 </div>
             </div>
 
             <!-- Sales Chart -->
             <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-200 mb-8">
-                <h2 class="text-xl font-semibold text-gray-900 mb-4">Sales and Orders Over Time</h2>
+                <h2 class="text-xl font-semibold text-gray-900 mb-4">Net Sales and Orders Over Time</h2>
                 <canvas id="salesChart" height="100"></canvas>
             </div>
 
@@ -176,10 +168,9 @@
                             <th class="px-4 py-3 text-left">Date</th>
                             <th class="px-4 py-3 text-left">Customer</th>
                             <th class="px-4 py-3 text-left">Subtotal</th>
-                            <th class="px-4 py-3 text-left">Discount</th>
+                            <th class="px-4 py-3 text-left">Item Discount</th>
                             <th class="px-4 py-3 text-left">Coupon Discount</th>
-                            <th class="px-4 py-3 text-left">Referral Discount</th>
-                            <th class="px-4 py-3 text-left">Total</th>
+                            <th class="px-4 py-3 text-left">Net Total</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -188,15 +179,14 @@
                             <td class="border-b border-gray-200 px-4 py-3">{{ order.order_id }}</td>
                             <td class="border-b border-gray-200 px-4 py-3">{{ order.created_at|date:"Y-m-d" }}</td>
                             <td class="border-b border-gray-200 px-4 py-3">{{ order.user.email }}</td>
-                            <td class="border-b border-gray-200 px-4 py-3">${{ order.subtotal|floatformat:2 }}</td>
-                            <td class="border-b border-gray-200 px-4 py-3">${{ order.discount|floatformat:2 }}</td>
-                            <td class="border-b border-gray-200 px-4 py-3">${{ order.coupon_discount|floatformat:2 }}</td>
-                            <td class="border-b border-gray-200 px-4 py-3">${{ order.referral_coupon_discount|floatformat:2 }}</td>
-                            <td class="border-b border-gray-200 px-4 py-3">${{ order.total|floatformat:2 }}</td>
+                            <td class="border-b border-gray-200 px-4 py-3">₹{{ order.order_subtotal|floatformat:2 }}</td>
+                            <td class="border-b border-gray-200 px-4 py-3">₹{{ order.order_item_discount|floatformat:2 }}</td>
+                            <td class="border-b border-gray-200 px-4 py-3">₹{{ order.order_coupon_discount|floatformat:2 }}</td>
+                            <td class="border-b border-gray-200 px-4 py-3">₹{{ order.net_order_total|floatformat:2 }}</td>
                         </tr>
                         {% empty %}
                         <tr>
-                            <td colspan="8" class="border-b border-gray-200 px-4 py-3 text-center text-gray-600">No orders found for the selected period.</td>
+                            <td colspan="7" class="border-b border-gray-200 px-4 py-3 text-center text-gray-600">No orders found for the selected period.</td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -216,7 +206,7 @@
                             <tr class="text-white">
                                 <th class="px-4 py-3 text-left">Category</th>
                                 <th class="px-4 py-3 text-left">Quantity Sold</th>
-                                <th class="px-4 py-3 text-left">Revenue</th>
+                                <th class="px-4 py-3 text-left">Net Revenue</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -224,7 +214,7 @@
                             <tr class="{% cycle 'bg-white' 'bg-gray-50' %}">
                                 <td class="border-b border-gray-200 px-4 py-3">{{ category.product__category__name }}</td>
                                 <td class="border-b border-gray-200 px-4 py-3">{{ category.total_quantity }}</td>
-                                <td class="border-b border-gray-200 px-4 py-3">${{ category.total_revenue|floatformat:2 }}</td>
+                                <td class="border-b border-gray-200 px-4 py-3">₹{{ category.net_revenue|floatformat:2 }}</td>
                             </tr>
                             {% empty %}
                             <tr>
@@ -249,7 +239,7 @@
                             <tr class="text-white">
                                 <th class="px-4 py-3 text-left">Product</th>
                                 <th class="px-4 py-3 text-left">Quantity Sold</th>
-                                <th class="px-4 py-3 text-left">Revenue</th>
+                                <th class="px-4 py-3 text-left">Net Revenue</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -257,7 +247,7 @@
                             <tr class="{% cycle 'bg-white' 'bg-gray-50' %}">
                                 <td class="border-b border-gray-200 px-4 py-3">{{ product.product__name }}</td>
                                 <td class="border-b border-gray-200 px-4 py-3">{{ product.total_quantity }}</td>
-                                <td class="border-b border-gray-200 px-4 py-3">${{ product.total_revenue|floatformat:2 }}</td>
+                                <td class="border-b border-gray-200 px-4 py-3">₹{{ product.net_revenue|floatformat:2 }}</td>
                             </tr>
                             {% empty %}
                             <tr>
@@ -280,7 +270,7 @@
                     labels: {{ chart_data.labels|safe }},
                     datasets: [
                         {
-                            label: 'Sales ($)',
+                            label: 'Net Sales (₹)',
                             data: {{ chart_data.sales|safe }},
                             borderColor: '#4B0082',
                             backgroundColor: '#4B0082',
@@ -306,7 +296,7 @@
                     scales: {
                         y: {
                             beginAtZero: true,
-                            title: { display: true, text: 'Amount ($)', color: '#1f2937', font: { weight: 'bold' } },
+                            title: { display: true, text: 'Amount (₹)', color: '#1f2937', font: { weight: 'bold' } },
                             grid: { color: '#e5e7eb' }
                         },
                         x: {
@@ -342,7 +332,7 @@
                             borderRadius: 4
                         },
                         {
-                            label: 'Revenue ($)',
+                            label: 'Net Revenue (₹)',
                             data: {{ top_products_chart.revenues|safe }},
                             backgroundColor: '#14B8A6',
                             hoverBackgroundColor: '#2DD4BF',
@@ -391,7 +381,7 @@
                             borderRadius: 4
                         },
                         {
-                            label: 'Revenue ($)',
+                            label: 'Net Revenue (₹)',
                             data: {{ top_categories_chart.revenues|safe }},
                             backgroundColor: '#14B8A6',
                             hoverBackgroundColor: '#2DD4BF',
@@ -428,11 +418,9 @@
         <script>
             const downloadButton = document.getElementById('downloadButton');
             const downloadMenu = document.getElementById('downloadMenu');
-
             downloadButton.addEventListener('click', () => {
                 downloadMenu.classList.toggle('hidden');
             });
-
             document.addEventListener('click', (event) => {
                 if (!downloadButton.contains(event.target) && !downloadMenu.contains(event.target)) {
                     downloadMenu.classList.add('hidden');

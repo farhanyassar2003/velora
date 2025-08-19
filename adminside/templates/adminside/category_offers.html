@@ -165,8 +165,8 @@
                             <td class="border-b border-gray-200 px-6 py-4 font-medium text-gray-900">{{ offer.name }}</td>
                             <td class="border-b border-gray-200 px-6 py-4 text-gray-700">{{ offer.category.name }}</td>
                             <td class="border-b border-gray-200 px-6 py-4 text-gray-700">{{ offer.discount_percentage }}%</td>
-                            <td class="border-b border-gray-200 px-6 py-4 text-gray-700">{{ offer.start_date }}</td>
-                            <td class="border-b border-gray-200 px-6 py-4 text-gray-700">{{ offer.end_date }}</td>
+                            <td class="border-b border-gray-200 px-6 py-4 text-gray-700">{{ offer.start_date|date:"Y-m-d" }}</td>
+                            <td class="border-b border-gray-200 px-6 py-4 text-gray-700">{{ offer.end_date|date:"Y-m-d" }}</td>
                             <td class="border-b border-gray-200 px-6 py-4">
                                 <label class="toggle-switch">
                                     <input type="checkbox" class="toggle-active" data-offer-id="{{ offer.id }}" data-offer-type="category" {% if offer.is_active %}checked{% endif %}>
@@ -241,7 +241,7 @@
                                 <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                                 </svg>
-                                Offer Name is required.
+                                <span></span>
                             </p>
                         </div>
                         <div class="mb-4">
@@ -256,7 +256,7 @@
                                 <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                                 </svg>
-                                Category is required.
+                                <span></span>
                             </p>
                         </div>
                         <div class="mb-4">
@@ -266,7 +266,7 @@
                                 <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                                 </svg>
-                                Discount Percentage must be between 0 and 100.
+                                <span></span>
                             </p>
                         </div>
                         <div class="mb-4">
@@ -276,7 +276,7 @@
                                 <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                                 </svg>
-                                Start Date is required.
+                                <span></span>
                             </p>
                         </div>
                         <div class="mb-4">
@@ -286,7 +286,7 @@
                                 <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                                 </svg>
-                                End Date is required and must be after Start Date.
+                                <span></span>
                             </p>
                         </div>
                         <div class="mb-6">
@@ -330,35 +330,33 @@
 
 <script>
     document.addEventListener('DOMContentLoaded', () => {
-        // Get CSRF token from form or cookie
+        const Toast = Swal.mixin({
+            toast: true,
+            position: 'top-end',
+            showConfirmButton: false,
+            timer: 3000,
+            timerProgressBar: true,
+            didOpen: (toast) => {
+                toast.addEventListener('mouseenter', Swal.stopTimer);
+                toast.addEventListener('mouseleave', Swal.resumeTimer);
+            }
+        });
+
+        // Get CSRF token from form
         function getCsrfToken() {
             const tokenInput = document.querySelector('#category-offer-form input[name="csrfmiddlewaretoken"]');
-            if (tokenInput && tokenInput.value) {
-                console.log('CSRF token retrieved from form:', tokenInput.value);
-                return tokenInput.value;
-            }
-            const name = 'csrftoken';
-            let cookieValue = null;
-            if (document.cookie && document.cookie !== '') {
-                const cookies = document.cookie.split(';');
-                for (let i = 0; i < cookies.length; i++) {
-                    const cookie = cookies[i].trim();
-                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                        console.log('CSRF token retrieved from cookie:', cookieValue);
-                        break;
-                    }
-                }
-            }
-            if (!cookieValue) {
+            const token = tokenInput ? tokenInput.value : '';
+            if (!token) {
                 console.error('CSRF token not found');
             }
-            return cookieValue || '';
+            console.log('CSRF token retrieved:', token);
+            return token;
         }
 
-        // Show error message
+        // Show error message below form field
         const showError = (elementId, message) => {
             const errorElement = document.getElementById(`${elementId}-error`);
+            errorElement.querySelector('span').textContent = message;
             errorElement.style.display = 'flex';
         };
 
@@ -366,6 +364,7 @@
         const clearErrors = () => {
             document.querySelectorAll('.error-message').forEach(el => {
                 el.style.display = 'none';
+                el.querySelector('span').textContent = '';
             });
         };
 
@@ -392,49 +391,39 @@
                 fetch(`/adminside/manage-offer/category/?id=${button.dataset.offerId}`, {
                     method: 'GET',
                     headers: {
-                        'X-CSRFToken': csrfToken,
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
                     },
                     credentials: 'same-origin'
                 })
                 .then(response => {
                     console.log('Edit fetch response status:', response.status);
-                    if (!response.ok) {
-                        return response.text().then(text => {
-                            throw new Error(`HTTP error! Status: ${response.status}, Response: ${text.substring(0, 100)}...`);
-                        });
-                    }
-                    return response.json();
+                    return response.json().then(data => ({ status: response.status, data }));
                 })
-                .then(data => {
+                .then(({ status, data }) => {
                     console.log('Edit response data:', data);
-                    if (data.success) {
+                    if (status === 200 && data.success) {
                         document.getElementById('modal-title').textContent = 'Edit Category Offer';
                         document.getElementById('offer-id').value = button.dataset.offerId;
                         document.getElementById('name').value = data.name;
                         document.getElementById('category_id').value = data.category_id;
                         document.getElementById('discount_percentage').value = data.discount_percentage;
-                        document.getElementById('start_date').value = data.start_date;
-                        document.getElementById('end_date').value = data.end_date;
+                        document.getElementById('start_date').value = data.start_date.split('T')[0];
+                        document.getElementById('end_date').value = data.end_date.split('T')[0];
                         document.getElementById('is_active').checked = data.is_active;
                         document.getElementById('category-offer-modal').classList.remove('hidden');
                     } else {
-                        console.error('Failed to load offer data:', data.message);
-                        Swal.fire({
+                        Toast.fire({
                             icon: 'error',
-                            title: 'Error',
-                            text: 'Failed to load offer data: ' + data.message,
-                            timer: 2000
+                            title: data.message
                         });
                     }
                 })
                 .catch(error => {
                     console.error('Edit fetch error:', error);
-                    Swal.fire({
+                    Toast.fire({
                         icon: 'error',
-                        title: 'Error',
-                        text: 'An error occurred while loading offer data: ' + error.message,
-                        timer: 2000
+                        title: 'An unexpected error occurred: ' + error.message
                     });
                 });
             });
@@ -501,35 +490,35 @@
             })
             .then(response => {
                 console.log('Submit fetch response status:', response.status);
-                if (!response.ok) {
-                    return response.text().then(text => {
-                        throw new Error(`HTTP error! Status: ${response.status}, Response: ${text.substring(0, 100)}...`);
-                    });
-                }
-                return response.json();
+                return response.json().then(data => ({ status: response.status, data }));
             })
-            .then(data => {
+            .then(({ status, data }) => {
                 console.log('Submit response data:', data);
-                if (data.success) {
+                if (status === 200 && data.success) {
                     console.log('Offer saved successfully:', data.message);
                     document.getElementById('category-offer-modal').classList.add('hidden');
-                    Swal.fire({
+                    Toast.fire({
                         icon: 'success',
-                        title: 'Success',
-                        text: data.message,
-                        timer: 2000,
-                        showConfirmButton: false
+                        title: data.message
                     }).then(() => {
                         location.reload();
                     });
+                } else if (data.message === 'The category already has an offer.') {
+                    Toast.fire({
+                        icon: 'error',
+                        title: 'The category already has an offer.'
+                    });
                 } else {
                     console.error('Failed to save offer:', data.message);
-                    showError('name', data.message); // Display server-side error
+                    showError('name', data.message);
                 }
             })
             .catch(error => {
                 console.error('Submit fetch error:', error);
-                showError('name', 'An error occurred while saving the offer: ' + error.message);
+                Toast.fire({
+                    icon: 'error',
+                    title: 'An unexpected error occurred: ' + error.message
+                });
             });
         });
 
@@ -563,44 +552,32 @@
             })
             .then(response => {
                 console.log('Delete fetch response status:', response.status);
-                if (!response.ok) {
-                    return response.text().then(text => {
-                        throw new Error(`HTTP error! Status: ${response.status}, Response: ${text.substring(0, 100)}...`);
-                    });
-                }
-                return response.json();
+                return response.json().then(data => ({ status: response.status, data }));
             })
-            .then(data => {
+            .then(({ status, data }) => {
                 console.log('Delete response data:', data);
-                if (data.success) {
+                if (status === 200 && data.success) {
                     console.log('Offer deleted successfully:', data.message);
                     document.getElementById('delete-confirm-modal').classList.add('hidden');
-                    Swal.fire({
+                    Toast.fire({
                         icon: 'success',
-                        title: 'Success',
-                        text: data.message,
-                        timer: 2000,
-                        showConfirmButton: false
+                        title: data.message
                     }).then(() => {
                         location.reload();
                     });
                 } else {
                     console.error('Failed to delete offer:', data.message);
-                    Swal.fire({
+                    Toast.fire({
                         icon: 'error',
-                        title: 'Error',
-                        text: 'Failed to delete offer: ' + data.message,
-                        timer: 2000
+                        title: data.message
                     });
                 }
             })
             .catch(error => {
                 console.error('Delete fetch error:', error);
-                Swal.fire({
+                Toast.fire({
                     icon: 'error',
-                    title: 'Error',
-                    text: 'An error occurred while deleting the offer: ' + error.message,
-                    timer: 2000
+                    title: 'An unexpected error occurred: ' + error.message
                 });
             });
         });
@@ -624,35 +601,32 @@
                 })
                 .then(response => {
                     console.log('Toggle fetch response status:', response.status);
-                    if (!response.ok) {
-                        return response.text().then(text => {
-                            throw new Error(`HTTP error! Status: ${response.status}, Response: ${text.substring(0, 100)}...`);
-                        });
-                    }
-                    return response.json();
+                    return response.json().then(data => ({ status: response.status, data }));
                 })
-                .then(data => {
+                .then(({ status, data }) => {
                     console.log('Toggle response data:', data);
-                    if (data.success) {
+                    if (status === 200 && data.success) {
                         console.log(`Offer ${isActive ? 'activated' : 'deactivated'} successfully:`, data.message);
+                        Toast.fire({
+                            icon: 'success',
+                            title: data.message
+                        }).then(() => {
+                            location.reload();
+                        });
                     } else {
                         console.error('Failed to toggle offer:', data.message);
-                        Swal.fire({
+                        Toast.fire({
                             icon: 'error',
-                            title: 'Error',
-                            text: 'Failed to toggle offer: ' + data.message,
-                            timer: 2000
+                            title: data.message
                         });
                         e.target.checked = !isActive; // Revert toggle on failure
                     }
                 })
                 .catch(error => {
                     console.error('Toggle fetch error:', error);
-                    Swal.fire({
+                    Toast.fire({
                         icon: 'error',
-                        title: 'Error',
-                        text: 'An error occurred while toggling the offer: ' + error.message,
-                        timer: 2000
+                        title: 'An unexpected error occurred: ' + error.message
                     });
                     e.target.checked = !isActive; // Revert toggle on failure
                 });
@@ -692,8 +666,8 @@
                 fetch(url, {
                     method: 'GET',
                     headers: {
-                        'X-CSRFToken': csrfToken,
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'text/html',
+                        'X-CSRFToken': csrfToken
                     },
                     credentials: 'same-origin'
                 })
@@ -708,16 +682,16 @@
                 })
                 .then(html => {
                     console.log('Pagination content loaded');
-                    document.getElementById('offer-content').innerHTML = html;
+                    document.getElementById('offer-content').innerHTML = new DOMParser()
+                        .parseFromString(html, 'text/html')
+                        .querySelector('#offer-content').innerHTML;
                     location.reload(); // Reload to reattach event listeners
                 })
                 .catch(error => {
                     console.error('Pagination fetch error:', error);
-                    Swal.fire({
+                    Toast.fire({
                         icon: 'error',
-                        title: 'Error',
-                        text: 'Error loading page: ' + error.message,
-                        timer: 2000
+                        title: 'Error loading page: ' + error.message
                     });
                 });
             });

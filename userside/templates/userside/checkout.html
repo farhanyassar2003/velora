@@ -589,6 +589,10 @@
                         <input type="text" id="couponCode" class="form-control" placeholder="Enter coupon code">
                         <button type="button" id="applyCouponBtn" class="btn btn-primary-black">Apply</button>
                     </div>
+                    <div id="coupon-error" class="error-message">
+                        <i class="bi bi-exclamation-circle-fill"></i>
+                        <span></span>
+                    </div>
                     <div id="applied-coupons" class="coupon-applied mb-3">
                         {% if applied_coupons %}
                             <h6>Applied Coupons:</h6>
@@ -718,7 +722,6 @@
     </div>
 </div>
 
-
 <!-- Coupon Modal -->
 <div class="modal fade coupon-modal" id="couponModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
@@ -826,9 +829,22 @@
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.10.1/dist/sweetalert2.min.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', () => {
+    // Initialize SweetAlert2 Toast
+    const Toast = Swal.mixin({
+        toast: true,
+        position: 'top-end',
+        showConfirmButton: false,
+        timer: 3000,
+        timerProgressBar: true,
+        didOpen: (toast) => {
+            toast.addEventListener('mouseenter', Swal.stopTimer);
+            toast.addEventListener('mouseleave', Swal.resumeTimer);
+        }
+    });
+
     // Check if Bootstrap is loaded
     if (typeof bootstrap === 'undefined') {
-        console.error('Bootstrap JavaScript is not loaded. Please check the script inclusion.');
+        console.error('Bootstrap JavaScript is not loaded.');
         Swal.fire({
             icon: 'error',
             title: 'Error',
@@ -838,6 +854,46 @@ document.addEventListener('DOMContentLoaded', () => {
             color: '#111827'
         });
         return;
+    }
+
+    // Get CSRF token
+    function getCsrfToken() {
+        const tokenInput = document.querySelector('[name=csrfmiddlewaretoken]');
+        const cookieValue = getCookie('csrftoken');
+        const token = tokenInput ? tokenInput.value : cookieValue;
+        if (!token) {
+            console.error('CSRF token not found');
+        }
+        return token;
+    }
+
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    // Show error message below coupon input
+    function showCouponError(message) {
+        const errorElement = document.getElementById('coupon-error');
+        errorElement.querySelector('span').textContent = message;
+        errorElement.style.display = 'flex';
+    }
+
+    // Clear coupon error
+    function clearCouponError() {
+        const errorElement = document.getElementById('coupon-error');
+        errorElement.querySelector('span').textContent = '';
+        errorElement.style.display = 'none';
     }
 
     // Add event listener for the Add New Address button
@@ -858,7 +914,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Checkout Form Submit Validation with AJAX
     document.getElementById("checkoutForm").addEventListener("submit", function (event) {
-        event.preventDefault(); // Prevent default form submission
+        event.preventDefault();
 
         const addressChecked = document.querySelector('input[name="address_id"]:checked');
         const paymentMethod = document.querySelector('input[name="payment_method"]:checked');
@@ -866,7 +922,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const walletBalance = parseFloat('{{ wallet_balance|floatformat:2 }}');
         const orderTotal = parseFloat('{{ total|floatformat:2 }}');
 
-        // Client-side validations
         if (!addressChecked) {
             const toast = new bootstrap.Toast(document.getElementById("missingAddressToast"));
             toast.show();
@@ -897,14 +952,13 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // Perform AJAX submission
         const form = this;
         const formData = new FormData(form);
 
         fetch("{% url 'userside:place_order' %}", {
             method: 'POST',
             headers: {
-                'X-CSRFToken': getCookie('csrftoken') || document.querySelector('[name=csrfmiddlewaretoken]').value,
+                'X-CSRFToken': getCsrfToken(),
                 'X-Requested-With': 'XMLHttpRequest'
             },
             body: formData
@@ -934,20 +988,17 @@ document.addEventListener('DOMContentLoaded', () => {
                         confirmButtonColor: '#14B8A6',
                         background: '#fff',
                         color: '#111827'
-                    })
+                    });
                 }
             }
         })
         .catch(error => {
             console.error('Error during checkout:', error);
             const toastMessage = error.message || 'An unexpected error occurred during checkout.';
-
             if (error.error_code === 'unlisted_item') {
                 const toast = new bootstrap.Toast(document.getElementById("unlistedItemToast"));
                 document.querySelector('#unlistedItemToast .toast-body').textContent = toastMessage;
                 toast.show();
-
-                // Redirect after toast is visible for ~2 seconds
                 setTimeout(() => {
                     window.location.href = "{% url 'userside:view_cart' %}";
                 }, 2000);
@@ -964,7 +1015,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             }
         });
-
     });
 
     // Prevent Form Submission on Enter Key for Insufficient Wallet Balance or COD Restriction
@@ -1055,25 +1105,9 @@ document.addEventListener('DOMContentLoaded', () => {
         placeOrderBtn.classList.remove('disabled');
     }
 
-    function getCookie(name) {
-        let cookieValue = null;
-        if (document.cookie && document.cookie !== '') {
-            const cookies = document.cookie.split(';');
-            for (let i = 0; i < cookies.length; i++) {
-                const cookie = cookies[i].trim();
-                if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                    break;
-                }
-            }
-        }
-        return cookieValue;
-    }
-
     function openAddressModal() {
         console.log('openAddressModal called');
         try {
-            // Clear form fields
             document.getElementById("addressId").value = "";
             document.getElementById("addressFullName").value = "";
             document.getElementById("addressPhone").value = "";
@@ -1183,7 +1217,7 @@ document.addEventListener('DOMContentLoaded', () => {
         fetch("{% url 'userside:save_address_checkout' %}", {
             method: "POST",
             headers: {
-                "X-CSRFToken": getCookie('csrftoken') || document.querySelector('[name=csrfmiddlewaretoken]').value,
+                "X-CSRFToken": getCsrfToken(),
             },
             body: formData,
         })
@@ -1216,15 +1250,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                 `;
                 addressGroup.insertAdjacentHTML('beforeend', addressHtml);
-                Swal.fire({
+                Toast.fire({
                     icon: 'success',
-                    title: 'Address Added',
-                    text: data.message || 'Your address has been successfully added!',
-                    confirmButtonColor: '#14B8A6',
-                    background: '#fff',
-                    color: '#111827',
-                    timer: 2000,
-                    timerProgressBar: true
+                    title: data.message || 'Your address has been successfully added!'
                 });
             } else {
                 Swal.fire({
@@ -1266,27 +1294,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
     applyCouponBtn.addEventListener("click", function () {
         const couponCode = document.getElementById("couponCode").value.trim();
+        clearCouponError();
+
         if (!couponCode) {
-            Swal.fire({
-                icon: 'warning',
-                title: 'No Coupon Code',
-                text: 'Please enter a coupon code.',
-                confirmButtonColor: '#14B8A6',
-                background: '#fff',
-                color: '#111827'
-            });
+            showCouponError('Please enter a coupon code.');
             return;
         }
 
-        fetch("{% url 'userside:apply_coupon' %}", {
+        fetch("{% url 'userside:apply_referral_coupon' %}", {
             method: "POST",
             headers: {
-                "X-CSRFToken": getCookie('csrftoken') || document.querySelector('[name=csrfmiddlewaretoken]').value,
+                "X-CSRFToken": getCsrfToken(),
                 "Content-Type": "application/json",
             },
-            body: JSON.stringify({ coupon_code: couponCode }),
+            body: JSON.stringify({ coupon_code: couponCode, coupon_type: 'referral' }),
         })
         .then(response => {
+            console.log('Coupon fetch response status:', response.status);
             if (!response.ok) {
                 return response.json().then(errorData => {
                     throw new Error(errorData.message || 'Failed to apply coupon.');
@@ -1295,31 +1319,25 @@ document.addEventListener('DOMContentLoaded', () => {
             return response.json();
         })
         .then(data => {
+            console.log('Coupon response data:', data);
             if (data.success) {
-                Swal.fire({
+                Toast.fire({
                     icon: 'success',
-                    title: 'Coupon Applied',
-                    text: data.message || 'Coupon applied successfully! Please refresh to see updated totals.',
-                    confirmButtonColor: '#14B8A6',
-                    background: '#fff',
-                    color: '#111827',
-                    timer: 2000,
-                    timerProgressBar: true
+                    title: data.message || 'Coupon applied successfully!'
                 }).then(() => {
                     window.location.reload();
                 });
-            } else {
-                Swal.fire({
+            } else if (data.message === 'Referral coupon already applied.') {
+                Toast.fire({
                     icon: 'error',
-                    title: 'Error',
-                    text: data.message || 'There was a problem applying the coupon.',
-                    confirmButtonColor: '#14B8A6',
-                    background: '#fff',
-                    color: '#111827'
+                    title: 'Referral coupon already applied.'
                 });
+            } else {
+                showCouponError(data.message || 'There was a problem applying the coupon.');
             }
         })
         .catch(error => {
+            console.error('Coupon fetch error:', error);
             Swal.fire({
                 icon: 'error',
                 title: 'Error',
@@ -1331,21 +1349,83 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // Remove Coupon
-    document.querySelectorAll('.remove-coupon-btn').forEach(button => {
+    // Apply Coupon from Modal
+    document.querySelectorAll('.apply-coupon-btn').forEach(button => {
         button.addEventListener('click', function () {
             const couponCode = this.getAttribute('data-coupon-code');
             const couponType = this.getAttribute('data-coupon-type');
+            if (this.disabled) return;
+            clearCouponError();
 
-            fetch("{% url 'userside:remove_coupon' %}", {
+            const url = couponType === 'referral' ? "{% url 'userside:apply_referral_coupon' %}" : "{% url 'userside:apply_coupon' %}";
+
+            fetch(url, {
                 method: "POST",
                 headers: {
-                    "X-CSRFToken": getCookie('csrftoken') || document.querySelector('[name=csrfmiddlewaretoken]').value,
+                    "X-CSRFToken": getCsrfToken(),
                     "Content-Type": "application/json",
                 },
                 body: JSON.stringify({ coupon_code: couponCode, coupon_type: couponType }),
             })
             .then(response => {
+                console.log('Coupon fetch response status:', response.status);
+                if (!response.ok) {
+                    return response.json().then(errorData => {
+                        throw new Error(errorData.message || 'Failed to apply coupon.');
+                    });
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('Coupon response data:', data);
+                if (data.success) {
+                    bootstrap.Modal.getInstance(document.getElementById('couponModal')).hide();
+                    Toast.fire({
+                        icon: 'success',
+                        title: data.message || 'Coupon applied successfully!'
+                    }).then(() => {
+                        window.location.reload();
+                    });
+                } else if (data.message === 'Referral coupon already applied.') {
+                    Toast.fire({
+                        icon: 'error',
+                        title: 'Referral coupon already applied.'
+                    });
+                } else {
+                    showCouponError(data.message || 'There was a problem applying the coupon.');
+                }
+            })
+            .catch(error => {
+                console.error('Coupon fetch error:', error);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: error.message || 'There was a problem applying the coupon.',
+                    confirmButtonColor: '#14B8A6',
+                    background: '#fff',
+                    color: '#111827'
+                });
+            });
+        });
+    });
+
+    // Remove Coupon
+    document.querySelectorAll('.remove-coupon-btn').forEach(button => {
+        button.addEventListener('click', function () {
+            const couponCode = this.getAttribute('data-coupon-code');
+            const couponType = this.getAttribute('data-coupon-type');
+            clearCouponError();
+
+            fetch("{% url 'userside:remove_coupon' %}", {
+                method: "POST",
+                headers: {
+                    "X-CSRFToken": getCsrfToken(),
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ coupon_code: couponCode, coupon_type: couponType }),
+            })
+            .then(response => {
+                console.log('Remove coupon fetch response status:', response.status);
                 if (!response.ok) {
                     return response.json().then(errorData => {
                         throw new Error(errorData.message || 'Failed to remove coupon.');
@@ -1354,16 +1434,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 return response.json();
             })
             .then(data => {
+                console.log('Remove coupon response data:', data);
                 if (data.success) {
-                    Swal.fire({
+                    Toast.fire({
                         icon: 'success',
-                        title: 'Coupon Removed',
-                        text: data.message || 'Coupon removed successfully! Please refresh to see updated totals.',
-                        confirmButtonColor: '#14B8A6',
-                        background: '#fff',
-                        color: '#111827',
-                        timer: 2000,
-                        timerProgressBar: true
+                        title: data.message || 'Coupon removed successfully!'
                     }).then(() => {
                         window.location.reload();
                     });
@@ -1379,71 +1454,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             })
             .catch(error => {
+                console.error('Remove coupon fetch error:', error);
                 Swal.fire({
                     icon: 'error',
                     title: 'Error',
                     text: error.message || 'There was a problem removing the coupon.',
-                    confirmButtonColor: '#14B8A6',
-                    background: '#fff',
-                    color: '#111827'
-                });
-            });
-        });
-    });
-
-    // Apply Coupon from Modal
-    document.querySelectorAll('.apply-coupon-btn').forEach(button => {
-        button.addEventListener('click', function () {
-            const couponCode = this.getAttribute('data-coupon-code');
-            const couponType = this.getAttribute('data-coupon-type');
-            if (this.disabled) return;
-
-            fetch("{% url 'userside:apply_coupon' %}", {
-                method: "POST",
-                headers: {
-                    "X-CSRFToken": getCookie('csrftoken') || document.querySelector('[name=csrfmiddlewaretoken]').value,
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({ coupon_code: couponCode, coupon_type: couponType }),
-            })
-            .then(response => {
-                if (!response.ok) {
-                    return response.json().then(errorData => {
-                        throw new Error(errorData.message || 'Failed to apply coupon.');
-                    });
-                }
-                return response.json();
-            })
-            .then(data => {
-                if (data.success) {
-                    Swal.fire({
-                        icon: 'success',
-                        title: 'Coupon Applied',
-                        text: data.message || 'Coupon applied successfully! Please refresh to see updated totals.',
-                        confirmButtonColor: '#14B8A6',
-                        background: '#fff',
-                        color: '#111827',
-                        timer: 2000,
-                        timerProgressBar: true
-                    }).then(() => {
-                        window.location.reload();
-                    });
-                } else {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Error',
-                        text: data.message || 'There was a problem applying the coupon.',
-                        confirmButtonColor: '#14B8A6',
-                        background: '#fff',
-                        color: '#111827'
-                    });
-                }
-            })
-            .catch(error => {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Error',
-                    text: error.message || 'There was a problem applying the coupon.',
                     confirmButtonColor: '#14B8A6',
                     background: '#fff',
                     color: '#111827'

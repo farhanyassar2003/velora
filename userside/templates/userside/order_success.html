@@ -150,6 +150,19 @@
             transform: translateY(-2px);
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
         }
+        .address-section {
+            margin-bottom: 1.5rem;
+        }
+        .address-section h3 {
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+        }
+        .address-section p {
+            font-size: 0.9rem;
+            color: var(--gray-600);
+            margin-bottom: 0.5rem;
+        }
         /* Responsive Design */
         @media (max-width: 768px) {
             .page-title {
@@ -183,6 +196,12 @@
                             <i class="bi bi-check-circle-fill text-success" style="font-size: 4rem;"></i>
                             <h2 class="fs-3 fw-bold text-primaryBlack mt-3 mb-2">Order Confirmed!</h2>
                             <p class="text-gray-700">Your order <strong>#{{ order.order_id }}</strong> has been placed successfully.</p>
+                        </div>
+
+                        <!-- Add Shipping Address Section -->
+                        <div class="address-section mt-4 pt-3 border-top text-start">
+                            <h3 class="fs-5 fw-bold text-primaryBlack">Shipping Address</h3>
+                            <p>{{ order.get_shipping_address }}</p>
                         </div>
 
                         <div class="text-start mb-4">

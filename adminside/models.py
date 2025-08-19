@@ -250,6 +250,10 @@ class ReferralCoupon(models.Model):
         return (self.valid_from <= today <= self.valid_until and not self.used)
 
 # ===========================# ORDER MANAGEMENT# ===========================
+COUPON_TYPE_CHOICES = [
+    ('coupon', 'Coupon'),
+    ('referral', 'Referral Coupon'),
+]
 class Order(models.Model):
     STATUS_CHOICES = [
         ('pending', 'Pending'),
@@ -268,7 +272,6 @@ class Order(models.Model):
         # Add more gateways as needed, e.g., ('stripe', 'Stripe'),
     ]
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    address = models.ForeignKey('Address', on_delete=models.SET_NULL, null=True)
     order_id = models.CharField(max_length=20, unique=True, blank=False)
     created_at = models.DateTimeField(auto_now_add=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
@@ -289,13 +292,40 @@ class Order(models.Model):
     is_paid = models.BooleanField(default=False)
     return_requested = models.BooleanField(default=False)
     return_verified = models.BooleanField(default=False)
+    coupon_code = models.CharField(max_length=50, null=True, blank=True)
+    coupon_discount_percentage = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+    coupon_type = models.CharField(max_length=20, choices=COUPON_TYPE_CHOICES, null=True, blank=True)
+    
+    
+    
+    shipping_full_name = models.CharField(max_length=100, blank=True)
+    shipping_phone = models.CharField(max_length=20, blank=True)
+    shipping_address_line1 = models.CharField(max_length=255, blank=True)
+    shipping_address_line2 = models.CharField(max_length=255, blank=True)
+    shipping_city = models.CharField(max_length=100, blank=True)
+    shipping_state = models.CharField(max_length=100, blank=True)
+    shipping_postal_code = models.CharField(max_length=20, blank=True)
+    shipping_country = models.CharField(max_length=100, blank=True)
 
     def save(self, *args, **kwargs):
         if not self.order_id:
             self.order_id = str(uuid.uuid4()).split('-')[0].upper()
+        # Set is_paid for COD orders when status is delivered
+        if self.payment_method == 'COD' and self.status == 'delivered':
+            self.is_paid = True
         super().save(*args, **kwargs)
+        
     def __str__(self):
         return f"Order {self.order_id} by {self.user.email}"
+    
+    def get_shipping_address(self):
+        """Helper method to display snapped address."""
+        return (
+            f"{self.shipping_full_name}, {self.shipping_address_line1}, "
+            f"{self.shipping_address_line2}, {self.shipping_city}, "
+            f"{self.shipping_state}, {self.shipping_postal_code}, "
+            f"{self.shipping_country}"
+        ).replace(", ,", ",").strip(", ")
 
 class OrderItem(models.Model):
     order = models.ForeignKey(Order, related_name='items', on_delete=models.CASCADE)
@@ -312,6 +342,7 @@ class OrderItem(models.Model):
     cancel_reason = models.TextField(blank=True, null=True)
     return_reason = models.TextField(blank=True, null=True)
     is_refunded_to_wallet = models.BooleanField(default=False)
+    refund_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0.00, help_text="Amount to be refunded for this item")
 
     @property
     def total(self):
