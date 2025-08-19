@@ -1,3 +1,58 @@
-Velora is a modern and user-friendly e-commerce website designed to provide a seamless online shopping experience. Our platform offers a wide range of high-quality clothing collections for men, women, and kids, catering to diverse styles, preferences, and occasions. With a focus on simplicity and convenience, Velora combines an elegant design with intuitive navigation, making it easy for customers to browse categories, explore trending outfits, and shop with confidence. Whether it’s casual wear, formal attire, or seasonal fashion, Velora aims to deliver a smooth and enjoyable shopping journey for every customer.
+Velora is a modern and user-friendly e-commerce website designed for a smooth online shopping experience. It offers a wide collection of clothing for men, women, and kids, with features inspired by leading platforms like Flipkart and Amazon. The project includes both user and admin interfaces, covering everything from browsing and searching products to managing orders and inventory.
 
-Velora comes packed with features that make online shopping effortless and enjoyable. Customers can explore a vast product range with smart search and advanced filters to quickly find what they need. The website is fully responsive, ensuring a seamless experience across desktops, tablets, and mobile devices. With secure checkout options, shoppers can complete transactions safely, while the wishlist feature allows them to save favorite items for future purchases. To enhance the post-purchase experience
+🛍️ Features
+User Side
+
+Home page with carousel, featured categories, and trending products
+
+Signup/Login with OTP and Google authentication
+
+Product listing with:
+
+Search, sort, and advanced filters
+
+Category, gender, and size-based filtering
+
+Price range filtering
+
+Product detail page with:
+
+Multiple product images with zoom option
+
+Highlights and specifications
+
+Cart and wishlist management
+
+Order placement with secure payment options
+
+Real-time order tracking
+
+Admin Side
+
+Admin login and dashboard
+
+User management (block/unblock users)
+
+Product, category management
+
+Order management with status update
+
+Sales insights and analytics 
+
+Coupon management 
+
+Product offers, category offers management
+
+
+
+🛠️ Tech Stack
+
+Frontend: HTML, CSS, JavaScript 
+
+Backend: Python Django
+
+Database: PostgreSQL / SQLite (development)
+
+Authentication: Django sessions, OTP (Email), Google OAuth
+
+Other: Bootstrap, AJAX (for dynamic features)
