@@ -27,7 +27,7 @@ Order placement with secure payment options
 
 Real-time order tracking
 
-Admin Side
+🛍️ Features Admin Side
 
 Admin login and dashboard
 
