@@ -29,6 +29,8 @@
             --danger-color: #dc3545;
             --blue-gradient-start: #4fc3f7;
             --blue-gradient-end: #1565c0;
+            --input-gradient-start: #ffffff;
+            --input-gradient-end: #f0f4ff; /* Subtle gradient for inputs */
         }
 
         * {
@@ -199,27 +201,34 @@
             font-size: 0.8rem;
             color: var(--gray-600);
             width: 12px;
-            height: 12px;
+            height: | 12px;
             display: flex;
             align-items: center;
             justify-content: center;
         }
 
         .form-control {
-            background-color: var(--gray-50);
+            background: linear-gradient(135deg, var(--input-gradient-start) 0%, var(--input-gradient-end) 100%);
             border: 1px solid var(--gray-200);
-            border-radius: 6px;
-            padding: 0.5rem 0.75rem;
+            border-radius: 8px;
+            padding: 0.6rem 0.85rem;
             font-size: 0.85rem;
             color: var(--gray-900);
+            transition: all 0.3s ease;
             width: 100%;
             font-family: 'Inter', sans-serif;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+
+        .form-control:hover {
+            border-color: var(--blue-gradient-start);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
         }
 
         .form-control:focus {
-            background-color: var(--primary-white);
-            border-color: var(--primary-black);
-            box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.1);
+            background: var(--primary-white);
+            border-color: var(--blue-gradient-end);
+            box-shadow: 0 0 8px rgba(21, 101, 192, 0.3);
             outline: none;
         }
 
@@ -228,23 +237,17 @@
             font-weight: 400;
         }
 
+        #id_username, #id_password {
+            width: 100%;
+            max-width: 550px; /* Increased width */
+        }
+
         .input-group {
             position: relative;
         }
 
-        .input-icon {
-            position: absolute;
-            right: 0.6rem;
-            top: 50%;
-            transform: translateY(-50%);
-            color: var(--gray-600);
-            font-size: 0.8rem;
-            pointer-events: none;
-            z-index: 2;
-        }
-
         .form-control.with-icon {
-            padding-right: 2.2rem;
+            padding-right: 3rem; /* Adjusted for wider input */
         }
 
         .password-toggle {
@@ -257,7 +260,7 @@
             color: var(--gray-600);
             cursor: pointer;
             font-size: 0.8rem;
-            z-index: 2;
+            z-index: 3;
             padding: 0.15rem;
             display: flex;
             align-items: center;
@@ -265,6 +268,11 @@
         }
 
         .password-toggle:hover {
+            color: var(--gray-800);
+        }
+
+        .password-toggle:focus {
+            outline: none;
             color: var(--gray-800);
         }
 
@@ -429,9 +437,7 @@
         .google-icon {
             width: 16px;
             height: 16px;
-            background: url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTIyLjU2IDEyLjI1QzIyLjU2IDExLjQ3IDIyLjQ5IDEwLjcyIDIyLjM2IDEwSDEyVjE0LjI2SDE3LjkyQzE3LjY2IDE1LjYgMTYuOTIgMTYuNzQgMTUuODQgMTcuNVYyMC4yNkgxOS4zNkMyMS4wOSAxOC43IDIyLjU2IDE1LjcgMjIuNTYgMTIuMjVaIiBmaWxsPSIjNDI4NUY0Ii8+CjxwYXRoIGQ9
-
-Ik0xMiAyM0M5LjI0IDIzIDYuODggMjEuOTIgNS4yNyAyMC4yNkw4Ljc3IDE3LjVDOS44NyAxOC4yNCAxMS4zMSAxOC43NSAxMiAxOC43NUMxNC43NiAxOC43NSAxNy4wNSAxNi45MiAxNy45MiAxNC4yNkgxNy45MlYxNC4yNkgxMlYxMEgyMi4zNkMyMi40OSAxMC43MiAyMi41NiAxMS40NyAyMi41NiAxMi4yNUMyMi41NiAxNS43IDIxLjA5IDE4LjcgMTkuMzYgMjAuMjZMMTUuODQgMTcuNUMxNi45MiAxNi43NCAxNy42NiAxNS42IDE3LjkyIDE0LjI2SDE3LjkyWiIgZmlsbD0iIzM0QTg1MyIvPgo8cGF0aCBkPSJNNS4yNyAyMC4yNkMyLjkxIDE4LjEzIDEuNSAxNS4xMyAxLjUgMTJDMS41IDguODcgMi45MSA1Ljg3IDUuMjcgMy43NEw4Ljc3IDYuNUM3LjY5IDcuMjQgNi45NyA4LjQzIDYuOTcgOS43NUg2Ljk3VjkuNzVINi45N0M2Ljk3IDEwLjU3IDcuMjQgMTEuMzQgNy43MyAxMS45NUw1LjI3IDMuNzRDMi45MSA1Ljg3IDEuNSA4Ljg3IDEuNSAxMkMxLjUgMTUuMTMgMi45MSAxOC4xMyA1LjI3IDIwLjI2TDguNzcgMTcuNUM3LjY5IDE2Ljc2IDYuOTcgMTUuNTcgNi45NyAxNC4yNUg2Ljk3VjE0LjI1SDYuOTdDNi45NyAxMy40MyA3LjI0IDEyLjY2IDcuNzMgMTIuMDVMNS4yNyAyMC4yNloiIGZpbGw9IiNGQkJDMDQiLz4KPHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTUuMjcgMy43NEM3LjYzIDEuNjEgMTAuMjMgMC41IDEyLjAxIDBDMTQuNzcgMCAxNy4xMyAxLjA4IDE4Ljc0IDIuNzlMMTUuMjUgNS41QzE0LjE3IDQuNzYgMTIuNzMgNC4yNSAxMi4wMSA0LjI1QzkuMjUgNC4yNSA2Ljk2IDYuMDggNi4wOSA4LjgxSDYuMDlWOC44MUgxMi4wMUMxMi4wMSA4LjgxIDEyLjAxIDguODcgMTIuMDEgOC45M0M3LjI0IDguOTMgNS4yNyAxMS45MyA1LjI3IDguNzVSNS4yNyAzLjc0WiIgZmlsbD0iI0VBNDMzNSIvPgo8L3N2Zz4K') center center no-repeat;
+            background: url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTIyLjU2IDEyLjI1QzIyLjU2IDExLjQ3IDIyLjQ5IDEwLjcyIDIyLjM2IDEwSDEyVjE0LjI2SDE3LjkyQzE3LjY2IDE1LjYgMTYuOTIgMTYuNzQgMTUuODQgMTcuNVYyMC4yNkgxOS4zNkMyMS4wOSAxOC43IDIyLjU2IDE1LjcgMjIuNTYgMTIuMjVaIiBmaWxsPSIjNDI4NUY0Ii8+CjxwYXRoIGQ9Ik0xMiAyM0M5LjI0IDIzIDYuODggMjEuOTIgNS4yNyAyMC4yNkw4Ljc3IDE3LjVDOS44NyAxOC4yNCAxMS4zMSAxOC43NSAxMiAxOC43NUMxNC43NiAxOC43NSAxNy4wNSAxNi45MiAxNy45MiAxNC4yNkgxNy45MlYxNC4yNkgxMlYxMEgyMi4zNkMyMi40OSAxMC43MiAyMi41NiAxMS40NyAyMi41NiAxMi4yNUMyMi41NiAxNS43IDIxLjA5IDE4LjcgMTkuMzYgMjAuMjZMMTUuODQgMTcuNUMxNi45MiAxNi43NCAxNy42NiAxNS42IDE3LjkyIDE0LjI2SDE3LjkyWiIgZmlsbD0iIzM0QTg1MyIvPgo8cGF0aCBkPSJNNS4yNyAyMC4yNkMyLjkxIDE4LjEzIDEuNSAxNS4xMyAxLjUgMTJDMS41IDguODcgMi45MSA1Ljg3IDUuMjcgMy43NEw4Ljc3IDYuNUM3LjY5IDcuMjQgNi45NyA4LjQzIDYuOTcgOS43NUg2Ljk3VjkuNzVINi45N0M2Ljk3IDEwLjU3IDcuMjQgMTEuMzQgNy43MyAxMS45NUw1LjI3IDMuNzRDMi45MSA1Ljg3IDEuNSA4Ljg3IDEuNSAxMkMxLjUgMTUuMTMgMi45MSAxOC4xMyA1LjI3IDIwLjI2TDguNzcgMTcuNUM3LjY5IDE2Ljc2IDYuOTcgMTUuNTcgNi45NyAxNC4yNUg2Ljk3VjE0LjI1SDYuOTdDNi45NyAxMy40MyA3LjI0IDEyLjY2IDcuNzMgMTIuMDVMNS4yNyAyMC4yNloiIGZpbGw9IiNGQkJDMDQiLz4KPHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTUuMjcgMy43NEM3LjYzIDEuNjEgMTAuMjMgMC41IDEyLjAxIDBDMTQuNzcgMCAxNy4xMyAxLjA4IDE4Ljc0IDIuNzlMMTUuMjUgNS41QzE0LjE3IDQuNzYgMTIuNzMgNC4yNSAxMi4wMSA0LjI1QzkuMjUgNC4yNSA2Ljk2IDYuMDggNi4wOSA4LjgxSDYuMDlWOC44MUgxMi4wMUMxMi4wMSA4LjgxIDEyLjAxIDguODcgMTIuMDEgOC45M0M3LjI0IDguOTMgNS4yNyAxMS45MyA1LjI3IDguNzVSNS4yNyAzLjc0WiIgZmlsbD0iI0VBNDMzNSIvPgo8L3N2Zz4K') center center no-repeat;
             background-size: contain;
             flex-shrink: 0;
         }
@@ -542,6 +548,10 @@ Ik0xMiAyM0M5LjI0IDIzIDYuODggMjEuOTIgNS4yNyAyMC4yNkw4Ljc3IDE3LjVDOS44NyAxOC4yNCAx
                 margin-bottom: 0.6rem;
                 font-size: 0.85rem;
             }
+
+            #id_username, #id_password {
+                max-width: 100%;
+            }
         }
 
         @media (max-width: 768px) {
@@ -598,6 +608,10 @@ Ik0xMiAyM0M5LjI0IDIzIDYuODggMjEuOTIgNS4yNyAyMC4yNkw4Ljc3IDE3LjVDOS44NyAxOC4yNCAx
             .form-control {
                 padding: 0.4rem 0.6rem;
                 font-size: 0.75rem;
+            }
+
+            .form-control.with-icon {
+                padding-right: 2.4rem;
             }
 
             .submit-btn {
@@ -688,8 +702,7 @@ Ik0xMiAyM0M5LjI0IDIzIDYuODggMjEuOTIgNS4yNyAyMC4yNkw4Ljc3IDE3LjVDOS44NyAxOC4yNCAx
                                     <span>Email or Username</span>
                                 </label>
                                 <div class="input-group">
-                                    <input type="text" class="form-control with-icon" id="id_username" name="username" placeholder="Enter your email or username">
-                                    <i class="bi bi-envelope input-icon"></i>
+                                    <input type="text" class="form-control" id="id_username" name="username" placeholder="Enter your email or username">
                                 </div>
                                 <div class="invalid-feedback" id="username_error" style="display: none;">
                                     <i class="bi bi-exclamation-circle"></i>
@@ -709,7 +722,7 @@ Ik0xMiAyM0M5LjI0IDIzIDYuODggMjEuOTIgNS4yNyAyMC4yNkw4Ljc3IDE3LjVDOS44NyAxOC4yNCAx
                                     <span>Password</span>
                                 </label>
                                 <div class="input-group">
-                                    <input type="password" class="form-control" id="id_password" name="password" placeholder="Enter your password">
+                                    <input type="password" class="form-control with-icon" id="id_password" name="password" placeholder="Enter your password">
                                     <button type="button" class="password-toggle" onclick="togglePassword('id_password', this)">
                                         <i class="bi bi-eye"></i>
                                     </button>

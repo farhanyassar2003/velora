@@ -817,9 +817,48 @@ def product_detail_view(request, id):
             offer_type = 'Category Offer'
         discounted_price = original_price - discount
 
+    # Fetch related products (same category only)
     related_products = Product.objects.filter(
-        category=product.category, is_listed=True, is_deleted=False
-    ).exclude(id=product.id)[:4]
+        category=product.category,
+        is_listed=True,
+        is_active=True,
+        is_deleted=False
+    ).exclude(id=product.id).select_related('category').prefetch_related('product_images')[:4]
+
+    # Calculate discounts for related products
+    for related_product in related_products:
+        related_product.original_price = related_product.price
+        related_product.discounted_price = related_product.price
+        related_product.discount = Decimal('0')
+        related_product.offer_discount_percentage = Decimal('0')
+
+        product_offer = ProductOffer.objects.filter(
+            product=related_product,
+            is_active=True,
+            is_deleted=False,
+            start_date__lte=date.today(),
+            end_date__gte=date.today()
+        ).first()
+
+        category_offer = CategoryOffer.objects.filter(
+            category=related_product.category,
+            is_active=True,
+            is_deleted=False,
+            start_date__lte=date.today(),
+            end_date__gte=date.today()
+        ).first()
+
+        product_discount = Decimal(product_offer.discount_percentage) if product_offer else Decimal('0')
+        category_discount = Decimal(category_offer.discount_percentage) if category_offer else Decimal('0')
+
+        if product_discount > 0 or category_discount > 0:
+            if product_discount >= category_discount:
+                related_product.discount = related_product.price * (product_discount / Decimal('100'))
+                related_product.offer_discount_percentage = product_discount
+            else:
+                related_product.discount = related_product.price * (category_discount / Decimal('100'))
+                related_product.offer_discount_percentage = category_discount
+            related_product.discounted_price = related_product.price - related_product.discount
 
     is_in_wishlist = False
     if request.user.is_authenticated:
@@ -1213,13 +1252,63 @@ def cancel_entire_order(request, order_id):
 
     try:
         with transaction.atomic():
+            # Calculate previously refunded amount
             previously_refunded = sum(item.total for item in order.items.filter(is_refunded_to_wallet=True))
-            refund_amount = max(order.total - previously_refunded, Decimal('0.00'))
 
+            # Calculate total discount (coupon + referral coupon)
+            total_discount = (order.coupon_discount or Decimal('0.00')) + (order.referral_coupon_discount or Decimal('0.00'))
+
+            # Identify unique products (group by product, variant, color_name, size)
+            unique_products = {}
+            for item in order.items.all():
+                # Define a key for uniqueness (product, variant, color_name, size)
+                product_key = (item.product_id, item.variant_id, item.color_name, item.size)
+                if product_key not in unique_products:
+                    unique_products[product_key] = {
+                        'items': [item],
+                        'total_price': item.total,
+                        'quantity': item.quantity
+                    }
+                else:
+                    unique_products[product_key]['items'].append(item)
+                    unique_products[product_key]['total_price'] += item.total
+                    unique_products[product_key]['quantity'] += item.quantity
+
+            # Number of scant products
+            num_unique_products = len(unique_products)
+            if num_unique_products > 0:
+                discount_per_product = total_discount / num_unique_products
+            else:
+                discount_per_product = Decimal('0.00')
+
+            # Calculate refund amount for non-cancelled items
+            refund_amount = Decimal('0.00')
+            for product_key, product_data in unique_products.items():
+                # Only process if at least one item is not cancelled
+                if any(not item.is_cancelled for item in product_data['items']):
+                    # Calculate refund for the product (total price minus its discount share)
+                    product_refund = max(product_data['total_price'] - discount_per_product, Decimal('0.00'))
+                    # Distribute refund proportionally among non-cancelled items of this product
+                    non_cancelled_items = [item for item in product_data['items'] if not item.is_cancelled]
+                    if non_cancelled_items:
+                        total_quantity = sum(item.quantity for item in non_cancelled_items)
+                        if total_quantity > 0:
+                            for item in non_cancelled_items:
+                                # Proportion of refund based on item quantity
+                                item_refund = (product_refund * item.quantity) / product_data['quantity']
+                                refund_amount += item_refund
+                                item.refund_amount = item_refund
+                                item.save()
+
+            # Ensure refund doesn't exceed order total minus previously refunded
+            refund_amount = max(refund_amount, Decimal('0.00'))
+
+            # Update order status
             order.status = 'cancelled'
             order.reason = reason
             order.save()
 
+            # Update items
             for item in order.items.filter(is_cancelled=False):
                 item.is_cancelled = True
                 item.cancel_reason = reason
@@ -1232,6 +1321,7 @@ def cancel_entire_order(request, order_id):
                 else:
                     logger.warning(f"OrderItem {item.id} has no associated ProductVariant.")
 
+            # Process refund if applicable
             if refund_amount > 0 and (order.is_paid or order.payment_method != 'COD'):
                 wallet = get_object_or_404(Wallet, user=request.user)
                 try:
@@ -3143,6 +3233,16 @@ def return_order_item(request, item_id):
             # Mark order as return requested
             order.return_requested = True
             order.save()
+
+            # Check if any other items in the order are accepted (refunded)
+            has_accepted_items = order.items.filter(is_refunded_to_wallet=True).exists()
+            if has_accepted_items:
+                # Mark rejected items as delivered (is_returned=False)
+                rejected_items = order.items.filter(is_returned=False, return_reason__startswith='Rejected: ')
+                for rejected_item in rejected_items:
+                    rejected_item.return_reason = f"{rejected_item.return_reason} (Marked as delivered due to other accepted returns)"
+                    rejected_item.save()
+                    logger.info(f"Item {rejected_item.id} in order {order.order_id} marked as delivered due to other accepted returns.")
 
             messages.success(request, f"Return request for '{item.product.name}' submitted. Awaiting admin approval. Estimated refund: ₹{item.refund_amount:.2f}")
             logger.info(f"Return request for item {item.id} in order {order.order_id} completed successfully.")

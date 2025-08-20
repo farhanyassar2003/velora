@@ -455,8 +455,8 @@
                 showError('category_id', 'Category is required.');
                 hasError = true;
             }
-            if (isNaN(data.discount_percentage) || data.discount_percentage <= 0 || data.discount_percentage > 100) {
-                showError('discount_percentage', 'Discount Percentage must be between 0 and 100.');
+            if (isNaN(data.discount_percentage) || data.discount_percentage <= 0 || data.discount_percentage > 99) {
+                showError('discount_percentage', 'Discount Percentage must be between 0 and 99.');
                 hasError = true;
             }
             if (!data.start_date) {

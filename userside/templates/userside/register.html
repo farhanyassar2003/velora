@@ -30,6 +30,9 @@
             --danger-color: #dc3545;
             --blue-gradient-start: #4fc3f7;
             --blue-gradient-end: #1565c0;
+            --google-hover-color: #e3f2fd;
+            --input-gradient-start: #ffffff;
+            --input-gradient-end: #f0f4ff; /* Subtle gradient for inputs */
         }
 
         * {
@@ -196,21 +199,33 @@
         }
 
         .form-control {
-            background-color: var(--gray-50);
+            background: linear-gradient(135deg, var(--input-gradient-start) 0%, var(--input-gradient-end) 100%);
             border: 1px solid var(--gray-200);
-            border-radius: 6px;
-            padding: 0.5rem 0.75rem;
+            border-radius: 8px; /* Slightly larger border radius for a softer look */
+            padding: 0.6rem 0.85rem; /* Slightly more padding for comfort */
             font-size: 0.85rem;
             color: var(--gray-900);
             transition: all 0.3s ease;
             width: 100%;
             font-family: 'Inter', sans-serif;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05); /* Subtle shadow for depth */
+        }
+
+        .form-control:hover {
+            border-color: var(--blue-gradient-start); /* Hover effect with gradient color */
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Enhanced shadow on hover */
+        }
+
+        /* Increase width for specific input fields */
+        #id_email, #id_phone_number, #id_password1, #id_password2 {
+            width: 100%;
+            max-width: 500px; /* Further increased width */
         }
 
         .form-control:focus {
-            background-color: var(--primary-white);
-            border-color: var(--primary-black);
-            box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.1);
+            background: var(--primary-white);
+            border-color: var(--blue-gradient-end);
+            box-shadow: 0 0 8px rgba(21, 101, 192, 0.3); /* Enhanced focus glow */
             outline: none;
         }
 
@@ -307,7 +322,7 @@
         }
 
         .google-btn:hover {
-            background: var(--gray-50);
+            background: var(--google-hover-color);
             border-color: var(--gray-300);
             color: var(--gray-700);
             text-decoration: none;
@@ -426,7 +441,7 @@
         }
 
         .form-control.with-icon {
-            padding-right: 2.2rem;
+            padding-right: 2.8rem; /* Increased to accommodate eye icon in wider inputs */
         }
 
         .password-toggle {
@@ -508,6 +523,10 @@
                 margin-bottom: 0.6rem;
                 font-size: 0.85rem;
             }
+
+            #id_email, #id_phone_number, #id_password1, #id_password2 {
+                max-width: 100%;
+            }
         }
 
         @media (max-width: 768px) {
@@ -568,6 +587,10 @@
             .form-control {
                 padding: 0.4rem 0.6rem;
                 font-size: 0.75rem;
+            }
+
+            .form-control.with-icon {
+                padding-right: 2.4rem; /* Adjusted for smaller screens */
             }
 
             .submit-btn {

@@ -295,6 +295,7 @@ class Order(models.Model):
     coupon_code = models.CharField(max_length=50, null=True, blank=True)
     coupon_discount_percentage = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
     coupon_type = models.CharField(max_length=20, choices=COUPON_TYPE_CHOICES, null=True, blank=True)
+
     
     
     

@@ -112,11 +112,14 @@ from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, 
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import inch
 from openpyxl import Workbook
+from reportlab.lib.pagesizes import letter, landscape
+from reportlab.platypus import HRFlowable 
 import pytz
 from openpyxl.styles import Font, Alignment
 from django.utils import timezone
 from datetime import datetime, timedelta, time
 import io
+
 
 # Set up logging for debugging
 logger = logging.getLogger(__name__)
@@ -388,19 +391,62 @@ def sales_report(request):
     # PDF Download
     if download_format == 'pdf':
         buffer = io.BytesIO()
-        doc = SimpleDocTemplate(buffer, pagesize=letter, leftMargin=0.5 * inch, rightMargin=0.5 * inch,
-                                topMargin=0.5 * inch, bottomMargin=0.5 * inch)
+        # Use landscape orientation for more width
+        doc = SimpleDocTemplate(buffer, pagesize=landscape(letter),
+                                leftMargin=0.5 * inch, rightMargin=0.5 * inch,
+                                topMargin=0.75 * inch, bottomMargin=0.75 * inch)
         styles = getSampleStyleSheet()
         elements = []
 
-        title_style = ParagraphStyle('TitleStyle', parent=styles['Title'], fontSize=18, alignment=1, spaceAfter=12)
-        subtitle_style = ParagraphStyle('SubtitleStyle', parent=styles['Normal'], fontSize=12, alignment=1, spaceAfter=20)
-        footer_style = ParagraphStyle('FooterStyle', parent=styles['Normal'], fontSize=10, alignment=1)
+        # Custom styles
+        title_style = ParagraphStyle(
+            'TitleStyle',
+            parent=styles['Title'],
+            fontSize=22,
+            textColor=colors.HexColor('#1E3A8A'),
+            alignment=1,
+            spaceAfter=15
+        )
+        subtitle_style = ParagraphStyle(
+            'SubtitleStyle',
+            parent=styles['Normal'],
+            fontSize=14,
+            textColor=colors.HexColor('#374151'),
+            alignment=1,
+            spaceAfter=20
+        )
+        footer_style = ParagraphStyle(
+            'FooterStyle',
+            parent=styles['Normal'],
+            fontSize=10,
+            textColor=colors.HexColor('#6B7280'),
+            alignment=1
+        )
+        table_header_style = TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1E3A8A')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 12),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#E5E7EB')),
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#F3F4F6')]),  # Corrected syntax
+            ('TEXTCOLOR', (0, 1), (-1, -1), colors.HexColor('#1F2937')),
+            ('FONTSIZE', (0, 1), (-1, -1), 10),
+            ('LEFTPADDING', (0, 0), (-1, -1), 8),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 8),
+            ('TOPPADDING', (0, 0), (-1, -1), 6),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+            ('BOX', (0, 0), (-1, -1), 1, colors.HexColor('#E5E7EB')),
+        ])
 
-        elements.append(Paragraph("Velora Clotting", title_style))
+        # Header with decorative line
+        elements.append(Paragraph("Velora Clothing", title_style))
+        elements.append(HRFlowable(width="80%", thickness=2, color=colors.HexColor('#1E3A8A'), spaceAfter=12, hAlign='CENTER'))
         elements.append(Paragraph(f"Sales Report ({start_date} to {end_date})", subtitle_style))
-        elements.append(Spacer(1, 0.2 * inch))
+        elements.append(Spacer(1, 0.3 * inch))
 
+        # Summary Table
         summary = [
             ['Metric', 'Value'],
             ['Total Orders', str(total_orders)],
@@ -408,57 +454,49 @@ def sales_report(request):
             ['Total Item Discount', f"₹{float(total_item_discount):.2f}"],
             ['Total Coupon Discount', f"₹{float(total_coupon_discount):.2f}"],
         ]
-        summary_table = Table(summary, colWidths=[2.5 * inch, 2.5 * inch])
-        summary_table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1E3A8A')),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
-            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-            ('GRID', (0, 0), (-1, -1), 1, colors.gray),
-        ]))
+        summary_table = Table(summary, colWidths=[2.8 * inch, 2.8 * inch])
+        summary_table.setStyle(table_header_style)
         elements.append(summary_table)
-        elements.append(Spacer(1, 0.25 * inch))
+        elements.append(Spacer(1, 0.3 * inch))
 
+        # Top Products Table
         elements.append(Paragraph("Top 10 Best Selling Products", subtitle_style))
         top_products_data = [['Product', 'Quantity Sold', 'Net Revenue']]
         for p in top_products:
             top_products_data.append([p['product__name'], p['total_quantity'], f"₹{float(p['net_revenue']):.2f}"])
-        top_products_table = Table(top_products_data, colWidths=[2 * inch, 1.5 * inch, 1.5 * inch])
-        top_products_table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1E3A8A')),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
-            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-            ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
-        ]))
+        top_products_table = Table(top_products_data, colWidths=[3.0 * inch, 1.8 * inch, 1.8 * inch])
+        top_products_table.setStyle(table_header_style)
         elements.append(top_products_table)
-        elements.append(Spacer(1, 0.25 * inch))
+        elements.append(Spacer(1, 0.3 * inch))
 
+        # Top Categories Table
         elements.append(Paragraph("Top 10 Best Selling Categories", subtitle_style))
         top_categories_data = [['Category', 'Quantity Sold', 'Net Revenue']]
         for c in top_categories:
             top_categories_data.append([c['product__category__name'], c['total_quantity'], f"₹{float(c['net_revenue']):.2f}"])
-        top_categories_table = Table(top_categories_data, colWidths=[2 * inch, 1.5 * inch, 1.5 * inch])
-        top_categories_table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1E3A8A')),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
-            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-            ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
-        ]))
+        top_categories_table = Table(top_categories_data, colWidths=[3.0 * inch, 1.8 * inch, 1.8 * inch])
+        top_categories_table.setStyle(table_header_style)
         elements.append(top_categories_table)
-        elements.append(Spacer(1, 0.25 * inch))
+        elements.append(Spacer(1, 0.3 * inch))
 
-        data_table = Table(report_data, repeatRows=1)
-        data_table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1E3A8A')),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
-            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-            ('FONTSIZE', (0, 0), (-1, 0), 10),
-            ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
-        ]))
+        # Sales Details Table with dynamic column widths
+        col_widths = [1.6 * inch, 1.3 * inch, 2.2 * inch, 1.3 * inch, 1.3 * inch, 1.3 * inch, 1.3 * inch]
+        data_table = Table(report_data, colWidths=col_widths, repeatRows=1)
+        data_table.setStyle(table_header_style)
         elements.append(data_table)
         elements.append(Spacer(1, 0.3 * inch))
-        elements.append(Paragraph(f"Generated on {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", footer_style))
 
-        doc.build(elements)
+        # Footer with page number
+        def add_page_number(canvas, doc):
+            page_num = canvas.getPageNumber()
+            footer_text = f"Page {page_num} | Generated on {datetime.now().astimezone(ist_tz).strftime('%Y-%m-%d %H:%M:%S IST')}"
+            canvas.saveState()
+            canvas.setFont('Helvetica', 10)
+            canvas.setFillColor(colors.HexColor('#6B7280'))
+            canvas.drawString(0.5 * inch, 0.25 * inch, footer_text)
+            canvas.restoreState()
+
+        doc.build(elements, onFirstPage=add_page_number, onLaterPages=add_page_number)
         buffer.seek(0)
         return HttpResponse(buffer.read(), content_type='application/pdf', headers={
             'Content-Disposition': f'attachment; filename="sales_report_{start_date}_to_{end_date}.pdf"',
@@ -546,6 +584,7 @@ from .forms import UserFilterForm  # Ensure this is correctly imported
 
 logger = logging.getLogger(__name__)
 
+@user_passes_test(is_admin)
 @never_cache
 def user_list(request):
     if not (request.user.is_authenticated and (request.user.is_staff or request.user.is_superuser)):
@@ -571,7 +610,7 @@ def user_list(request):
                 users = users.filter(status=status)
 
         # Pagination
-        paginator = Paginator(users, 10)  # 10 users per page
+        paginator = Paginator(users, 5) 
         page_number = request.GET.get('page')
         users_page = paginator.get_page(page_number)
 
@@ -1253,10 +1292,21 @@ def admin_order_detail(request, order_id):
                 messages.error(request, "Cannot change status back to 'Pending'.")
                 request.session['toast_message'] = {
                     'message': "Cannot change status back to 'Pending'.",
-                    'bgColor': '#EF4444',  # Red for error
+                    'bgColor': '#EF4444',
                     'textColor': '#FFFFFF'
                 }
                 return redirect('adminside:admin_order_detail', order_id=order.order_id)
+
+            # Strictly enforce payment check for Razorpay before setting to 'delivered'
+            if new_status == "delivered":
+                if order.payment_method == "Razorpay" and not order.is_paid:
+                    messages.error(request, "Cannot mark order as 'Delivered' until payment is confirmed for Razorpay.")
+                    request.session['toast_message'] = {
+                        'message': "Cannot mark order as 'Delivered' until payment is confirmed for Razorpay.",
+                        'bgColor': '#EF4444',
+                        'textColor': '#FFFFFF'
+                    }
+                    return redirect('adminside:admin_order_detail', order_id=order.order_id)
 
             if new_status and new_status != order.status and new_status != "returned":
                 with transaction.atomic():
@@ -1294,10 +1344,11 @@ def admin_order_detail(request, order_id):
                                 }
                                 return redirect('adminside:admin_order_detail', order_id=order.order_id)
                     order.save()
+                    logger.info(f"Order {order.order_id} status updated to {new_status} with payment method {order.payment_method} and is_paid={order.is_paid}")
                     messages.success(request, f"Order status updated to {order.get_status_display()}!")
                     request.session['toast_message'] = {
                         'message': f"Order status updated to {order.get_status_display()} successfully!",
-                        'bgColor': '#4B0082',  # Indigo for success
+                        'bgColor': '#4B0082',
                         'textColor': '#FFFFFF'
                     }
             else:
@@ -1405,14 +1456,26 @@ def admin_order_detail(request, order_id):
         'has_cancellations_or_returns': any(item.is_cancelled or item.is_returned for item in order.items.all()),
         'items_with_discounts': items_with_discounts,
     })
-@login_required(login_url='adminside:admin_login')
-@require_POST
+from django.http import HttpResponseBadRequest
+from django.shortcuts import redirect, get_object_or_404
+from django.contrib import messages
+from django.db import transaction
+from django.core.mail import send_mail
+from django.conf import settings
+from decimal import Decimal
+import logging
+
+logger = logging.getLogger(__name__)
+
 def confirm_return(request, order_id):
     if request.method != 'POST':
         return HttpResponseBadRequest("Invalid request method")
 
-    # Retrieve item_id from POST data
+    # Retrieve item_id and action from POST data
     item_id = request.POST.get('item_id')
+    action = request.POST.get('action')  # 'confirm' or 'reject'
+    reject_reason = request.POST.get('reject_reason', '').strip()  # Reason for rejection
+
     if not item_id:
         messages.error(request, "Item ID is required")
         return redirect('adminside:admin_order_detail', order_id=order_id)
@@ -1421,7 +1484,7 @@ def confirm_return(request, order_id):
     order = get_object_or_404(Order, order_id=order_id)
     item = get_object_or_404(OrderItem, id=item_id, order=order)
 
-    # Check if the item is eligible for return confirmation
+    # Check if the item is eligible for return processing
     if not item.is_returned:
         messages.warning(request, f"No return request exists for item {item.product.name}.")
         return redirect('adminside:admin_order_detail', order_id=order_id)
@@ -1429,68 +1492,57 @@ def confirm_return(request, order_id):
         messages.warning(request, f"The return for item {item.product.name} has already been confirmed.")
         return redirect('adminside:admin_order_detail', order_id=order_id)
 
-    # Check if verify_return checkbox is selected
-    verify_return = request.POST.get("verify_return") == "on"
-    if not verify_return:
-        messages.warning(request, f"Return verification cancelled for item {item.product.name}. Please check the 'Verify Return & Refund Wallet' box to confirm.")
-        return redirect('adminside:admin_order_detail', order_id=order_id)
-
     with transaction.atomic():
         try:
-            # Use the pre-calculated refund amount from return_order_item
-            refund_amount = item.refund_amount.quantize(Decimal('0.01'))
-            logger.info(f"Confirming return for item {item.id} in order {order.order_id}: Pre-calculated refund_amount=₹{refund_amount:.2f}")
+            if action == 'confirm':
+                # Check if verify_return checkbox is selected
+                verify_return = request.POST.get("verify_return") == "on"
+                if not verify_return:
+                    messages.warning(request, f"Return verification cancelled for item {item.product.name}. Please check the 'Verify Return & Refund Wallet' box to confirm.")
+                    return redirect('adminside:admin_order_detail', order_id=order_id)
 
-            # Log any additional discounts for debugging
-            coupon_discount = order.coupon_discount or Decimal('0.00')
-            referral_discount = order.referral_coupon_discount or Decimal('0.00')
-            logger.info(f"Order {order.order_id}: Coupon discount=₹{coupon_discount:.2f}, Referral discount=₹{referral_discount:.2f}")
+                # Use the pre-calculated refund amount from return_order_item
+                refund_amount = item.refund_amount.quantize(Decimal('0.01'))
+                logger.info(f"Confirming return for item {item.id} in order {order.order_id}: Pre-calculated refund_amount=₹{refund_amount:.2f}")
 
-            # Ensure refund amount is not negative
-            if refund_amount < 0:
-                refund_amount = Decimal('0')
-                logger.warning(f"Refund amount adjusted to ₹0 for item {item.id} due to negative value.")
+                # Log any additional discounts for debugging
+                coupon_discount = order.coupon_discount or Decimal('0.00')
+                referral_discount = order.referral_coupon_discount or Decimal('0.00')
+                logger.info(f"Order {order.order_id}: Coupon discount=₹{coupon_discount:.2f}, Referral discount=₹{referral_discount:.2f}")
 
-            # Credit wallet for the item
-            if refund_amount > 0 and order.is_paid:
-                wallet, _ = Wallet.objects.get_or_create(user=order.user)
-                logger.info(f"Wallet balance before refund: ₹{wallet.balance:.2f}")
+                # Ensure refund amount is not negative
+                if refund_amount < 0:
+                    refund_amount = Decimal('0')
+                    logger.warning(f"Refund amount adjusted to ₹0 for item {item.id} due to negative value.")
 
-                # Create transaction
-                Transaction.objects.create(
-                    wallet=wallet,
-                    transaction_type='REFUND',
-                    amount=refund_amount,
-                    source_order=order,
-                    description=f"Refund for returned item {item.product.name} in order {order.order_id} ({order.payment_method}, {order.payment_gateway or 'N/A'})"
-                )
+                # Credit wallet for the item
+                if refund_amount > 0 and order.is_paid:
+                    wallet, _ = Wallet.objects.get_or_create(user=order.user)
+                    logger.info(f"Wallet balance before refund: ₹{wallet.balance:.2f}")
 
-                # Credit wallet
-                wallet.credit(refund_amount)
+                    # Create transaction
+                    Transaction.objects.create(
+                        wallet=wallet,
+                        transaction_type='REFUND',
+                        amount=refund_amount,
+                        source_order=order,
+                        description=f"Refund for returned item {item.product.name} in order {order.order_id} ({order.payment_method}, {order.payment_gateway or 'N/A'})"
+                    )
 
-                # Mark item as refunded
-                item.is_refunded_to_wallet = True
-                item.save()
+                    # Credit wallet
+                    wallet.credit(refund_amount)
 
-                logger.info(f"Refund credited for item {item.id} in order {order.order_id}: New wallet balance=₹{wallet.balance:.2f}")
-                messages.success(request, f"Refunded ₹{refund_amount:.2f} to {order.user.email}'s wallet for item {item.product.name}.")
-            else:
-                logger.warning(f"No refund processed for item {item.id} in order {order.order_id}: refund_amount=₹{refund_amount:.2f}, is_paid={order.is_paid}")
-                messages.info(request, "No refund issued (zero amount or unpaid order).")
+                    # Mark item as refunded
+                    item.is_refunded_to_wallet = True
+                    item.save()
 
-            # Log item status
-            if not item.variant and not item.is_cancelled:
-                logger.warning(f"Admin confirmed return for OrderItem {item.id}, but no ProductVariant found. Product: {item.product.name}")
-            elif item.is_cancelled:
-                logger.info(f"OrderItem {item.id} was cancelled, not returned. Stock assumed to be restored during cancellation.")
+                    logger.info(f"Refund credited for item {item.id} in order {order.order_id}: New wallet balance=₹{wallet.balance:.2f}")
+                    messages.success(request, f"Refunded ₹{refund_amount:.2f} to {order.user.email}'s wallet for item {item.product.name}.")
+                else:
+                    logger.warning(f"No refund processed for item {item.id} in order {order.order_id}: refund_amount=₹{refund_amount:.2f}, is_paid={order.is_paid}")
+                    messages.info(request, "No refund issued (zero amount or unpaid order).")
 
-            # Update order status if all items are returned or cancelled
-            if all(i.is_returned and i.is_refunded_to_wallet or i.is_cancelled for i in order.items.all()):
-                order.status = 'returned'
-                order.save()
-
-            # Send notification
-            if refund_amount > 0:
+                # Send notification for confirmed return
                 try:
                     send_mail(
                         'Refund Credited to Wallet',
@@ -1503,12 +1555,65 @@ def confirm_return(request, order_id):
                 except Exception as e:
                     logger.error(f"Failed to send refund notification to {order.user.email}: {str(e)}")
 
-            messages.success(request, f"Return for item {item.product.name} in order {order.order_id} confirmed.")
+                messages.success(request, f"Return for item {item.product.name} in order {order.order_id} confirmed.")
+
+            elif action == 'reject':
+                # Validate reject reason
+                if not reject_reason:
+                    messages.error(request, "Please provide a reason for rejecting the return.")
+                    return redirect('adminside:admin_order_detail', order_id=order_id)
+
+                # Update item status to reject return (not refunded)
+                item.is_returned = False  # Reset return status
+                item.return_reason = f"Rejected: {reject_reason}"  # Store rejection reason
+                item.save()
+
+                # Send notification for rejected return
+                try:
+                    send_mail(
+                        'Return Request Rejected',
+                        f'Your return request for item {item.product.name} in order {order.order_id} has been rejected. Reason: {reject_reason}',
+                        settings.DEFAULT_FROM_EMAIL,
+                        [order.user.email],
+                        fail_silently=True,
+                    )
+                    logger.info(f"Return rejection notification sent to {order.user.email} for item {item.id} in order {order.order_id}")
+                except Exception as e:
+                    logger.error(f"Failed to send rejection notification to {order.user.email}: {str(e)}")
+
+                messages.success(request, f"Return for item {item.product.name} in order {order.order_id} rejected.")
+
+            else:
+                messages.error(request, "Invalid action specified.")
+                return redirect('adminside:admin_order_detail', order_id=order_id)
+
+            # Log item status
+            if not item.variant and not item.is_cancelled:
+                logger.warning(f"Admin processed return for OrderItem {item.id}, but no ProductVariant found. Product: {item.product.name}")
+            elif item.is_cancelled:
+                logger.info(f"OrderItem {item.id} was cancelled, not returned. Stock assumed to be restored during cancellation.")
+
+            # Update order status based on item statuses
+            all_items = order.items.all()
+            all_rejected = all(not i.is_returned and i.return_reason and i.return_reason.startswith('Rejected: ') for i in all_items)
+            any_rejected = any(not i.is_returned and i.return_reason and i.return_reason.startswith('Rejected: ') for i in all_items)
+            all_processed = all(i.is_returned and i.is_refunded_to_wallet or i.is_cancelled or (not i.is_returned and i.return_reason and i.return_reason.startswith('Rejected: ')) for i in all_items)
+
+            if all_rejected or any_rejected:
+                order.status = 'delivered'
+                order.return_requested = False
+                order.save()
+                logger.info(f"Order {order.order_id} status set to 'delivered' due to {'all items rejected' if all_rejected else 'at least one item rejected'}.")
+            elif all_processed:
+                order.status = 'returned'
+                order.save()
+                logger.info(f"Order {order.order_id} status set to 'returned' as all items are either refunded, cancelled, or rejected.")
+
             return redirect('adminside:admin_order_detail', order_id=order_id)
 
         except Exception as e:
-            logger.error(f"Error confirming return for item {item.id} in order {order_id}: {e}", exc_info=True)
-            messages.error(request, f"An error occurred while confirming the return for item {item.product.name}: {e}")
+            logger.error(f"Error processing return for item {item.id} in order {order_id}: {e}", exc_info=True)
+            messages.error(request, f"An error occurred while processing the return for item {item.product.name}: {e}")
             return redirect('adminside:admin_order_detail', order_id=order_id)
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse
