@@ -4,6 +4,7 @@
 {% block extra_head %}
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
     <style>
         /* Ensure content respects sidebar width */
         .content-area {
@@ -302,6 +303,12 @@
                             Category Name
                         </label>
                         {{ form.name }}
+                        <div class="text-red-600 text-sm mt-2" id="error-name" style="display: none;">
+                            <i class="bi bi-exclamation-circle"></i> Category name is required
+                        </div>
+                        <div class="text-red-600 text-sm mt-2" id="error-name-duplicate" style="display: none;">
+                            <i class="bi bi-exclamation-circle"></i> Category name already exists
+                        </div>
                         {% if form.name.help_text %}
                             <p class="mt-1 text-sm text-gray-500">{{ form.name.help_text }}</p>
                         {% endif %}
@@ -312,6 +319,9 @@
                             Description
                         </label>
                         {{ form.description }}
+                        <div class="text-red-600 text-sm mt-2" id="error-description" style="display: none;">
+                            <i class="bi bi-exclamation-circle"></i> Description is required
+                        </div>
                         {% if form.description.help_text %}
                             <p class="mt-1 text-sm text-gray-500">{{ form.description.help_text }}</p>
                         {% endif %}
@@ -339,6 +349,10 @@ function openModal() {
 function closeModal() {
     document.getElementById('addCategoryModal').style.display = 'none';
     document.getElementById('addCategoryForm').reset(); // Reset form fields
+    // Clear custom error messages
+    document.querySelectorAll('#addCategoryForm .text-red-600[id^="error-"]').forEach(error => {
+        error.style.display = 'none';
+    });
 }
 
 function confirmListToggle(id, isListed) {
@@ -389,7 +403,7 @@ function confirmDeleteToggle(id, isDeleted) {
     });
 }
 
-// Add form field styling and SweetAlert2 for successful submission
+// Add form field styling, remove required attributes, and handle form validation
 document.addEventListener('DOMContentLoaded', function() {
     // Style form inputs
     const inputs = document.querySelectorAll('input[type="text"], textarea, select');
@@ -402,6 +416,18 @@ document.addEventListener('DOMContentLoaded', function() {
     textareas.forEach(textarea => {
         textarea.classList.add('min-h-24');
     });
+
+    // Remove required attributes from addCategoryForm fields
+    const formInputs = document.querySelectorAll('#addCategoryForm input, #addCategoryForm textarea, #addCategoryForm select');
+    formInputs.forEach(input => {
+        input.removeAttribute('required');
+    });
+
+    // Collect existing category names (case-insensitive)
+    const categoryNames = Array.from(document.querySelectorAll('table tbody tr')).map(row => {
+        const nameCell = row.querySelector('td:nth-child(2)');
+        return nameCell ? nameCell.textContent.trim().toLowerCase() : '';
+    }).filter(name => name);
 
     // Check for success parameter in URL to show SweetAlert2 for a new category
     const urlParams = new URLSearchParams(window.location.search);
@@ -421,7 +447,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Add new logic to check for a successful category edit
+    // Check for successful category edit
     if (urlParams.get('edit_success') === 'true') {
         Swal.fire({
             title: 'Updated!',
@@ -437,6 +463,48 @@ document.addEventListener('DOMContentLoaded', function() {
             window.history.replaceState({}, document.title, window.location.pathname);
         });
     }
+
+    // Add form submission validation
+    const addCategoryForm = document.getElementById('addCategoryForm');
+    addCategoryForm.addEventListener('submit', function(e) {
+        let hasErrors = false;
+
+        // Clear previous custom error messages
+        document.querySelectorAll('#addCategoryForm .text-red-600[id^="error-"]').forEach(error => {
+            error.style.display = 'none';
+        });
+
+        // Validate required fields
+        const fields = [
+            { id: 'id_name', errorId: 'error-name', label: 'Category name' },
+            { id: 'id_description', errorId: 'error-description', label: 'Description' }
+        ];
+
+        fields.forEach(field => {
+            const input = document.getElementById(field.id);
+            if (input && !input.value.trim()) {
+                document.getElementById(field.errorId).style.display = 'block';
+                hasErrors = true;
+            }
+        });
+
+        // Validate for duplicate category name
+        const nameInput = document.getElementById('id_name');
+        if (nameInput && nameInput.value.trim()) {
+            const enteredName = nameInput.value.trim().toLowerCase();
+            if (categoryNames.includes(enteredName)) {
+                document.getElementById('error-name-duplicate').style.display = 'block';
+                hasErrors = true;
+            }
+        }
+
+        if (hasErrors) {
+            e.preventDefault();
+            return false;
+        }
+
+        return true;
+    });
 });
 </script>
 

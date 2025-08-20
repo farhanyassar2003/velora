@@ -278,7 +278,7 @@
                                 {% if user.profile_image %}
                                     <img src="{{ user.profile_image.url }}" alt="Profile" class="profile-image">
                                 {% else %}
-                                    <img src="{% static 'images/default-profile.png' %}" alt="Default" class="profile-image">
+                                    <img src="{% static 'userside/images/download (1).jpg' %}" alt="Default" class="profile-image">
                                 {% endif %}
                             </div>
                             <p class="mb-2"><strong>Full Name:</strong> {{ user.first_name }} {{ user.last_name }}</p>
@@ -300,10 +300,6 @@
                                 <button class="copy-btn ms-2" onclick="copyToClipboard('{{ user.referral_code }}')">
                                     <i class="bi bi-clipboard me-1"></i>Copy
                                 </button>
-                            </p>
-                            <p class="mb-2">
-                                <strong>Referred Friends:</strong> 
-                                <span class="text-success">{{ referred_count }}</span>
                             </p>
                             <p class="mb-3 text-muted">Share this code with friends to earn a 5% off coupon when they sign up! Coupons can be applied at checkout.</p>
                         </div>

@@ -112,10 +112,14 @@ from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, 
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import inch
 from openpyxl import Workbook
+from reportlab.lib.pagesizes import letter, landscape
+from reportlab.platypus import HRFlowable 
+import pytz
 from openpyxl.styles import Font, Alignment
 from django.utils import timezone
 from datetime import datetime, timedelta, time
 import io
+
 
 # Set up logging for debugging
 logger = logging.getLogger(__name__)
@@ -137,7 +141,7 @@ def sales_report(request):
         try:
             start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
             end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
-        except Exception:
+        except (ValueError, TypeError):
             start_date = end_date = today
     elif report_type == 'weekly':
         start_date = today - timedelta(days=6)
@@ -148,7 +152,7 @@ def sales_report(request):
     elif report_type == 'yearly':
         start_date = today.replace(month=1, day=1)
         end_date = today
-    else:
+    else:  # daily
         start_date = end_date = today
 
     # Ensure start <= end
@@ -156,176 +160,349 @@ def sales_report(request):
         start_date, end_date = end_date, start_date
 
     # Timezone-aware datetime range
-    start_datetime = timezone.make_aware(datetime.combine(start_date, time.min))
-    end_datetime = timezone.make_aware(datetime.combine(end_date + timedelta(days=1), time.min))
+    ist_tz = pytz.timezone('Asia/Kolkata')
+    start_datetime = timezone.make_aware(datetime.combine(start_date, time.min), timezone=ist_tz)
+    end_datetime = timezone.make_aware(datetime.combine(end_date + timedelta(days=1), time.min), timezone=ist_tz)
 
-    # Get orders
+    # Get orders (delivered only)
     orders = Order.objects.filter(
         status='delivered',
         created_at__gte=start_datetime,
         created_at__lt=end_datetime
-    )
+    ).order_by('-created_at')
 
     # Calculate metrics
     total_orders = orders.count()
-    total_sales = orders.aggregate(total=Sum('total'))['total'] or 0
-    total_discount = orders.aggregate(total=Sum('discount'))['total'] or 0
-    total_coupon_discount = orders.aggregate(total=Sum('coupon_discount'))['total'] or 0
-    total_referral_discount = orders.aggregate(total=Sum('referral_coupon_discount'))['total'] or 0
-    total_discount_all = total_discount + total_coupon_discount + total_referral_discount
 
-    # Chart data for sales and orders
+    # Filter for delivered items
+    order_items = OrderItem.objects.filter(
+        order__status='delivered',
+        order__created_at__gte=start_datetime,
+        order__created_at__lt=end_datetime,
+        is_cancelled=False,
+        is_returned=False
+    )
+
+    # Total sales: Sum of (quantity * original price) for delivered items
+    total_sales = order_items.aggregate(
+        total=Sum(
+            ExpressionWrapper(
+                F('quantity') * F('price'),
+                output_field=DecimalField(max_digits=10, decimal_places=2)
+            )
+        )
+    )['total'] or Decimal('0.00')
+
+    # Total item discount: Sum of (price - discounted_price) * quantity for delivered items
+    total_item_discount = order_items.aggregate(
+        total=Sum(
+            ExpressionWrapper(
+                (F('price') - Coalesce(F('discounted_price'), F('price'))) * F('quantity'),
+                output_field=DecimalField(max_digits=10, decimal_places=2)
+            )
+        )
+    )['total'] or Decimal('0.00')
+
+    # Total coupon discount: Apportioned based on delivered items
+    total_coupon_discount = Decimal('0.00')
+    for order in orders:
+        all_items = OrderItem.objects.filter(order=order)
+        delivered_items = order_items.filter(order=order)
+        delivered_count = delivered_items.count()
+        total_count = all_items.count()
+        if total_count > 0 and delivered_count > 0:
+            coupon_per_item = (order.coupon_discount + order.referral_coupon_discount) / total_count
+            total_coupon_discount += coupon_per_item * delivered_count
+
+    # Net total sales: Total sales - item discount - coupon discount + shipping + tax
+    total_shipping = orders.aggregate(total=Sum('shipping_price'))['total'] or Decimal('0.00')
+    total_tax = orders.aggregate(total=Sum('tax'))['total'] or Decimal('0.00')
+    net_total_sales = total_sales - total_item_discount - total_coupon_discount + total_shipping + total_tax
+    if net_total_sales < 0:
+        net_total_sales = Decimal('0.00')
+
+    # Chart data for net sales and orders
     chart_labels, sales_data, orders_data = [], [], []
     current_date = start_date
     while current_date <= end_date:
-        day_start = timezone.make_aware(datetime.combine(current_date, time.min))
-        day_end = timezone.make_aware(datetime.combine(current_date + timedelta(days=1), time.min))
+        day_start = timezone.make_aware(datetime.combine(current_date, time.min), timezone=ist_tz)
+        day_end = timezone.make_aware(datetime.combine(current_date + timedelta(days=1), time.min), timezone=ist_tz)
         day_orders = orders.filter(created_at__gte=day_start, created_at__lt=day_end)
+        day_items = order_items.filter(order__in=day_orders)
+        day_sales = day_items.aggregate(
+            total=Sum(
+                ExpressionWrapper(
+                    F('quantity') * F('price'),
+                    output_field=DecimalField(max_digits=10, decimal_places=2)
+                )
+            )
+        )['total'] or Decimal('0.00')
+        day_item_discount = day_items.aggregate(
+            total=Sum(
+                ExpressionWrapper(
+                    (F('price') - Coalesce(F('discounted_price'), F('price'))) * F('quantity'),
+                    output_field=DecimalField(max_digits=10, decimal_places=2)
+                )
+            )
+        )['total'] or Decimal('0.00')
+        day_coupon_discount = Decimal('0.00')
+        for order in day_orders:
+            all_items = OrderItem.objects.filter(order=order)
+            delivered_count = day_items.filter(order=order).count()
+            total_count = all_items.count()
+            if total_count > 0 and delivered_count > 0:
+                coupon_per_item = (order.coupon_discount + order.referral_coupon_discount) / total_count
+                day_coupon_discount += coupon_per_item * delivered_count
+        day_shipping = day_orders.aggregate(total=Sum('shipping_price'))['total'] or Decimal('0.00')
+        day_tax = day_orders.aggregate(total=Sum('tax'))['total'] or Decimal('0.00')
+        net_day_sales = day_sales - day_item_discount - day_coupon_discount + day_shipping + day_tax
         chart_labels.append(current_date.strftime('%Y-%m-%d'))
-        sales_data.append(float(day_orders.aggregate(total=Sum('total'))['total'] or 0))
+        sales_data.append(float(net_day_sales))
         orders_data.append(day_orders.count())
         current_date += timedelta(days=1)
 
     # Best selling products (top 10 by quantity sold)
-    top_products = OrderItem.objects.filter(
-        order__status='delivered',
-        order__created_at__gte=start_datetime,
-        order__created_at__lt=end_datetime,
-        is_cancelled=False,  # Exclude cancelled items
-        is_returned=False    # Exclude returned items
-    ).values('product__name').annotate(
+    top_products = order_items.values('product__name').annotate(
         total_quantity=Sum('quantity'),
         total_revenue=Sum(
             ExpressionWrapper(
-                F('quantity') * Coalesce(F('discounted_price'), F('price')),
+                F('quantity') * F('price'),
+                output_field=DecimalField(max_digits=10, decimal_places=2)
+            )
+        ),
+        total_discount=Sum(
+            ExpressionWrapper(
+                (F('price') - Coalesce(F('discounted_price'), F('price'))) * F('quantity'),
                 output_field=DecimalField(max_digits=10, decimal_places=2)
             )
         )
     ).order_by('-total_quantity')[:10]
 
+    # Adjust top products revenue for coupon discounts
+    for product in top_products:
+        product['coupon_discount'] = Decimal('0.00')
+        product_orders = orders.filter(items__product__name=product['product__name'])
+        delivered_items_total = order_items.filter(order__in=product_orders).count()
+        if delivered_items_total > 0:
+            product_coupon = sum(
+                ((order.coupon_discount + order.referral_coupon_discount) / OrderItem.objects.filter(order=order).count()) * 
+                order_items.filter(order=order, product__name=product['product__name']).count()
+                for order in product_orders if order.coupon_discount or order.referral_coupon_discount
+            )
+            product['coupon_discount'] = product_coupon
+        product['net_revenue'] = (product['total_revenue'] or Decimal('0.00')) - product['total_discount'] - product['coupon_discount']
+
     # Best selling categories (top 10 by quantity sold)
-    top_categories = OrderItem.objects.filter(
-        order__status='delivered',
-        order__created_at__gte=start_datetime,
-        order__created_at__lt=end_datetime,
-        is_cancelled=False,  # Exclude cancelled items
-        is_returned=False    # Exclude returned items
-    ).values('product__category__name').annotate(
+    top_categories = order_items.values('product__category__name').annotate(
         total_quantity=Sum('quantity'),
         total_revenue=Sum(
             ExpressionWrapper(
-                F('quantity') * Coalesce(F('discounted_price'), F('price')),
+                F('quantity') * F('price'),
+                output_field=DecimalField(max_digits=10, decimal_places=2)
+            )
+        ),
+        total_discount=Sum(
+            ExpressionWrapper(
+                (F('price') - Coalesce(F('discounted_price'), F('price'))) * F('quantity'),
                 output_field=DecimalField(max_digits=10, decimal_places=2)
             )
         )
     ).order_by('-total_quantity')[:10]
+
+    # Adjust top categories revenue for coupon discounts
+    for category in top_categories:
+        category['coupon_discount'] = Decimal('0.00')
+        category_orders = orders.filter(items__product__category__name=category['product__category__name'])
+        delivered_items_total = order_items.filter(order__in=category_orders).count()
+        if delivered_items_total > 0:
+            category_coupon = sum(
+                ((order.coupon_discount + order.referral_coupon_discount) / OrderItem.objects.filter(order=order).count()) * 
+                order_items.filter(order=order, product__category__name=category['product__category__name']).count()
+                for order in category_orders if order.coupon_discount or order.referral_coupon_discount
+            )
+            category['coupon_discount'] = category_coupon
+        category['net_revenue'] = (category['total_revenue'] or Decimal('0.00')) - category['total_discount'] - category['coupon_discount']
 
     # Chart data for top products
     top_products_labels = [p['product__name'] for p in top_products]
     top_products_quantities = [p['total_quantity'] for p in top_products]
-    top_products_revenues = [float(p['total_revenue'] or 0) for p in top_products]
+    top_products_revenues = [float(p['net_revenue'] or 0) for p in top_products]
 
     # Chart data for top categories
     top_categories_labels = [c['product__category__name'] for c in top_categories]
     top_categories_quantities = [c['total_quantity'] for c in top_categories]
-    top_categories_revenues = [float(c['total_revenue'] or 0) for c in top_categories]
+    top_categories_revenues = [float(c['net_revenue'] or 0) for c in top_categories]
 
-    # Prepare report data for orders
-    report_data = [['Order ID', 'Date', 'Customer', 'Subtotal', 'Discount', 'Coupon Discount', 'Referral Discount', 'Total']]
+    # Prepare report data for orders (Sales Details table)
+    report_data = [['Order ID', 'Date', 'Customer', 'Subtotal', 'Item Discount', 'Coupon Discount', 'Net Total']]
     for order in orders:
+        delivered_items = order_items.filter(order=order)
+        all_items = OrderItem.objects.filter(order=order)
+        total_count = all_items.count()
+        delivered_count = delivered_items.count()
+
+        # Subtotal: Sum of (quantity * original price) for delivered items
+        order_subtotal = delivered_items.aggregate(
+            total=Sum(
+                ExpressionWrapper(
+                    F('quantity') * F('price'),
+                    output_field=DecimalField(max_digits=10, decimal_places=2)
+                )
+            )
+        )['total'] or Decimal('0.00')
+
+        # Item discount: Sum of (price - discounted_price) * quantity for delivered items
+        order_item_discount = delivered_items.aggregate(
+            total=Sum(
+                ExpressionWrapper(
+                    (F('price') - Coalesce(F('discounted_price'), F('price'))) * F('quantity'),
+                    output_field=DecimalField(max_digits=10, decimal_places=2)
+                )
+            )
+        )['total'] or Decimal('0.00')
+
+        # Coupon discount: Apportioned based on delivered items
+        order_coupon_discount = Decimal('0.00')
+        if total_count > 0 and delivered_count > 0:
+            coupon_per_item = (order.coupon_discount + order.referral_coupon_discount) / total_count
+            order_coupon_discount = coupon_per_item * delivered_count
+
+        # Net total: Matches Order.total (subtotal - item_discount - coupon_discount + shipping + tax)
+        net_order_total = order_subtotal - order_item_discount - order_coupon_discount + order.shipping_price + order.tax
+        if net_order_total < 0:
+            net_order_total = Decimal('0.00')
+
+        # Assign to order for template
+        order.order_subtotal = order_subtotal
+        order.order_item_discount = order_item_discount
+        order.order_coupon_discount = order_coupon_discount
+        order.net_order_total = net_order_total
+
         report_data.append([
             order.order_id,
-            order.created_at.strftime('%Y-%m-%d'),
+            order.created_at.astimezone(ist_tz).strftime('%Y-%m-%d'),
             order.user.email,
-            f"${float(order.subtotal):.2f}",
-            f"${float(order.discount):.2f}",
-            f"${float(order.coupon_discount):.2f}",
-            f"${float(order.referral_coupon_discount):.2f}",
-            f"${float(order.total):.2f}",
+            f"₹{float(order_subtotal):.2f}",
+            f"₹{float(order_item_discount):.2f}",
+            f"₹{float(order_coupon_discount):.2f}",
+            f"₹{float(net_order_total):.2f}",
         ])
 
-    # === PDF Download ===
+    # PDF Download
     if download_format == 'pdf':
         buffer = io.BytesIO()
-        doc = SimpleDocTemplate(buffer, pagesize=letter, leftMargin=0.5 * inch, rightMargin=0.5 * inch,
-                                topMargin=0.5 * inch, bottomMargin=0.5 * inch)
+        # Use landscape orientation for more width
+        doc = SimpleDocTemplate(buffer, pagesize=landscape(letter),
+                                leftMargin=0.5 * inch, rightMargin=0.5 * inch,
+                                topMargin=0.75 * inch, bottomMargin=0.75 * inch)
         styles = getSampleStyleSheet()
         elements = []
 
-        title_style = ParagraphStyle('TitleStyle', parent=styles['Title'], fontSize=18, alignment=1, spaceAfter=12)
-        subtitle_style = ParagraphStyle('SubtitleStyle', parent=styles['Normal'], fontSize=12, alignment=1, spaceAfter=20)
-        footer_style = ParagraphStyle('FooterStyle', parent=styles['Normal'], fontSize=10, alignment=1)
+        # Custom styles
+        title_style = ParagraphStyle(
+            'TitleStyle',
+            parent=styles['Title'],
+            fontSize=22,
+            textColor=colors.HexColor('#1E3A8A'),
+            alignment=1,
+            spaceAfter=15
+        )
+        subtitle_style = ParagraphStyle(
+            'SubtitleStyle',
+            parent=styles['Normal'],
+            fontSize=14,
+            textColor=colors.HexColor('#374151'),
+            alignment=1,
+            spaceAfter=20
+        )
+        footer_style = ParagraphStyle(
+            'FooterStyle',
+            parent=styles['Normal'],
+            fontSize=10,
+            textColor=colors.HexColor('#6B7280'),
+            alignment=1
+        )
+        table_header_style = TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1E3A8A')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 12),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#E5E7EB')),
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#F3F4F6')]),  # Corrected syntax
+            ('TEXTCOLOR', (0, 1), (-1, -1), colors.HexColor('#1F2937')),
+            ('FONTSIZE', (0, 1), (-1, -1), 10),
+            ('LEFTPADDING', (0, 0), (-1, -1), 8),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 8),
+            ('TOPPADDING', (0, 0), (-1, -1), 6),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+            ('BOX', (0, 0), (-1, -1), 1, colors.HexColor('#E5E7EB')),
+        ])
 
-        elements.append(Paragraph("Velora Clotting", title_style))
+        # Header with decorative line
+        elements.append(Paragraph("Velora Clothing", title_style))
+        elements.append(HRFlowable(width="80%", thickness=2, color=colors.HexColor('#1E3A8A'), spaceAfter=12, hAlign='CENTER'))
         elements.append(Paragraph(f"Sales Report ({start_date} to {end_date})", subtitle_style))
-        elements.append(Spacer(1, 0.2 * inch))
+        elements.append(Spacer(1, 0.3 * inch))
 
+        # Summary Table
         summary = [
             ['Metric', 'Value'],
             ['Total Orders', str(total_orders)],
-            ['Total Sales', f"${float(total_sales):.2f}"],
-            ['Total Discount', f"${float(total_discount_all):.2f}"],
-            ['Coupon Discount', f"${float(total_coupon_discount):.2f}"],
+            ['Total Sales', f"₹{float(net_total_sales):.2f}"],
+            ['Total Item Discount', f"₹{float(total_item_discount):.2f}"],
+            ['Total Coupon Discount', f"₹{float(total_coupon_discount):.2f}"],
         ]
-        summary_table = Table(summary, colWidths=[2.5 * inch, 2.5 * inch])
-        summary_table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1E3A8A')),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
-            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-            ('GRID', (0, 0), (-1, -1), 1, colors.gray),
-        ]))
+        summary_table = Table(summary, colWidths=[2.8 * inch, 2.8 * inch])
+        summary_table.setStyle(table_header_style)
         elements.append(summary_table)
-        elements.append(Spacer(1, 0.25 * inch))
+        elements.append(Spacer(1, 0.3 * inch))
 
-        # Add top products to PDF
+        # Top Products Table
         elements.append(Paragraph("Top 10 Best Selling Products", subtitle_style))
-        top_products_data = [['Product', 'Quantity Sold', 'Revenue']]
+        top_products_data = [['Product', 'Quantity Sold', 'Net Revenue']]
         for p in top_products:
-            top_products_data.append([p['product__name'], p['total_quantity'], f"${float(p['total_revenue']):.2f}"])
-        top_products_table = Table(top_products_data, colWidths=[2 * inch, 1.5 * inch, 1.5 * inch])
-        top_products_table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1E3A8A')),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
-            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-            ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
-        ]))
+            top_products_data.append([p['product__name'], p['total_quantity'], f"₹{float(p['net_revenue']):.2f}"])
+        top_products_table = Table(top_products_data, colWidths=[3.0 * inch, 1.8 * inch, 1.8 * inch])
+        top_products_table.setStyle(table_header_style)
         elements.append(top_products_table)
-        elements.append(Spacer(1, 0.25 * inch))
+        elements.append(Spacer(1, 0.3 * inch))
 
-        # Add top categories to PDF
+        # Top Categories Table
         elements.append(Paragraph("Top 10 Best Selling Categories", subtitle_style))
-        top_categories_data = [['Category', 'Quantity Sold', 'Revenue']]
+        top_categories_data = [['Category', 'Quantity Sold', 'Net Revenue']]
         for c in top_categories:
-            top_categories_data.append([c['product__category__name'], c['total_quantity'], f"${float(c['total_revenue']):.2f}"])
-        top_categories_table = Table(top_categories_data, colWidths=[2 * inch, 1.5 * inch, 1.5 * inch])
-        top_categories_table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1E3A8A')),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
-            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-            ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
-        ]))
+            top_categories_data.append([c['product__category__name'], c['total_quantity'], f"₹{float(c['net_revenue']):.2f}"])
+        top_categories_table = Table(top_categories_data, colWidths=[3.0 * inch, 1.8 * inch, 1.8 * inch])
+        top_categories_table.setStyle(table_header_style)
         elements.append(top_categories_table)
-        elements.append(Spacer(1, 0.25 * inch))
+        elements.append(Spacer(1, 0.3 * inch))
 
-        data_table = Table(report_data, repeatRows=1)
-        data_table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1E3A8A')),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
-            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-            ('FONTSIZE', (0, 0), (-1, 0), 10),
-            ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
-        ]))
+        # Sales Details Table with dynamic column widths
+        col_widths = [1.6 * inch, 1.3 * inch, 2.2 * inch, 1.3 * inch, 1.3 * inch, 1.3 * inch, 1.3 * inch]
+        data_table = Table(report_data, colWidths=col_widths, repeatRows=1)
+        data_table.setStyle(table_header_style)
         elements.append(data_table)
         elements.append(Spacer(1, 0.3 * inch))
-        elements.append(Paragraph(f"Generated on {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", footer_style))
 
-        doc.build(elements)
+        # Footer with page number
+        def add_page_number(canvas, doc):
+            page_num = canvas.getPageNumber()
+            footer_text = f"Page {page_num} | Generated on {datetime.now().astimezone(ist_tz).strftime('%Y-%m-%d %H:%M:%S IST')}"
+            canvas.saveState()
+            canvas.setFont('Helvetica', 10)
+            canvas.setFillColor(colors.HexColor('#6B7280'))
+            canvas.drawString(0.5 * inch, 0.25 * inch, footer_text)
+            canvas.restoreState()
+
+        doc.build(elements, onFirstPage=add_page_number, onLaterPages=add_page_number)
         buffer.seek(0)
         return HttpResponse(buffer.read(), content_type='application/pdf', headers={
             'Content-Disposition': f'attachment; filename="sales_report_{start_date}_to_{end_date}.pdf"',
         })
 
-    # === Excel Download ===
+    # Excel Download
     elif download_format == 'excel':
         wb = Workbook()
         ws = wb.active
@@ -335,25 +512,20 @@ def sales_report(request):
         ws.append([])
         ws.append(['Metric', 'Value'])
         ws.append(['Total Orders', total_orders])
-        ws.append(['Total Sales', f"${float(total_sales):.2f}"])
-        ws.append(['Total Discount', f"${float(total_discount_all):.2f}"])
-        ws.append(['Coupon Discount', f"${float(total_coupon_discount):.2f}"])
+        ws.append(['Total Sales', f"₹{float(net_total_sales):.2f}"])
+        ws.append(['Total Item Discount', f"₹{float(total_item_discount):.2f}"])
+        ws.append(['Total Coupon Discount', f"₹{float(total_coupon_discount):.2f}"])
         ws.append([])
-
-        # Add top products to Excel
         ws.append(['Top 10 Best Selling Products'])
-        ws.append(['Product', 'Quantity Sold', 'Revenue'])
+        ws.append(['Product', 'Quantity Sold', 'Net Revenue'])
         for p in top_products:
-            ws.append([p['product__name'], p['total_quantity'], f"${float(p['total_revenue']):.2f}"])
+            ws.append([p['product__name'], p['total_quantity'], f"₹{float(p['net_revenue']):.2f}"])
         ws.append([])
-
-        # Add top categories to Excel
         ws.append(['Top 10 Best Selling Categories'])
-        ws.append(['Category', 'Quantity Sold', 'Revenue'])
+        ws.append(['Category', 'Quantity Sold', 'Net Revenue'])
         for c in top_categories:
-            ws.append([c['product__category__name'], c['total_quantity'], f"${float(c['total_revenue']):.2f}"])
+            ws.append([c['product__category__name'], c['total_quantity'], f"₹{float(c['net_revenue']):.2f}"])
         ws.append([])
-
         for row in report_data:
             ws.append(row)
 
@@ -368,17 +540,16 @@ def sales_report(request):
             'Content-Disposition': f'attachment; filename="sales_report_{start_date}_to_{end_date}.xlsx"',
         })
 
-    # === Render to dashboard ===
+    # Render to dashboard
     context = {
         'report_type': report_type,
         'start_date': start_date,
         'end_date': end_date,
         'orders': orders,
         'total_orders': total_orders,
-        'total_sales': total_sales,
-        'total_discount': total_discount_all,
+        'total_sales': net_total_sales,
+        'total_item_discount': total_item_discount,
         'total_coupon_discount': total_coupon_discount,
-        'total_referral_discount': total_referral_discount,
         'top_products': top_products,
         'top_categories': top_categories,
         'chart_data': {
@@ -400,7 +571,6 @@ def sales_report(request):
 
     return render(request, 'adminside/dashboard.html', context)
 
-
 # ===========================# User Management# ===========================
 from django.core.paginator import Paginator
 from django.contrib import messages
@@ -414,6 +584,7 @@ from .forms import UserFilterForm  # Ensure this is correctly imported
 
 logger = logging.getLogger(__name__)
 
+@user_passes_test(is_admin)
 @never_cache
 def user_list(request):
     if not (request.user.is_authenticated and (request.user.is_staff or request.user.is_superuser)):
@@ -439,7 +610,7 @@ def user_list(request):
                 users = users.filter(status=status)
 
         # Pagination
-        paginator = Paginator(users, 10)  # 10 users per page
+        paginator = Paginator(users, 5) 
         page_number = request.GET.get('page')
         users_page = paginator.get_page(page_number)
 
@@ -506,7 +677,9 @@ from .forms import ProductForm, ProductVariantFormSet, ProductImageFormSet
 from django.core.files import File
 
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
+@user_passes_test(is_admin)
 def product_list(request):
+    
     if request.method == 'POST':
         product_form = ProductForm(request.POST, request.FILES)
         variant_formset = ProductVariantFormSet(request.POST, instance=None)
@@ -586,6 +759,7 @@ ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp']
 MAX_IMAGES_PER_VARIANT = 50  # Optional: Set a reasonable limit
 
 @login_required
+@user_passes_test(is_admin)
 @require_http_methods(["GET", "POST"])
 def add_product(request):
     logger.info("add_product view called with method: %s", request.method)
@@ -757,6 +931,7 @@ def get_variant_images_for_template(product):
         variant_images[variant.id] = [img.image.url for img in images]
     return variant_images
 
+@user_passes_test(is_admin)
 def edit_product(request, product_id):
     logger.info("edit_product view called with method: %s, product_id: %s", request.method, product_id)
     
@@ -994,7 +1169,7 @@ from django.shortcuts import render, redirect
 from django.urls import reverse
 from .models import Category
 from .forms import CategoryForm
-
+@user_passes_test(is_admin)
 def category_list(request):
     if request.method == 'POST':
         form = CategoryForm(request.POST)
@@ -1016,6 +1191,7 @@ def category_list(request):
         'search_query': search_query,
         'success': request.GET.get('success', False)
     })
+@user_passes_test(is_admin)
 def add_category(request):
     if request.method == 'POST':
         form = CategoryForm(request.POST)
@@ -1026,6 +1202,7 @@ def add_category(request):
         form = CategoryForm()
     return render(request, 'adminside/add_category.html', {'form': form})
 
+@user_passes_test(is_admin)
 def edit_category(request, category_id):
     category = get_object_or_404(Category, id=category_id, is_deleted=False)
     if request.method == 'POST':
@@ -1059,6 +1236,7 @@ def toggle_delete_category(request, category_id):
     return redirect('adminside:category_list')
 
 # ===========================# Order Management# ===========================
+@user_passes_test(is_admin)
 def admin_order_list(request):
     search_query = request.GET.get('q', '')
     status_filter = request.GET.get('status', '')
@@ -1089,11 +1267,12 @@ from .models import Order, OrderItem, Wallet, Product, ProductVariant, ColorVari
 
 logger = logging.getLogger(__name__)
 
+@user_passes_test(is_admin)
 @login_required(login_url='adminside:admin_login')
 def admin_order_detail(request, order_id):
     # Use select_related and prefetch_related for efficient data retrieval
     order = get_object_or_404(
-        Order.objects.select_related('user', 'address').prefetch_related(
+        Order.objects.select_related('user').prefetch_related(
             'items',
             'items__product',
             'items__variant__color_variant',
@@ -1113,10 +1292,21 @@ def admin_order_detail(request, order_id):
                 messages.error(request, "Cannot change status back to 'Pending'.")
                 request.session['toast_message'] = {
                     'message': "Cannot change status back to 'Pending'.",
-                    'bgColor': '#EF4444',  # Red for error
+                    'bgColor': '#EF4444',
                     'textColor': '#FFFFFF'
                 }
                 return redirect('adminside:admin_order_detail', order_id=order.order_id)
+
+            # Strictly enforce payment check for Razorpay before setting to 'delivered'
+            if new_status == "delivered":
+                if order.payment_method == "Razorpay" and not order.is_paid:
+                    messages.error(request, "Cannot mark order as 'Delivered' until payment is confirmed for Razorpay.")
+                    request.session['toast_message'] = {
+                        'message': "Cannot mark order as 'Delivered' until payment is confirmed for Razorpay.",
+                        'bgColor': '#EF4444',
+                        'textColor': '#FFFFFF'
+                    }
+                    return redirect('adminside:admin_order_detail', order_id=order.order_id)
 
             if new_status and new_status != order.status and new_status != "returned":
                 with transaction.atomic():
@@ -1154,10 +1344,11 @@ def admin_order_detail(request, order_id):
                                 }
                                 return redirect('adminside:admin_order_detail', order_id=order.order_id)
                     order.save()
+                    logger.info(f"Order {order.order_id} status updated to {new_status} with payment method {order.payment_method} and is_paid={order.is_paid}")
                     messages.success(request, f"Order status updated to {order.get_status_display()}!")
                     request.session['toast_message'] = {
                         'message': f"Order status updated to {order.get_status_display()} successfully!",
-                        'bgColor': '#4B0082',  # Indigo for success
+                        'bgColor': '#4B0082',
                         'textColor': '#FFFFFF'
                     }
             else:
@@ -1177,9 +1368,75 @@ def admin_order_detail(request, order_id):
 
         return redirect('adminside:admin_order_detail', order_id=order.order_id)
 
-    # Add subtotal to each order item for template use
+    # Initialize all financial variables to prevent UnboundLocalError
+    original_subtotal = Decimal('0.00')
+    coupon_discount = order.coupon_discount or Decimal('0.00')
+    referral_discount = order.referral_coupon_discount or Decimal('0.00')
+    original_total = Decimal('0.00')
+    adjusted_subtotal = Decimal('0.00')
+    adjusted_discount = Decimal('0.00')
+    adjusted_total = Decimal('0.00')
+    total_refunded = Decimal('0.00')
+
+    # Calculate original subtotal and total (all items, using discounted_price or price)
+    original_subtotal = sum((item.discounted_price or item.price or Decimal('0.00')) * item.quantity for item in order.items.all())
+    original_total = max(original_subtotal - coupon_discount - referral_discount, Decimal('0.00')).quantize(Decimal('0.01'))
+
+    # Calculate adjusted subtotal (active items only)
+    active_items = [item for item in order.items.all() if not item.is_cancelled and not item.is_returned]
+    active_items_count = len(active_items)
+    
+    # Count unique products
+    unique_products_count = order.items.values('product__id').distinct().count()
+
+    # Calculate per-product coupon and referral discounts
+    coupon_discount_per_product = (coupon_discount / unique_products_count).quantize(Decimal('0.01')) if unique_products_count > 0 else Decimal('0.00')
+    referral_discount_per_product = (referral_discount / unique_products_count).quantize(Decimal('0.01')) if unique_products_count > 0 else Decimal('0.00')
+
+    # Annotate items with their coupon discount, referral discount, and adjusted subtotal
+    items_with_discounts = []
+    product_discounts = {}  # Track discounts per product_id
     for item in order.items.all():
-        item.subtotal = item.quantity * item.price
+        product_id = item.product.id
+        if product_id not in product_discounts:
+            product_discounts[product_id] = {
+                'coupon_discount': coupon_discount_per_product,
+                'referral_discount': referral_discount_per_product
+            }
+        item_coupon_discount = product_discounts[product_id]['coupon_discount']
+        item_referral_discount = product_discounts[product_id]['referral_discount']
+        item_subtotal = (item.discounted_price or item.price or Decimal('0.00')) * item.quantity
+        items_with_discounts.append({
+            'item': item,
+            'coupon_discount': item_coupon_discount.quantize(Decimal('0.01')),
+            'referral_discount': item_referral_discount.quantize(Decimal('0.01')),
+            'adjusted_subtotal': max(
+                item_subtotal - item_coupon_discount - item_referral_discount,
+                Decimal('0.00')
+            ).quantize(Decimal('0.01'))
+        })
+
+    # Calculate total refunded amount
+    total_refunded = sum(item.refund_amount or Decimal('0.00') for item in order.items.all() if item.is_refunded_to_wallet)
+
+    # Calculate adjusted totals for active items
+    adjusted_subtotal = sum((item.discounted_price or item.price or Decimal('0.00')) * item.quantity for item in active_items)
+    if active_items_count > 0 and unique_products_count > 0:
+        active_unique_products = len(set(item.product.id for item in active_items))
+        total_discount_per_product = coupon_discount_per_product + referral_discount_per_product
+        adjusted_discount = (total_discount_per_product * active_unique_products).quantize(Decimal('0.01'))
+        adjusted_total = max(adjusted_subtotal - adjusted_discount, Decimal('0.00')).quantize(Decimal('0.01'))
+    else:
+        adjusted_subtotal = Decimal('0.00')
+        adjusted_discount = Decimal('0.00')
+        adjusted_total = Decimal('0.00')
+
+    logger.info(f"Order {order.order_id}: original_subtotal=₹{original_subtotal:.2f}, coupon_discount=₹{coupon_discount:.2f}, referral_discount=₹{referral_discount:.2f}, original_total=₹{original_total:.2f}")
+    logger.info(f"Order {order.order_id}: active_subtotal=₹{adjusted_subtotal:.2f}, active_items_count={active_items_count}, unique_products_count={unique_products_count}, adjusted_discount=₹{adjusted_discount:.2f}, adjusted_total=₹{adjusted_total:.2f}")
+    logger.info(f"Order {order.order_id}: coupon_discount_per_product=₹{coupon_discount_per_product:.2f}, referral_discount_per_product=₹{referral_discount_per_product:.2f}")
+    for entry in items_with_discounts:
+        item = entry['item']
+        logger.info(f"Item {item.id} (Product: {item.product.name}): adjusted_subtotal=₹{entry['adjusted_subtotal']:.2f}, coupon_discount=₹{entry['coupon_discount']:.2f}, referral_discount=₹{entry['referral_discount']:.2f}")
 
     # Get toast message from session and clear it
     toast_message = request.session.pop('toast_message', None)
@@ -1187,91 +1444,177 @@ def admin_order_detail(request, order_id):
     return render(request, 'adminside/order_detail.html', {
         'order': order,
         'status_choices': [(k, v) for k, v in Order.STATUS_CHOICES if k != 'returned'],
-        'toast_message': toast_message
+        'toast_message': toast_message,
+        'original_subtotal': original_subtotal,
+        'coupon_discount': coupon_discount,
+        'referral_discount': referral_discount,
+        'original_total': original_total,
+        'adjusted_subtotal': adjusted_subtotal,
+        'adjusted_discount': adjusted_discount,
+        'adjusted_total': adjusted_total,
+        'total_refunded': total_refunded,
+        'has_cancellations_or_returns': any(item.is_cancelled or item.is_returned for item in order.items.all()),
+        'items_with_discounts': items_with_discounts,
     })
+from django.http import HttpResponseBadRequest
+from django.shortcuts import redirect, get_object_or_404
+from django.contrib import messages
+from django.db import transaction
+from django.core.mail import send_mail
+from django.conf import settings
+from decimal import Decimal
+import logging
 
-@login_required(login_url='adminside:admin_login')
-@require_POST
+logger = logging.getLogger(__name__)
+
 def confirm_return(request, order_id):
+    if request.method != 'POST':
+        return HttpResponseBadRequest("Invalid request method")
+
+    # Retrieve item_id and action from POST data
+    item_id = request.POST.get('item_id')
+    action = request.POST.get('action')  # 'confirm' or 'reject'
+    reject_reason = request.POST.get('reject_reason', '').strip()  # Reason for rejection
+
+    if not item_id:
+        messages.error(request, "Item ID is required")
+        return redirect('adminside:admin_order_detail', order_id=order_id)
+
+    # Fetch the order and item
     order = get_object_or_404(Order, order_id=order_id)
+    item = get_object_or_404(OrderItem, id=item_id, order=order)
 
-    # Check if return is already verified or no return requested
-    if not order.return_requested:
-        messages.warning(request, "No return request exists for this order.")
+    # Check if the item is eligible for return processing
+    if not item.is_returned:
+        messages.warning(request, f"No return request exists for item {item.product.name}.")
         return redirect('adminside:admin_order_detail', order_id=order_id)
-    if order.return_verified:
-        messages.warning(request, "This return has already been confirmed.")
-        return redirect('adminside:admin_order_detail', order_id=order_id)
-
-    verify_return = request.POST.get("verify_return") == "on"
-    if not verify_return:
-        messages.warning(request, "Return verification cancelled. Please check the 'Verify Return & Refund Wallet' box to confirm.")
+    if item.is_refunded_to_wallet:
+        messages.warning(request, f"The return for item {item.product.name} has already been confirmed.")
         return redirect('adminside:admin_order_detail', order_id=order_id)
 
     with transaction.atomic():
         try:
-            # Calculate refund amount for returned items
-            refund_amount = 0
-            returned_items = order.items.filter(is_returned=True, is_refunded_to_wallet=False)
-            for item in returned_items:
-                refund_amount += item.total  # Uses discounted_price or price * quantity
+            if action == 'confirm':
+                # Check if verify_return checkbox is selected
+                verify_return = request.POST.get("verify_return") == "on"
+                if not verify_return:
+                    messages.warning(request, f"Return verification cancelled for item {item.product.name}. Please check the 'Verify Return & Refund Wallet' box to confirm.")
+                    return redirect('adminside:admin_order_detail', order_id=order_id)
 
-            # Credit wallet for all payment methods (COD, Wallet, Razorpay)
-            if refund_amount > 0 and order.is_paid:
-                wallet, _ = Wallet.objects.get_or_create(user=order.user)
-                wallet.credit(refund_amount)
-                Transaction.objects.create(
-                    wallet=wallet,
-                    transaction_type='REFUND',
-                    amount=refund_amount,
-                    source_order=order,
-                    description=f"Refund for returned order {order.order_id} ({order.payment_method}, {order.payment_gateway or 'N/A'})"
-                )
-                for item in returned_items:
+                # Use the pre-calculated refund amount from return_order_item
+                refund_amount = item.refund_amount.quantize(Decimal('0.01'))
+                logger.info(f"Confirming return for item {item.id} in order {order.order_id}: Pre-calculated refund_amount=₹{refund_amount:.2f}")
+
+                # Log any additional discounts for debugging
+                coupon_discount = order.coupon_discount or Decimal('0.00')
+                referral_discount = order.referral_coupon_discount or Decimal('0.00')
+                logger.info(f"Order {order.order_id}: Coupon discount=₹{coupon_discount:.2f}, Referral discount=₹{referral_discount:.2f}")
+
+                # Ensure refund amount is not negative
+                if refund_amount < 0:
+                    refund_amount = Decimal('0')
+                    logger.warning(f"Refund amount adjusted to ₹0 for item {item.id} due to negative value.")
+
+                # Credit wallet for the item
+                if refund_amount > 0 and order.is_paid:
+                    wallet, _ = Wallet.objects.get_or_create(user=order.user)
+                    logger.info(f"Wallet balance before refund: ₹{wallet.balance:.2f}")
+
+                    # Create transaction
+                    Transaction.objects.create(
+                        wallet=wallet,
+                        transaction_type='REFUND',
+                        amount=refund_amount,
+                        source_order=order,
+                        description=f"Refund for returned item {item.product.name} in order {order.order_id} ({order.payment_method}, {order.payment_gateway or 'N/A'})"
+                    )
+
+                    # Credit wallet
+                    wallet.credit(refund_amount)
+
+                    # Mark item as refunded
                     item.is_refunded_to_wallet = True
                     item.save()
-                logger.info(f"Return confirmed and refund transaction created for order {order.order_id}: ₹{refund_amount} ({order.payment_method}, {order.payment_gateway or 'N/A'})")
-                messages.success(request, f"Refunded ₹{refund_amount:.2f} to {order.user.email}'s wallet.")
 
-            # Skip stock restoration (handled in return_order_item)
-            for item in order.items.all():
-                if item.is_returned and not item.is_cancelled:
-                    if not item.variant:
-                        logger.warning(f"Admin confirmed return for OrderItem {item.id}, but no ProductVariant found. Product: {item.product.name}")
-                elif item.is_cancelled:
-                    logger.info(f"OrderItem {item.id} was cancelled, not returned. Stock assumed to be restored during cancellation.")
+                    logger.info(f"Refund credited for item {item.id} in order {order.order_id}: New wallet balance=₹{wallet.balance:.2f}")
+                    messages.success(request, f"Refunded ₹{refund_amount:.2f} to {order.user.email}'s wallet for item {item.product.name}.")
                 else:
-                    logger.info(f"OrderItem {item.id} is not marked as returned or cancelled, skipping.")
+                    logger.warning(f"No refund processed for item {item.id} in order {order.order_id}: refund_amount=₹{refund_amount:.2f}, is_paid={order.is_paid}")
+                    messages.info(request, "No refund issued (zero amount or unpaid order).")
 
-            # Update order status
-            order.return_verified = True
-            if all(i.is_returned or i.is_cancelled for i in order.items.all()):
-                order.status = 'returned'
-            order.save()
-
-            # Send notification
-            if refund_amount > 0:
+                # Send notification for confirmed return
                 try:
                     send_mail(
                         'Refund Credited to Wallet',
-                        f'Your return for order {order.order_id} has been approved. ₹{refund_amount:.2f} has been credited to your wallet.',
+                        f'Your return for item {item.product.name} in order {order.order_id} has been approved. ₹{refund_amount:.2f} has been credited to your wallet.',
                         settings.DEFAULT_FROM_EMAIL,
                         [order.user.email],
                         fail_silently=True,
                     )
-                    logger.info(f"Refund notification sent to {order.user.email} for order {order.order_id}")
+                    logger.info(f"Refund notification sent to {order.user.email} for item {item.id} in order {order.order_id}")
                 except Exception as e:
                     logger.error(f"Failed to send refund notification to {order.user.email}: {str(e)}")
 
-            messages.success(request, f"Return for order {order.order_id} confirmed.")
+                messages.success(request, f"Return for item {item.product.name} in order {order.order_id} confirmed.")
+
+            elif action == 'reject':
+                # Validate reject reason
+                if not reject_reason:
+                    messages.error(request, "Please provide a reason for rejecting the return.")
+                    return redirect('adminside:admin_order_detail', order_id=order_id)
+
+                # Update item status to reject return (not refunded)
+                item.is_returned = False  # Reset return status
+                item.return_reason = f"Rejected: {reject_reason}"  # Store rejection reason
+                item.save()
+
+                # Send notification for rejected return
+                try:
+                    send_mail(
+                        'Return Request Rejected',
+                        f'Your return request for item {item.product.name} in order {order.order_id} has been rejected. Reason: {reject_reason}',
+                        settings.DEFAULT_FROM_EMAIL,
+                        [order.user.email],
+                        fail_silently=True,
+                    )
+                    logger.info(f"Return rejection notification sent to {order.user.email} for item {item.id} in order {order.order_id}")
+                except Exception as e:
+                    logger.error(f"Failed to send rejection notification to {order.user.email}: {str(e)}")
+
+                messages.success(request, f"Return for item {item.product.name} in order {order.order_id} rejected.")
+
+            else:
+                messages.error(request, "Invalid action specified.")
+                return redirect('adminside:admin_order_detail', order_id=order_id)
+
+            # Log item status
+            if not item.variant and not item.is_cancelled:
+                logger.warning(f"Admin processed return for OrderItem {item.id}, but no ProductVariant found. Product: {item.product.name}")
+            elif item.is_cancelled:
+                logger.info(f"OrderItem {item.id} was cancelled, not returned. Stock assumed to be restored during cancellation.")
+
+            # Update order status based on item statuses
+            all_items = order.items.all()
+            all_rejected = all(not i.is_returned and i.return_reason and i.return_reason.startswith('Rejected: ') for i in all_items)
+            any_rejected = any(not i.is_returned and i.return_reason and i.return_reason.startswith('Rejected: ') for i in all_items)
+            all_processed = all(i.is_returned and i.is_refunded_to_wallet or i.is_cancelled or (not i.is_returned and i.return_reason and i.return_reason.startswith('Rejected: ')) for i in all_items)
+
+            if all_rejected or any_rejected:
+                order.status = 'delivered'
+                order.return_requested = False
+                order.save()
+                logger.info(f"Order {order.order_id} status set to 'delivered' due to {'all items rejected' if all_rejected else 'at least one item rejected'}.")
+            elif all_processed:
+                order.status = 'returned'
+                order.save()
+                logger.info(f"Order {order.order_id} status set to 'returned' as all items are either refunded, cancelled, or rejected.")
 
             return redirect('adminside:admin_order_detail', order_id=order_id)
 
         except Exception as e:
-            logger.error(f"Error confirming return for order {order_id}: {e}", exc_info=True)
-            messages.error(request, f"An error occurred while confirming the return: {e}")
+            logger.error(f"Error processing return for item {item.id} in order {order_id}: {e}", exc_info=True)
+            messages.error(request, f"An error occurred while processing the return for item {item.product.name}: {e}")
             return redirect('adminside:admin_order_detail', order_id=order_id)
-
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse
 from django.contrib import messages
@@ -1282,10 +1625,11 @@ from django.db.models import Q
 import json
 from datetime import date
 
+@user_passes_test(is_admin)
 @login_required
 def product_offers(request):
-    # Fetch all products for the add/edit modal
-    products = Product.objects.filter(is_deleted=False)
+    # Fetch only active listed products for the add/edit modal
+    products = Product.objects.filter(is_deleted=False, is_listed=True)
     
     # Handle search query
     product_search_query = request.GET.get('product_search', '')
@@ -1308,10 +1652,11 @@ def product_offers(request):
     }
     return render(request, 'adminside/product_offers.html', context)
 
+@user_passes_test(is_admin)
 @login_required
 def category_offers(request):
-    # Fetch all categories for the add/edit modal
-    categories = Category.objects.filter(is_deleted=False)
+    # Fetch only active listed categories for the add/edit modal
+    categories = Category.objects.filter(is_deleted=False, is_listed=True)
     
     # Handle search query
     category_search_query = request.GET.get('category_search', '')
@@ -1334,19 +1679,19 @@ def category_offers(request):
     }
     return render(request, 'adminside/category_offers.html', context)
 
-from django.contrib.auth.decorators import login_required
-from django.views.decorators.csrf import csrf_protect
 from django.http import JsonResponse
+from django.db.models import Q
+from django.core.paginator import Paginator
+from django.shortcuts import render
+from django.views.decorators.csrf import csrf_exempt
 from django.db import IntegrityError
 from django.core.exceptions import ObjectDoesNotExist
-from .models import Category, Product, ProductOffer, CategoryOffer
 import json
 import logging
 
 logger = logging.getLogger(__name__)
 
-@login_required
-@csrf_protect
+@csrf_exempt
 def manage_offer(request, offer_type):
     if request.method == 'GET':
         offer_id = request.GET.get('id')
@@ -1421,6 +1766,20 @@ def manage_offer(request, offer_type):
                     logger.warning(f"Product not found: {product_id}")
                     return JsonResponse({'success': False, 'message': 'Selected product does not exist.'}, status=404)
 
+                # Check for existing active offer for the product (only for new offers)
+                if not offer_id:
+                    existing_offer = ProductOffer.objects.filter(
+                        product_id=product_id,
+                        is_deleted=False,
+                        is_active=True
+                    ).exists()
+                    if existing_offer:
+                        logger.warning(f"Active offer already exists for product: {product_id}")
+                        return JsonResponse({
+                            'success': False,
+                            'message': 'The product already has an offer.'
+                        }, status=400)
+
                 if offer_id:
                     try:
                         offer = ProductOffer.objects.get(id=offer_id, is_deleted=False)
@@ -1474,6 +1833,20 @@ def manage_offer(request, offer_type):
                     logger.warning(f"Category not found: {category_id}")
                     return JsonResponse({'success': False, 'message': 'Selected category does not exist.'}, status=404)
 
+                # Check for existing active offer for the category (only for new offers)
+                if not offer_id:
+                    existing_offer = CategoryOffer.objects.filter(
+                        category_id=category_id,
+                        is_deleted=False,
+                        is_active=True
+                    ).exists()
+                    if existing_offer:
+                        logger.warning(f"Active offer already exists for category: {category_id}")
+                        return JsonResponse({
+                            'success': False,
+                            'message': 'The category already has an offer.'
+                        }, status=400)
+
                 if offer_id:
                     try:
                         offer = CategoryOffer.objects.get(id=offer_id, is_deleted=False)
@@ -1481,7 +1854,6 @@ def manage_offer(request, offer_type):
                         offer.category = category
                         offer.discount_percentage = discount_percentage
                         offer.start_date = start_date
-                        end_date_str = end_date
                         offer.end_date = end_date
                         offer.is_active = is_active
                         offer.save()
@@ -1624,7 +1996,7 @@ import logging
 from datetime import datetime, date
 
 logger = logging.getLogger(__name__)
-
+@user_passes_test(is_admin)
 @csrf_protect
 def coupon_management(request):
     if not request.user.is_authenticated or not request.user.is_staff:

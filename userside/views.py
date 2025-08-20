@@ -65,6 +65,10 @@ def generate_referral_code():
 @never_cache
 @csrf_exempt
 def register(request):
+    # Clear all cached messages at the start
+    storage = messages.get_messages(request)
+    storage.used = True
+
     if request.user.is_authenticated:
         return redirect('userside:home')
 
@@ -765,16 +769,17 @@ import traceback
 logger = logging.getLogger(__name__)
 
 def product_detail_view(request, id):
-    product = get_object_or_404(Product, id=id, is_listed=True, is_deleted=False)
-    if not product.is_active or not product.is_listed:
-        return redirect('userside:product_list')
+    product = get_object_or_404(Product, id=id, is_deleted=False)
+    
+    logger.info("Product: %s, is_listed=%s, is_active=%s, category.is_listed=%s",
+                product.name, product.is_listed, product.is_active, product.category.is_listed)
 
     color_variants = product.color_variants.filter(
         is_listed=True,
         variants__is_listed=True
     ).distinct()
     sizes = product.variants.filter(is_listed=True).values_list('size__name', flat=True).distinct()
-    variants = product.variants.filter(is_listed=True)  # Filtered variants
+    variants = product.variants.filter(is_listed=True)
 
     original_price = product.price
     discounted_price = original_price
@@ -798,22 +803,62 @@ def product_detail_view(request, id):
         end_date__gte=date.today()
     ).first()
 
-    if product_offer:
-        product_discount = Decimal(product_offer.discount_percentage)
-        discount = original_price * (product_discount / Decimal('100'))
-        discounted_price = original_price - discount
-        offer = product_offer
-        offer_type = 'Product Offer'
-    elif category_offer:
-        category_discount = Decimal(category_offer.discount_percentage)
-        discount = original_price * (category_discount / Decimal('100'))
-        discounted_price = original_price - discount
-        offer = category_offer
-        offer_type = 'Category Offer'
+    product_discount = Decimal(product_offer.discount_percentage) if product_offer else Decimal('0')
+    category_discount = Decimal(category_offer.discount_percentage) if category_offer else Decimal('0')
 
+    if product_discount > 0 or category_discount > 0:
+        if product_discount >= category_discount:
+            discount = original_price * (product_discount / Decimal('100'))
+            offer = product_offer
+            offer_type = 'Product Offer'
+        else:
+            discount = original_price * (category_discount / Decimal('100'))
+            offer = category_offer
+            offer_type = 'Category Offer'
+        discounted_price = original_price - discount
+
+    # Fetch related products (same category only)
     related_products = Product.objects.filter(
-        category=product.category, is_listed=True, is_deleted=False
-    ).exclude(id=product.id)[:4]
+        category=product.category,
+        is_listed=True,
+        is_active=True,
+        is_deleted=False
+    ).exclude(id=product.id).select_related('category').prefetch_related('product_images')[:4]
+
+    # Calculate discounts for related products
+    for related_product in related_products:
+        related_product.original_price = related_product.price
+        related_product.discounted_price = related_product.price
+        related_product.discount = Decimal('0')
+        related_product.offer_discount_percentage = Decimal('0')
+
+        product_offer = ProductOffer.objects.filter(
+            product=related_product,
+            is_active=True,
+            is_deleted=False,
+            start_date__lte=date.today(),
+            end_date__gte=date.today()
+        ).first()
+
+        category_offer = CategoryOffer.objects.filter(
+            category=related_product.category,
+            is_active=True,
+            is_deleted=False,
+            start_date__lte=date.today(),
+            end_date__gte=date.today()
+        ).first()
+
+        product_discount = Decimal(product_offer.discount_percentage) if product_offer else Decimal('0')
+        category_discount = Decimal(category_offer.discount_percentage) if category_offer else Decimal('0')
+
+        if product_discount > 0 or category_discount > 0:
+            if product_discount >= category_discount:
+                related_product.discount = related_product.price * (product_discount / Decimal('100'))
+                related_product.offer_discount_percentage = product_discount
+            else:
+                related_product.discount = related_product.price * (category_discount / Decimal('100'))
+                related_product.offer_discount_percentage = category_discount
+            related_product.discounted_price = related_product.price - related_product.discount
 
     is_in_wishlist = False
     if request.user.is_authenticated:
@@ -833,6 +878,8 @@ def product_detail_view(request, id):
         'offer': offer,
         'offer_type': offer_type,
         'is_in_wishlist': is_in_wishlist,
+        'product_unlisted': not product.is_listed,
+        'category_unlisted': not product.category.is_listed,
     }
     return render(request, 'userside/product_detail.html', context)
 def clear_filters(request):
@@ -840,11 +887,12 @@ def clear_filters(request):
 
 # ===========================# User Profile and Address Management# ===========================
 from django.contrib.auth.decorators import login_required
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 from django.contrib import messages
 from django.contrib.messages import get_messages
 from adminside.models import Order, Address
 from django.contrib.auth import get_user_model
+import random
 
 @login_required(login_url='userside:login')
 def user_profile(request):
@@ -861,9 +909,6 @@ def user_profile(request):
     for message in storage:
         pass  # Iterate to mark messages as used
     storage.used = True
-
-    # Add a new message only if necessary (e.g., for a welcome message)
-    # Example: messages.success(request, "Welcome to your profile!")
 
     context = {
         'user': user,
@@ -989,31 +1034,38 @@ def delete_address(request, address_id):
         messages.error(request, 'An error occurred while deleting the address.', extra_tags='error')
         return redirect('userside:my_addresses')
 
-@login_required(login_url='login')
+@login_required(login_url='userside:login')
 def edit_profile(request):
+    User = get_user_model()
     if request.method == 'POST':
         form = EditProfileForm(request.POST, request.FILES, instance=request.user)
         if form.is_valid():
             new_email = form.cleaned_data.get('email')
-            User = get_user_model()
             old_email = User.objects.get(pk=request.user.pk).email
-            
             updated_user = form.save(commit=False)
+            
+            # Handle profile image removal
+            if request.POST.get('remove_image') == 'true':
+                updated_user.profile_image = None
+            
+            # Handle email change and OTP verification
             if new_email != old_email:
                 otp = str(random.randint(100000, 999999))
                 updated_user.otp = otp
-                updated_user.temp_email = new_email # Store temporarily
+                updated_user.temp_email = new_email
                 updated_user.email_verified = False
                 send_otp_email(new_email, otp)
                 updated_user.save()
                 messages.info(request, "Please verify your new email via OTP.")
                 return redirect('userside:verify_email')
+            
             updated_user.save()
             messages.success(request, 'Profile updated successfully.')
             return redirect('userside:user_profile')
     else:
         form = EditProfileForm(instance=request.user)
     return render(request, 'userside/edit_profile.html', {'form': form})
+
 
 @login_required(login_url='login')
 def verify_email_otp(request):
@@ -1077,77 +1129,187 @@ logger = logging.getLogger(__name__)
 
 @login_required(login_url='userside:login')
 @require_POST
+
 def cancel_order_item(request, item_id):
-    item = get_object_or_404(
-        OrderItem,
-        id=item_id,
-        order__user=request.user,
-        is_cancelled=False
-    )
+    try:
+        item = get_object_or_404(
+            OrderItem,
+            id=item_id,
+            order__user=request.user,
+            is_cancelled=False,
+            is_refunded_to_wallet=False
+        )
+    except Exception as e:
+        logger.error(f"Error fetching OrderItem {item_id}: {str(e)}", exc_info=True)
+        messages.error(request, "Item not found or already cancelled/refunded.")
+        return redirect('userside:order_list')
 
     reason = request.POST.get('reason', '').strip()
     if not reason:
         messages.error(request, "Please provide a reason for cancellation.")
-        return HttpResponseRedirect(reverse('userside:order_detail', args=[item.order.order_id]))
+        return redirect('userside:order_detail', order_id=item.order.order_id)
 
-    with transaction.atomic():
-        item.is_cancelled = True
-        item.cancel_reason = reason
-        item.save()
+    try:
+        with transaction.atomic():
+            item.is_cancelled = True
+            item.cancel_reason = reason
+            item.save()
 
-        # Restore stock for the specific ProductVariant
-        if item.variant:
-            item.variant.stock += item.quantity
-            item.variant.save()
-            messages.success(request, f"Item '{item.product.name} ({item.size})' cancelled successfully. Stock restored.")
-        else:
-            messages.warning(request, f"Item '{item.product.name} ({item.size})' cancelled, but no variant found to restore stock.")
-            logger.warning(f"OrderItem {item.id} has no associated ProductVariant for stock update during cancellation.")
+            # Restore stock if variant exists
+            if item.variant:
+                item.variant.stock += item.quantity
+                item.variant.save()
+                logger.info(f"Stock restored: {item.quantity} for variant {item.variant.id} of product {item.product.name}")
+            else:
+                logger.warning(f"OrderItem {item.id} has no associated ProductVariant.")
 
-        # Credit wallet if payment was made via Wallet
-        if item.order.payment_method == 'Wallet':
-            wallet = get_object_or_404(Wallet, user=request.user)
-            refund_amount = item.discounted_price * item.quantity
-            wallet.credit(refund_amount)
-            Transaction.objects.create(
-                wallet=wallet,
-                transaction_type='REFUND',
-                amount=refund_amount,
-                description=f"Refund for cancelled item '{item.product.name}' in order {item.order.order_id}",
-                source_order=item.order
-            )
-            messages.success(request, f"₹{refund_amount:.2f} has been refunded to your wallet for the cancelled item.")
+            # Calculate base refund amount (before discount adjustment)
+            base_refund_amount = (item.discounted_price or item.price or Decimal('0')) * item.quantity
+            if base_refund_amount <= 0:
+                logger.error(f"Invalid refund amount ₹{base_refund_amount} for OrderItem {item.id}: discounted_price={item.discounted_price}, price={item.price}")
+                messages.error(request, "Error processing refund: Invalid amount.")
+                return redirect('userside:order_detail', order_id=item.order.order_id)
 
-        # Update the parent order's status if all items are cancelled
-        if all(i.is_cancelled for i in item.order.items.all()):
-            item.order.status = 'cancelled'
-            item.order.save()
-            messages.info(request, f"Order {item.order.order_id} has been fully cancelled.")
+            # Handle coupon and referral discounts
+            refund_amount = base_refund_amount
+            order = item.order
+            unique_products_count = order.items.values('product__id').distinct().count()
 
-    return HttpResponseRedirect(reverse('userside:order_detail', args=[item.order.order_id]))
+            if unique_products_count == 0:
+                logger.error(f"No unique products found in order {order.order_id} for refund calculation.")
+                messages.error(request, "Error: No items in the order.")
+                return redirect('userside:order_detail', order_id=order.order_id)
+
+            coupon_discount = order.coupon_discount or Decimal('0.00')
+            referral_discount = order.referral_coupon_discount or Decimal('0.00')
+            coupon_discount_per_product = (coupon_discount / unique_products_count).quantize(Decimal('0.01')) if unique_products_count > 0 else Decimal('0.00')
+            referral_discount_per_product = (referral_discount / unique_products_count).quantize(Decimal('0.01')) if unique_products_count > 0 else Decimal('0.00')
+            total_discount_per_product = coupon_discount_per_product + referral_discount_per_product
+            refund_amount = max(refund_amount - total_discount_per_product, Decimal('0.00')).quantize(Decimal('0.01'))
+
+            logger.info(f"Order {order.order_id}: Unique products={unique_products_count}, Coupon discount=₹{coupon_discount:.2f}, Referral discount=₹{referral_discount:.2f}")
+            logger.info(f"Item {item.id}: Coupon discount per product=₹{coupon_discount_per_product:.2f}, Referral discount per product=₹{referral_discount_per_product:.2f}, Total discount per product=₹{total_discount_per_product:.2f}")
+            logger.info(f"Item {item.id}: Base refund amount=₹{base_refund_amount:.2f}, Adjusted refund amount=₹{refund_amount:.2f}")
+
+            # Process refund if applicable
+            if refund_amount > 0 and (order.is_paid or order.payment_method != 'COD'):
+                wallet = get_object_or_404(Wallet, user=request.user)
+                try:
+                    wallet.credit(refund_amount)
+                    Transaction.objects.create(
+                        wallet=wallet,
+                        transaction_type='REFUND',
+                        amount=refund_amount,
+                        description=f"Refund for cancelled item '{item.product.name}' in order {order.order_id}",
+                        source_order=order
+                    )
+                    item.is_refunded_to_wallet = True
+                    item.refund_amount = refund_amount  # Store refund amount for consistency
+                    item.save()
+                    logger.info(f"Refunded ₹{refund_amount:.2f} to wallet for item {item.id}.")
+                    messages.success(request, f"₹{refund_amount:.2f} refunded to your wallet.")
+                except Exception as e:
+                    logger.error(f"Failed to process refund for item {item.id}: {str(e)}", exc_info=True)
+                    raise  # Re-raise to trigger rollback
+            else:
+                messages.info(request, "No refund issued (COD, zero amount, or fully discounted).")
+
+            # Check if all items in the order are cancelled
+            if all(i.is_cancelled for i in order.items.all()):
+                order.status = 'cancelled'
+                order.reason = reason
+                order.save()
+                logger.info(f"Order {order.order_id} fully cancelled.")
+                messages.success(request, f"Order {order.order_id} fully cancelled.")
+
+            messages.success(request, f"Item '{item.product.name}' cancelled successfully.")
+
+    except Exception as e:
+        logger.error(f"Error cancelling item {item.id}: {str(e)}", exc_info=True)
+        messages.error(request, f"Failed to cancel item: {str(e)}")
+        return redirect('userside:order_detail', order_id=item.order.order_id)
+
+    return redirect('userside:order_detail', order_id=item.order.order_id)
 
 @login_required(login_url='userside:login')
 @require_POST
 def cancel_entire_order(request, order_id):
-    order = get_object_or_404(Order, order_id=order_id, user=request.user)
+    try:
+        order = get_object_or_404(Order, order_id=order_id, user=request.user)
+    except Exception as e:
+        logger.error(f"Error fetching Order {order_id}: {str(e)}", exc_info=True)
+        messages.error(request, "Order not found.")
+        return redirect('userside:order_list')
+
     reason = request.POST.get('reason', '').strip()
-
     if not reason:
-        messages.error(request, "Please provide a reason to cancel the entire order.")
-        return HttpResponseRedirect(reverse('userside:order_detail', args=[order.order_id]))
+        messages.error(request, "Please provide a reason for cancellation.")
+        return redirect('userside:order_detail', order_id=order.order_id)
 
-    if order.status in ['cancelled', 'delivered']:
-        messages.warning(request, "This order cannot be cancelled.")
-        return HttpResponseRedirect(reverse('userside:order_list'))
+    if order.status == 'cancelled':
+        messages.warning(request, "Order already cancelled.")
+        return redirect('userside:order_list')
 
-    with transaction.atomic():
-        order.status = 'cancelled'
-        order.cancel_reason = reason
-        order.save()
+    try:
+        with transaction.atomic():
+            # Calculate previously refunded amount
+            previously_refunded = sum(item.total for item in order.items.filter(is_refunded_to_wallet=True))
 
-        # Process each order item
-        for item in order.items.all():
-            if not item.is_cancelled:
+            # Calculate total discount (coupon + referral coupon)
+            total_discount = (order.coupon_discount or Decimal('0.00')) + (order.referral_coupon_discount or Decimal('0.00'))
+
+            # Identify unique products (group by product, variant, color_name, size)
+            unique_products = {}
+            for item in order.items.all():
+                # Define a key for uniqueness (product, variant, color_name, size)
+                product_key = (item.product_id, item.variant_id, item.color_name, item.size)
+                if product_key not in unique_products:
+                    unique_products[product_key] = {
+                        'items': [item],
+                        'total_price': item.total,
+                        'quantity': item.quantity
+                    }
+                else:
+                    unique_products[product_key]['items'].append(item)
+                    unique_products[product_key]['total_price'] += item.total
+                    unique_products[product_key]['quantity'] += item.quantity
+
+            # Number of scant products
+            num_unique_products = len(unique_products)
+            if num_unique_products > 0:
+                discount_per_product = total_discount / num_unique_products
+            else:
+                discount_per_product = Decimal('0.00')
+
+            # Calculate refund amount for non-cancelled items
+            refund_amount = Decimal('0.00')
+            for product_key, product_data in unique_products.items():
+                # Only process if at least one item is not cancelled
+                if any(not item.is_cancelled for item in product_data['items']):
+                    # Calculate refund for the product (total price minus its discount share)
+                    product_refund = max(product_data['total_price'] - discount_per_product, Decimal('0.00'))
+                    # Distribute refund proportionally among non-cancelled items of this product
+                    non_cancelled_items = [item for item in product_data['items'] if not item.is_cancelled]
+                    if non_cancelled_items:
+                        total_quantity = sum(item.quantity for item in non_cancelled_items)
+                        if total_quantity > 0:
+                            for item in non_cancelled_items:
+                                # Proportion of refund based on item quantity
+                                item_refund = (product_refund * item.quantity) / product_data['quantity']
+                                refund_amount += item_refund
+                                item.refund_amount = item_refund
+                                item.save()
+
+            # Ensure refund doesn't exceed order total minus previously refunded
+            refund_amount = max(refund_amount, Decimal('0.00'))
+
+            # Update order status
+            order.status = 'cancelled'
+            order.reason = reason
+            order.save()
+
+            # Update items
+            for item in order.items.filter(is_cancelled=False):
                 item.is_cancelled = True
                 item.cancel_reason = reason
                 item.save()
@@ -1155,26 +1317,39 @@ def cancel_entire_order(request, order_id):
                 if item.variant:
                     item.variant.stock += item.quantity
                     item.variant.save()
+                    logger.info(f"Stock restored for item {item.id}.")
                 else:
-                    messages.warning(request, f"Warning: Item '{item.product.name} ({item.size})' in order {order.order_id} had no variant to restore stock.")
-                    logger.warning(f"OrderItem {item.id} has no associated ProductVariant for stock update during entire order cancellation.")
+                    logger.warning(f"OrderItem {item.id} has no associated ProductVariant.")
 
-        # Credit wallet if payment was made via Wallet
-        if order.payment_method == 'Wallet':
-            wallet = get_object_or_404(Wallet, user=request.user)
-            refund_amount = order.total
-            wallet.credit(refund_amount)
-            Transaction.objects.create(
-                wallet=wallet,
-                transaction_type='REFUND',
-                amount=refund_amount,
-                description=f"Refund for cancelled order {order.order_id}",
-                source_order=order
-            )
-            messages.success(request, f"₹{refund_amount:.2f} has been refunded to your wallet for the cancelled order.")
+            # Process refund if applicable
+            if refund_amount > 0 and (order.is_paid or order.payment_method != 'COD'):
+                wallet = get_object_or_404(Wallet, user=request.user)
+                try:
+                    wallet.credit(refund_amount)
+                    Transaction.objects.create(
+                        wallet=wallet,
+                        transaction_type='REFUND',
+                        amount=refund_amount,
+                        description=f"Refund for cancelled order {order.order_id}",
+                        source_order=order
+                    )
+                    order.items.filter(is_refunded_to_wallet=False).update(is_refunded_to_wallet=True)
+                    logger.info(f"Refunded ₹{refund_amount} for order {order.order_id}.")
+                    messages.success(request, f"₹{refund_amount:.2f} refunded to your wallet.")
+                except Exception as e:
+                    logger.error(f"Failed to process refund for order {order.order_id}: {str(e)}", exc_info=True)
+                    raise  # Re-raise to trigger rollback
+            else:
+                messages.info(request, "No refund issued (COD or zero amount).")
 
-    messages.success(request, f"Order {order.order_id} has been fully cancelled.")
-    return HttpResponseRedirect(reverse('userside:order_list'))
+            messages.success(request, f"Order {order.order_id} cancelled successfully.")
+
+    except Exception as e:
+        logger.error(f"Error cancelling order {order.order_id}: {str(e)}", exc_info=True)
+        messages.error(request, f"Failed to cancel order: {str(e)}")
+        return redirect('userside:order_list')
+
+    return redirect('userside:order_list')
 # ===========================# Cart Views# ==========================
 
 from django.views.decorators.csrf import csrf_protect
@@ -1201,21 +1376,38 @@ def add_to_cart(request, product_id):
             logger.debug("POST data received: %s", request.POST)
             user = request.user
             color_id = request.POST.get('color_id')
-            size_name = request.POST.get('sizes[]') or request.POST.get('size')
+            size_name = request.POST.get('size')  # Removed 'sizes[]' as frontend sends 'size'
             quantity = int(request.POST.get('quantity', 1))
 
             if not color_id or not size_name:
+                logger.error("Missing color_id or size_name: color_id=%s, size_name=%s", color_id, size_name)
                 return JsonResponse({'success': False, 'message': 'Please select both color and size.'}, status=400)
 
             color_variant = ColorVariant.objects.get(id=color_id)
             size = Size.objects.get(name=size_name)
             variant = ProductVariant.objects.get(product_id=product_id, color_variant=color_variant, size=size)
 
+            # Check if product, variant, or category is unlisted
+            if not variant.product.is_listed or not variant.is_listed or not variant.product.category.is_listed:
+                logger.warning("Unlisted item: product=%s, variant=%s, category=%s", 
+                             variant.product.is_listed, variant.is_listed, variant.product.category.is_listed)
+                return JsonResponse({
+                    'success': False,
+                    'message': 'This product or category is currently unavailable.',
+                    'redirect': True,
+                    'redirect_url': '/userside/product_list/'  # Fixed URL
+                }, status=400)
+
             if quantity <= 0:
+                logger.error("Invalid quantity: %s", quantity)
                 return JsonResponse({'success': False, 'message': 'Quantity must be greater than 0.'}, status=400)
 
             if quantity > variant.stock:
-                return JsonResponse({'success': False, 'message': f'Requested quantity ({quantity}) exceeds available stock ({variant.stock}).'}, status=400)
+                logger.error("Quantity exceeds stock: requested=%s, available=%s", quantity, variant.stock)
+                return JsonResponse({
+                    'success': False,
+                    'message': f'Requested quantity ({quantity}) exceeds available stock ({variant.stock}).'
+                }, status=400)
 
             cart_item, created = CartItem.objects.get_or_create(
                 user=user,
@@ -1227,12 +1419,23 @@ def add_to_cart(request, product_id):
             if not created:
                 new_quantity = cart_item.quantity + quantity
                 if new_quantity > variant.stock:
-                    return JsonResponse({'success': False, 'message': f'Exceeds stock limit. Maximum available is {variant.stock}.'}, status=400)
+                    logger.error("Cart quantity exceeds stock: requested=%s, available=%s", new_quantity, variant.stock)
+                    return JsonResponse({
+                        'success': False,
+                        'message': f'Exceeds stock limit. Maximum available is {variant.stock}.'
+                    }, status=400)
                 cart_item.quantity = new_quantity
                 cart_item.save()
 
             cart_count = CartItem.objects.filter(user=user).count()
-            return JsonResponse({'success': True, 'message': 'Added to cart successfully.', 'cart_count': cart_count, 'product_name': cart_item.product.name})
+            logger.info("Cart updated: user=%s, product_id=%s, cart_count=%s", 
+                        user.email, product_id, cart_count)  # Fixed to use email
+            return JsonResponse({
+                'success': True,
+                'message': 'Added to cart successfully.',
+                'cart_count': cart_count,
+                'product_name': cart_item.product.name
+            })
 
         except ObjectDoesNotExist as e:
             logger.error("ObjectDoesNotExist error: %s", str(e))
@@ -1241,14 +1444,15 @@ def add_to_cart(request, product_id):
             logger.error("ValueError: %s", str(e))
             return JsonResponse({'success': False, 'message': 'Invalid quantity value.'}, status=400)
         except Exception as e:
-            logger.error("Unexpected error in add_to_cart: %s", str(e))
-            traceback.print_exc()
-            return JsonResponse({'success': False, 'message': 'An unexpected error occurred. Please try again later.'}, status=500)
-
+            logger.error("Unexpected error in add_to_cart: %s", str(e), exc_info=True)
+            return JsonResponse({
+                'success': False,
+                'message': 'An unexpected error occurred. Please try again later.'
+            }, status=500)
 @login_required(login_url='login')
 def view_cart(request):
     cart_items = CartItem.objects.filter(user=request.user, is_listed=True).select_related('product')
-    cart_items = cart_items.prefetch_related('product__variants')
+    cart_items = cart_items.prefetch_related('product__variants', 'product__category')
     
     cart_items_with_stock = []
     total = Decimal('0.00')
@@ -1258,7 +1462,14 @@ def view_cart(request):
                 color_variant__color_name=item.color_name,
                 size__name=item.size
             ).first()
-            item.stock = variant.stock if variant and variant.is_listed else 0
+            # Check if product, variant, and category are listed
+            is_product_listed = item.product.is_listed
+            is_variant_listed = variant.is_listed if variant else False
+            is_category_listed = item.product.category.is_listed
+            item.stock = variant.stock if variant and is_variant_listed else 0
+            item.is_product_listed = is_product_listed
+            item.is_variant_listed = is_variant_listed
+            item.is_category_listed = is_category_listed
             
             # Calculate original and discounted prices
             item.original_price = item.product.price
@@ -1267,53 +1478,55 @@ def view_cart(request):
             item.offer = None
             item.offer_type = None
 
-            # Check for ProductOffer
-            product_offer = ProductOffer.objects.filter(
-                product=item.product,
-                is_active=True,
-                is_deleted=False,
-                start_date__lte=date.today(),
-                end_date__gte=date.today()
-            ).first()
+            # Only apply offers if product, variant, and category are listed
+            if is_product_listed and is_variant_listed and is_category_listed:
+                # Check for ProductOffer
+                product_offer = ProductOffer.objects.filter(
+                    product=item.product,
+                    is_active=True,
+                    is_deleted=False,
+                    start_date__lte=date.today(),
+                    end_date__gte=date.today()
+                ).first()
 
-            # Check for CategoryOffer
-            category_offer = CategoryOffer.objects.filter(
-                category=item.product.category,
-                is_active=True,
-                is_deleted=False,
-                start_date__lte=date.today(),
-                end_date__gte=date.today()
-            ).first()
+                # Check for CategoryOffer
+                category_offer = CategoryOffer.objects.filter(
+                    category=item.product.category,
+                    is_active=True,
+                    is_deleted=False,
+                    start_date__lte=date.today(),
+                    end_date__gte=date.today()
+                ).first()
 
-            # Determine the highest discount
-            product_discount = None
-            category_discount = None
+                # Determine the highest discount
+                product_discount = None
+                category_discount = None
 
-            if product_offer:
-                product_discount = Decimal(product_offer.discount_percentage)
-                item.discount = item.original_price * (product_discount / Decimal('100'))
-                item.discounted_price = item.original_price - item.discount
-                item.offer = product_offer
-                item.offer_type = 'Product Offer'
-                logger.debug("ProductOffer found for cart item %s (product %s): %s%% discount, original_price=%s, discounted_price=%s, discount=%s",
-                             item.id, item.product.name, product_discount, item.original_price, item.discounted_price, item.discount)
-
-            if category_offer:
-                category_discount = Decimal(category_offer.discount_percentage)
-                category_discount_amount = item.original_price * (category_discount / Decimal('100'))
-                if not product_offer or category_discount > product_discount:
-                    item.discount = category_discount_amount
+                if product_offer:
+                    product_discount = Decimal(product_offer.discount_percentage)
+                    item.discount = item.original_price * (product_discount / Decimal('100'))
                     item.discounted_price = item.original_price - item.discount
-                    item.offer = category_offer
-                    item.offer_type = 'Category Offer'
-                    logger.debug("CategoryOffer found for cart item %s (product %s, category %s): %s%% discount, original_price=%s, discounted_price=%s, discount=%s",
-                                 item.id, item.product.name, item.product.category.name, category_discount, item.original_price, item.discounted_price, item.discount)
-                elif product_offer:
-                    logger.debug("CategoryOffer found but ProductOffer has higher/equal discount for cart item %s: %s%% vs %s%%",
-                                 item.id, category_discount, product_discount)
+                    item.offer = product_offer
+                    item.offer_type = 'Product Offer'
+                    logger.debug("ProductOffer found for cart item %s (product %s): %s%% discount, original_price=%s, discounted_price=%s, discount=%s",
+                                 item.id, item.product.name, product_discount, item.original_price, item.discounted_price, item.discount)
 
-            if not product_offer and not category_offer:
-                logger.debug("No active offers found for cart item %s (product %s)", item.id, item.product.name)
+                if category_offer:
+                    category_discount = Decimal(category_offer.discount_percentage)
+                    category_discount_amount = item.original_price * (category_discount / Decimal('100'))
+                    if not product_offer or category_discount > product_discount:
+                        item.discount = category_discount_amount
+                        item.discounted_price = item.original_price - item.discount
+                        item.offer = category_offer
+                        item.offer_type = 'Category Offer'
+                        logger.debug("CategoryOffer found for cart item %s (product %s, category %s): %s%% discount, original_price=%s, discounted_price=%s, discount=%s",
+                                     item.id, item.product.name, item.product.category.name, category_discount, item.original_price, item.discounted_price, item.discount)
+                    elif product_offer:
+                        logger.debug("CategoryOffer found but ProductOffer has higher/equal discount for cart item %s: %s%% vs %s%%",
+                                     item.id, category_discount, product_discount)
+
+                if not product_offer and not category_offer:
+                    logger.debug("No active offers found for cart item %s (product %s)", item.id, item.product.name)
 
             # Update subtotal using discounted price
             item.subtotal_value = item.discounted_price * item.quantity
@@ -1322,6 +1535,9 @@ def view_cart(request):
         except Exception as e:
             logger.error("Error fetching stock or price for cart item %s: %s", item.id, str(e))
             item.stock = 0
+            item.is_product_listed = False
+            item.is_variant_listed = False
+            item.is_category_listed = False
             item.original_price = item.product.price
             item.discounted_price = item.original_price
             item.discount = None
@@ -1335,7 +1551,7 @@ def view_cart(request):
         'cart_items': cart_items_with_stock,
         'total': total,
     })
-
+    
 def clear_filters(request):
     return redirect('userside:product_list')
 
@@ -1652,43 +1868,115 @@ def apply_coupon(request):
             return JsonResponse({'success': False, 'message': 'Invalid request.'})
     return JsonResponse({'success': False, 'message': 'Invalid request method.'})
 
-@login_required(login_url='userside:login')
+import json
+from datetime import date
+from django.http import JsonResponse
+from django.contrib.auth.decorators import login_required
+import logging
+
+logger = logging.getLogger(__name__)
+
+@login_required
 def apply_referral_coupon(request):
-    if request.method == 'POST':
+    if request.method != 'POST':
+        logger.warning(f"Invalid request method: {request.method}")
+        return JsonResponse({'success': False, 'message': 'Invalid request method.'}, status=400)
+
+    try:
+        data = json.loads(request.body)
+        coupon_code = data.get('coupon_code', '').strip()
+        coupon_type = data.get('coupon_type', '').strip()  # Handle coupon_type from frontend
+        
+        if not coupon_code:
+            logger.warning("No coupon code provided in request")
+            return JsonResponse({'success': False, 'message': 'Please enter a referral coupon code.'}, status=400)
+        
+        if coupon_type != 'referral':
+            logger.warning(f"Invalid coupon type: {coupon_type}")
+            return JsonResponse({'success': False, 'message': 'Invalid coupon type for referral coupon.'}, status=400)
+        
         try:
-            data = json.loads(request.body)
-            coupon_code = data.get('coupon_code', '').strip()
-            
-            if not coupon_code:
-                return JsonResponse({'success': False, 'message': 'Please enter a referral coupon code.'})
-            
-            try:
-                coupon = ReferralCoupon.objects.get(code=coupon_code, owner=request.user)
-                if not coupon.is_valid():
-                    return JsonResponse({'success': False, 'message': 'Referral coupon is invalid, expired, or already used.'})
-                
-                if 'referral_coupon_codes' not in request.session:
-                    request.session['referral_coupon_codes'] = []
-                
-                if coupon_code in request.session['referral_coupon_codes']:
-                    return JsonResponse({'success': False, 'message': 'Referral coupon already applied.'})
-                
-                request.session['referral_coupon_codes'].append(coupon_code)
-                request.session.modified = True
+            coupon = ReferralCoupon.objects.get(code__iexact=coupon_code)
+            if not coupon.is_valid():
+                reason = ('expired' if date.today() > coupon.valid_until else
+                         'not yet valid' if date.today() < coupon.valid_from else
+                         'already used')
+                logger.info(f"Coupon {coupon_code} invalid: {reason}")
                 return JsonResponse({
-                    'success': True,
-                    'message': 'Referral coupon applied successfully!',
-                    'coupon_discount': str(coupon.discount_percentage),
-                    'coupon_code': coupon_code,
-                    'coupon_type': 'referral'
-                })
-            except ReferralCoupon.DoesNotExist:
-                return JsonResponse({'success': False, 'message': 'Invalid referral coupon code.'})
-        except json.JSONDecodeError:
-            return JsonResponse({'success': False, 'message': 'Invalid request.'})
-    return JsonResponse({'success': False, 'message': 'Invalid request method.'})
-
-
+                    'success': False,
+                    'message': f'Referral coupon is invalid: {reason}.',
+                    'details': {
+                        'valid_from': str(coupon.valid_from),
+                        'valid_until': str(coupon.valid_until),
+                        'used': coupon.used,
+                        'owner': coupon.owner.email
+                    }
+                }, status=400)
+            
+            # Initialize session list if not present
+            if 'referral_coupon_codes' not in request.session:
+                request.session['referral_coupon_codes'] = []
+            
+            # Check if coupon is already applied (case-insensitive)
+            if coupon_code.lower() in [code.lower() for code in request.session['referral_coupon_codes']]:
+                logger.info(f"Coupon {coupon_code} already applied for user {request.user.id}")
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Referral coupon already applied.'
+                }, status=400)
+            
+            # Get the latest pending order
+            order = Order.objects.filter(user=request.user, status='pending').last()
+            if not order:
+                logger.warning(f"No pending order found for user {request.user.id}")
+                return JsonResponse({
+                    'success': False,
+                    'message': 'No pending order found to apply the coupon.'
+                }, status=400)
+            
+            # Apply the coupon
+            request.session['referral_coupon_codes'].append(coupon_code)
+            request.session.modified = True
+            
+            order.referral_coupons.add(coupon)
+            order.referral_coupon_discount = coupon.discount_percentage * order.subtotal / 100
+            order.coupon_code = coupon_code
+            order.coupon_type = 'referral'
+            order.coupon_discount_percentage = coupon.discount_percentage
+            order.total = (order.subtotal - order.referral_coupon_discount - 
+                          order.discount - order.coupon_discount + order.tax + 
+                          order.shipping_price)
+            order.save()
+            logger.info(f"Coupon {coupon_code} applied to order {order.id} for user {request.user.id}")
+            
+            return JsonResponse({
+                'success': True,
+                'message': 'Referral coupon applied successfully!',
+                'coupon_discount': float(coupon.discount_percentage),  # Ensure JSON-serializable
+                'coupon_code': coupon_code,
+                'coupon_type': 'referral'
+            }, status=200)
+        
+        except ReferralCoupon.DoesNotExist:
+            logger.info(f"No coupon found for code: {coupon_code}")
+            return JsonResponse({
+                'success': False,
+                'message': f'No referral coupon found for code "{coupon_code}".'
+            }, status=404)
+        
+        except Exception as e:
+            logger.error(f"Unexpected error applying coupon {coupon_code}: {str(e)}", exc_info=True)
+            return JsonResponse({
+                'success': False,
+                'message': f'An unexpected error occurred: {str(e)}'
+            }, status=500)
+    
+    except json.JSONDecodeError:
+        logger.error("Invalid JSON format in request body")
+        return JsonResponse({
+            'success': False,
+            'message': 'Invalid request format.'
+        }, status=400)
 
 @login_required(login_url='userside:login')
 def remove_coupon(request):
@@ -1756,10 +2044,30 @@ from adminside.models import Coupon, Address, CartItem, ProductOffer, CategoryOf
 
 logger = logging.getLogger(__name__)
 
+from django.contrib.auth.decorators import login_required
+from django.contrib import messages
+from django.db import transaction
+from decimal import Decimal
+from datetime import date
+from adminside.models import Address, Order, OrderItem, Coupon, ReferralCoupon, ProductOffer, CategoryOffer, CartItem, Wallet, Transaction, ProductVariant
+from django.http import JsonResponse
+import json
+import logging
+
+logger = logging.getLogger(__name__)
+
 @login_required(login_url='userside:login')
+@transaction.atomic
 def place_order(request):
+    # Check if the request is AJAX
+    is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+
     if request.method != 'POST':
-        messages.error(request, 'Invalid request method.')
+        error_message = 'Invalid request method.'
+        logger.warning(error_message)
+        if is_ajax:
+            return JsonResponse({'success': False, 'message': error_message, 'error_code': 'invalid_method'}, status=400)
+        messages.error(request, error_message)
         return redirect('userside:checkout')
 
     address_id = request.POST.get('address_id')
@@ -1768,26 +2076,75 @@ def place_order(request):
 
     # Validate inputs
     if not address_id:
-        messages.error(request, 'Please select a shipping address.')
+        error_message = 'Please select a shipping address.'
+        logger.warning(error_message)
+        if is_ajax:
+            return JsonResponse({'success': False, 'message': error_message, 'error_code': 'missing_address'}, status=400)
+        messages.error(request, error_message)
         return redirect('userside:checkout')
 
     if not payment_method:
-        messages.error(request, 'Please select a payment method.')
+        error_message = 'Please select a payment method.'
+        logger.warning(error_message)
+        if is_ajax:
+            return JsonResponse({'success': False, 'message': error_message, 'error_code': 'missing_payment'}, status=400)
+        messages.error(request, error_message)
         return redirect('userside:checkout')
 
     if payment_method == 'Online' and not payment_gateway:
-        messages.error(request, 'Please select a payment gateway.')
+        error_message = 'Please select a payment gateway.'
+        logger.warning(error_message)
+        if is_ajax:
+            return JsonResponse({'success': False, 'message': error_message, 'error_code': 'missing_gateway'}, status=400)
+        messages.error(request, error_message)
         return redirect('userside:checkout')
 
     try:
         address = Address.objects.get(id=address_id, user=request.user)
     except Address.DoesNotExist:
-        messages.error(request, 'Invalid address selected.')
+        error_message = 'Invalid address selected.'
+        logger.error(f"Invalid address ID {address_id} for user {request.user.id}")
+        if is_ajax:
+            return JsonResponse({'success': False, 'message': error_message, 'error_code': 'invalid_address'}, status=400)
+        messages.error(request, error_message)
         return redirect('userside:checkout')
 
-    cart_items = CartItem.objects.filter(user=request.user, is_listed=True).select_related('product')
+    cart_items = CartItem.objects.filter(user=request.user, is_listed=True).select_related('product__category')
     if not cart_items:
-        messages.error(request, 'Your cart is empty.')
+        error_message = 'Your cart is empty.'
+        logger.warning(f"No cart items for user {request.user.id}")
+        if is_ajax:
+            return JsonResponse({'success': False, 'message': error_message, 'error_code': 'empty_cart'}, status=400)
+        messages.error(request, error_message)
+        return redirect('userside:checkout')
+
+    # Validate product and category listing status
+    unlisted_items = []
+    for item in cart_items:
+        if not item.product.is_listed:
+            unlisted_items.append({
+                'type': 'product',
+                'name': item.product.name,
+                'message': f'The product "{item.product.name}" is no longer available.'
+            })
+        if not item.product.category.is_listed:
+            unlisted_items.append({
+                'type': 'category',
+                'name': item.product.category.name,
+                'message': f'The category "{item.product.category.name}" for product "{item.product.name}" is no longer available.'
+            })
+
+    if unlisted_items:
+        error_message = unlisted_items[0]['message']
+        logger.warning(f"Unlisted items detected for user {request.user.id}: {json.dumps(unlisted_items, default=str)}")
+        if is_ajax:
+            return JsonResponse({
+                'success': False,
+                'message': error_message,
+                'error_code': 'unlisted_item',
+                'unlisted_items': unlisted_items
+            }, status=400)
+        messages.error(request, error_message)
         return redirect('userside:checkout')
 
     # Calculate totals and prepare order items
@@ -1795,266 +2152,360 @@ def place_order(request):
     total_discount = Decimal('0.00')
     cart_items_with_discounts = []
 
-    with transaction.atomic():
-        # Get or create wallet
-        wallet, created = Wallet.objects.get_or_create(user=request.user)
+    try:
+        with transaction.atomic():
+            # Get or create wallet
+            wallet, created = Wallet.objects.get_or_create(user=request.user)
 
-        for item in cart_items:
-            original_price = item.product.price
-            discounted_price = original_price
-            item_discount = Decimal('0.00')
-            applied_offer = None
+            for item in cart_items:
+                original_price = item.product.price
+                discounted_price = original_price
+                item_discount = Decimal('0.00')
+                applied_offer = None
 
-            # Find the ProductVariant
-            try:
-                variant = ProductVariant.objects.get(
+                # Find the ProductVariant
+                try:
+                    variant = ProductVariant.objects.get(
+                        product=item.product,
+                        color_variant__color_name=item.color_name,
+                        size__name=item.size,
+                        is_listed=True
+                    )
+                except ProductVariant.DoesNotExist:
+                    error_message = f'Invalid variant for {item.product.name} (Color: {item.color_name}, Size: {item.size})'
+                    logger.error(error_message)
+                    if is_ajax:
+                        return JsonResponse({'success': False, 'message': error_message, 'error_code': 'invalid_variant'}, status=400)
+                    messages.error(request, error_message)
+                    return redirect('userside:checkout')
+
+                # Check stock availability
+                if variant.stock < item.quantity:
+                    error_message = f'Insufficient stock for {item.product.name} (Color: {item.color_name}, Size: {item.size}). Available: {variant.stock}'
+                    logger.error(error_message)
+                    if is_ajax:
+                        return JsonResponse({'success': False, 'message': error_message, 'error_code': 'insufficient_stock'}, status=400)
+                    messages.error(request, error_message)
+                    return redirect('userside:checkout')
+
+                # Check for ProductOffer
+                product_offer = ProductOffer.objects.filter(
                     product=item.product,
-                    color_variant__color_name=item.color_name,
-                    size__name=item.size,
-                    is_listed=True
-                )
-            except ProductVariant.DoesNotExist:
-                messages.error(request, f'Invalid variant for {item.product.name} (Color: {item.color_name}, Size: {item.size})')
-                return redirect('userside:checkout')
+                    is_active=True,
+                    is_deleted=False,
+                    start_date__lte=date.today(),
+                    end_date__gte=date.today()
+                ).first()
 
-            # Check stock availability
-            if variant.stock < item.quantity:
-                messages.error(request, f'Insufficient stock for {item.product.name} (Color: {item.color_name}, Size: {item.size}). Available: {variant.stock}')
-                return redirect('userside:checkout')
+                # Check for CategoryOffer
+                category_offer = CategoryOffer.objects.filter(
+                    category=item.product.category,
+                    is_active=True,
+                    is_deleted=False,
+                    start_date__lte=date.today(),
+                    end_date__gte=date.today()
+                ).first()
 
-            # Check for ProductOffer
-            product_offer = ProductOffer.objects.filter(
-                product=item.product,
-                is_active=True,
-                is_deleted=False,
-                start_date__lte=date.today(),
-                end_date__gte=date.today()
-            ).first()
+                # Determine the highest discount
+                product_discount = Decimal('0.00')
+                category_discount = Decimal('0.00')
 
-            # Check for CategoryOffer
-            category_offer = CategoryOffer.objects.filter(
-                category=item.product.category,
-                is_active=True,
-                is_deleted=False,
-                start_date__lte=date.today(),
-                end_date__gte=date.today()
-            ).first()
-
-            # Determine the highest discount
-            product_discount = Decimal('0.00')
-            category_discount = Decimal('0.00')
-
-            if product_offer:
-                product_discount = Decimal(product_offer.discount_percentage)
-                item_discount = original_price * (product_discount / Decimal('100'))
-                discounted_price = original_price - item_discount
-                applied_offer = f"Product Offer: {product_offer.name} ({product_offer.discount_percentage}%)"
-
-            if category_offer:
-                category_discount = Decimal(category_offer.discount_percentage)
-                category_discount_amount = original_price * (category_discount / Decimal('100'))
-                if not product_offer or category_discount > product_discount:
-                    item_discount = category_discount_amount
+                if product_offer:
+                    product_discount = Decimal(product_offer.discount_percentage)
+                    item_discount = original_price * (product_discount / Decimal('100'))
                     discounted_price = original_price - item_discount
-                    applied_offer = f"Category Offer: {category_offer.name} ({category_offer.discount_percentage}%)"
+                    applied_offer = f"Product Offer: {product_offer.name} ({product_offer.discount_percentage}%)"
 
-            item_subtotal = original_price * item.quantity
-            item_discounted_subtotal = discounted_price * item.quantity
-            total_item_discount = item_subtotal - item_discounted_subtotal
+                if category_offer:
+                    category_discount = Decimal(category_offer.discount_percentage)
+                    category_discount_amount = original_price * (category_discount / Decimal('100'))
+                    if not product_offer or category_discount > product_discount:
+                        item_discount = category_discount_amount
+                        discounted_price = original_price - item_discount
+                        applied_offer = f"Category Offer: {category_offer.name} ({category_offer.discount_percentage}%)"
 
-            cart_items_with_discounts.append({
-                'item': item,
-                'variant': variant,
-                'original_price': original_price,
-                'discounted_price': discounted_price,
-                'subtotal': item_subtotal,
-                'discount': total_item_discount,
-                'applied_offer': applied_offer
-            })
+                item_subtotal = original_price * item.quantity
+                item_discounted_subtotal = discounted_price * item.quantity
+                total_item_discount = item_subtotal - item_discounted_subtotal
 
-            subtotal += item_subtotal
-            total_discount += total_item_discount
+                cart_items_with_discounts.append({
+                    'item': item,
+                    'variant': variant,
+                    'original_price': original_price,
+                    'discounted_price': discounted_price,
+                    'subtotal': item_subtotal,
+                    'discount': total_item_discount,
+                    'applied_offer': applied_offer
+                })
 
-        # Check for regular coupon discounts
-        coupon_discount = Decimal('0.00')
-        applied_coupons = []
-        if 'coupon_codes' in request.session and request.session['coupon_codes']:
-            for coupon_code in request.session['coupon_codes'][:]:
-                try:
-                    coupon = Coupon.objects.get(code=coupon_code)
-                    if coupon.is_valid(request.user):
-                        coupon_discount += (subtotal * coupon.discount_percentage) / Decimal('100.00')
-                        applied_coupons.append(coupon)
-                    else:
-                        messages.error(request, f"Coupon {coupon_code} is no longer valid.")
-                        request.session['coupon_codes'].remove(coupon_code)
+                subtotal += item_subtotal
+                total_discount += total_item_discount
+
+            # Check for regular coupon discounts
+            coupon_discount = Decimal('0.00')
+            applied_coupons = []
+            coupon_code = None
+            coupon_type = None
+            coupon_discount_percentage = None
+            if 'coupon_codes' in request.session and request.session['coupon_codes']:
+                for coupon_code_item in request.session['coupon_codes'][:]:
+                    try:
+                        coupon = Coupon.objects.get(code=coupon_code_item)
+                        if coupon.is_valid(request.user):
+                            coupon_discount += (subtotal * coupon.discount_percentage) / Decimal('100.00')
+                            applied_coupons.append(coupon)
+                            # Set fields for the last valid coupon
+                            coupon_code = coupon.code
+                            coupon_type = 'coupon'
+                            coupon_discount_percentage = coupon.discount_percentage
+                            logger.debug(f"Applied regular coupon: {coupon.code}, Discount: {coupon_discount}")
+                        else:
+                            error_message = f"Coupon {coupon_code_item} is no longer valid."
+                            logger.warning(error_message)
+                            request.session['coupon_codes'].remove(coupon_code_item)
+                            request.session.modified = True
+                            if is_ajax:
+                                return JsonResponse({'success': False, 'message': error_message, 'error_code': 'invalid_coupon'}, status=400)
+                            messages.error(request, error_message)
+                            return redirect('userside:checkout')
+                    except Coupon.DoesNotExist:
+                        error_message = f"Coupon {coupon_code_item} is invalid."
+                        logger.warning(error_message)
+                        request.session['coupon_codes'].remove(coupon_code_item)
                         request.session.modified = True
-                except Coupon.DoesNotExist:
-                    messages.error(request, f"Coupon {coupon_code} is invalid.")
-                    request.session['coupon_codes'].remove(coupon_code)
-                    request.session.modified = True
+                        if is_ajax:
+                            return JsonResponse({'success': False, 'message': error_message, 'error_code': 'invalid_coupon'}, status=400)
+                        messages.error(request, error_message)
+                        return redirect('userside:checkout')
 
-        # Check for referral coupon discounts
-        referral_coupon_discount = Decimal('0.00')
-        applied_referral_coupons = []
-        if 'referral_coupon_codes' in request.session and request.session['referral_coupon_codes']:
-            for coupon_code in request.session['referral_coupon_codes'][:]:
-                try:
-                    coupon = ReferralCoupon.objects.get(code=coupon_code, owner=request.user)
-                    if coupon.is_valid():
-                        referral_coupon_discount += (subtotal * coupon.discount_percentage) / Decimal('100.00')
-                        applied_referral_coupons.append(coupon)
-                    else:
-                        messages.error(request, f"Referral coupon {coupon_code} is no longer valid.")
-                        request.session['referral_coupon_codes'].remove(coupon_code)
+            # Check for referral coupon discounts
+            referral_coupon_discount = Decimal('0.00')
+            applied_referral_coupons = []
+            if 'referral_coupon_codes' in request.session and request.session['referral_coupon_codes']:
+                for coupon_code_item in request.session['referral_coupon_codes'][:]:
+                    try:
+                        coupon = ReferralCoupon.objects.get(code=coupon_code_item, owner=request.user)
+                        if coupon.is_valid():
+                            referral_coupon_discount += (subtotal * coupon.discount_percentage) / Decimal('100.00')
+                            applied_referral_coupons.append(coupon)
+                            # Set fields for the last valid coupon
+                            coupon_code = coupon.code
+                            coupon_type = 'referral'
+                            coupon_discount_percentage = coupon.discount_percentage
+                            logger.debug(f"Applied referral coupon: {coupon.code}, Discount: {referral_coupon_discount}")
+                        else:
+                            error_message = f"Referral coupon {coupon_code_item} is no longer valid."
+                            logger.warning(error_message)
+                            request.session['referral_coupon_codes'].remove(coupon_code_item)
+                            request.session.modified = True
+                            if is_ajax:
+                                return JsonResponse({'success': False, 'message': error_message, 'error_code': 'invalid_referral_coupon'}, status=400)
+                            messages.error(request, error_message)
+                            return redirect('userside:checkout')
+                    except ReferralCoupon.DoesNotExist:
+                        error_message = f"Referral coupon {coupon_code_item} is invalid."
+                        logger.warning(error_message)
+                        request.session['referral_coupon_codes'].remove(coupon_code_item)
                         request.session.modified = True
-                except ReferralCoupon.DoesNotExist:
-                    messages.error(request, f"Referral coupon {coupon_code} is invalid.")
-                    request.session['referral_coupon_codes'].remove(coupon_code)
-                    request.session.modified = True
+                        if is_ajax:
+                            return JsonResponse({'success': False, 'message': error_message, 'error_code': 'invalid_referral_coupon'}, status=400)
+                        messages.error(request, error_message)
+                        return redirect('userside:checkout')
 
-        # Calculate final totals
-        tax = Decimal('0.00')  # Update with your tax logic
-        shipping_price = Decimal('0.00')  # Update with your shipping logic
-        total = subtotal - total_discount - coupon_discount - referral_coupon_discount + tax + shipping_price
+            # Calculate final totals
+            tax = Decimal('0.00')  # Update with your tax logic
+            shipping_price = Decimal('0.00')  # Update with your shipping logic
+            total = subtotal - total_discount - coupon_discount - referral_coupon_discount + tax + shipping_price
 
-        # Validate COD restriction
-        if payment_method == 'COD' and total > Decimal('1000.00'):
-            messages.error(request, 'Cash on Delivery is not available for orders above ₹1000.')
-            return redirect('userside:checkout')
-
-        # Validate wallet balance for Wallet payment
-        if payment_method == 'Wallet':
-            try:
-                wallet.debit(total)  # This checks balance and raises ValueError if insufficient
-            except ValueError as e:
-                messages.error(request, f'Insufficient wallet balance. You need ₹{total - wallet.balance:.2f} more.')
+            # Validate COD restriction
+            if payment_method == 'COD' and total > Decimal('1000.00'):
+                error_message = 'Cash on Delivery is not available for orders above ₹1000.'
+                logger.warning(f"COD not allowed for order total {total} for user {request.user.id}")
+                if is_ajax:
+                    return JsonResponse({'success': False, 'message': error_message, 'error_code': 'cod_restriction'}, status=400)
+                messages.error(request, error_message)
                 return redirect('userside:checkout')
 
-        # Create order
-        order = Order.objects.create(
-            user=request.user,
-            address=address,
-            subtotal=subtotal,
-            discount=total_discount,
-            coupon_discount=coupon_discount,
-            referral_coupon_discount=referral_coupon_discount,
-            tax=tax,
-            shipping_price=shipping_price,
-            total=total,
-            payment_method=payment_method,
-            payment_gateway=payment_gateway if payment_method == 'Online' else None,
-            status='pending'
-        )
+            # Validate wallet balance for Wallet payment
+            if payment_method == 'Wallet':
+                try:
+                    wallet.debit(total)
+                except ValueError as e:
+                    error_message = f'Insufficient wallet balance. You need ₹{total - wallet.balance:.2f} more.'
+                    logger.warning(f"Insufficient wallet balance for user {request.user.id}: {wallet.balance} < {total}")
+                    if is_ajax:
+                        return JsonResponse({'success': False, 'message': error_message, 'error_code': 'insufficient_wallet'}, status=400)
+                    messages.error(request, error_message)
+                    return redirect('userside:checkout')
 
-        # Save order items and decrease stock
-        stock_changes = []
-        for cart_item in cart_items_with_discounts:
-            item = cart_item['item']
-            variant = cart_item['variant']
-            variant.stock -= item.quantity
-            if variant.stock < 0:
-                logger.error(f"Negative stock for product {item.product.name} ({item.color_name}, {item.size}) in order {order.order_id}")
-                messages.error(request, f'Invalid stock update for {item.product.name} ({item.color_name}, {item.size})')
-                return redirect('userside:checkout')
-            variant.save()
-            stock_changes.append({
-                'product': item.product.name,
-                'variant': f'{item.color_name} - {item.size}',
-                'quantity': item.quantity,
-                'stock_after': variant.stock
-            })
-            OrderItem.objects.create(
-                order=order,
-                product=item.product,
-                variant=variant,
-                color_name=item.color_name,
-                size=item.size,
-                quantity=item.quantity,
-                price=cart_item['original_price'],
-                discounted_price=cart_item['discounted_price'],
-                applied_offer=cart_item['applied_offer']
+            # Create order with snapshot address fields
+            order = Order.objects.create(
+                user=request.user,
+                subtotal=subtotal,
+                discount=total_discount,
+                coupon_discount=coupon_discount,
+                referral_coupon_discount=referral_coupon_discount,
+                coupon_code=coupon_code,
+                coupon_type=coupon_type,
+                coupon_discount_percentage=coupon_discount_percentage,
+                tax=tax,
+                shipping_price=shipping_price,
+                total=total,
+                payment_method=payment_method,
+                payment_gateway=payment_gateway if payment_method == 'Online' else None,
+                status='pending',
+                shipping_full_name=address.full_name,
+                shipping_phone=address.phone,
+                shipping_address_line1=address.address_line1,
+                shipping_address_line2=address.address_line2 or '',
+                shipping_city=address.city,
+                shipping_state=address.state,
+                shipping_postal_code=address.postal_code,
+                shipping_country=address.country
             )
 
-        # Log stock changes
-        logger.info(f"ORDER_STOCK_DECREASED - Order: {order.order_id} - Stock Changes: {json.dumps(stock_changes, default=str)}")
+            # Save order items and decrease stock
+            stock_changes = []
+            for cart_item in cart_items_with_discounts:
+                item = cart_item['item']
+                variant = cart_item['variant']
+                variant.stock -= item.quantity
+                if variant.stock < 0:
+                    error_message = f'Invalid stock update for {item.product.name} ({item.color_name}, {item.size})'
+                    logger.error(f"Negative stock for product {item.product.name} ({item.color_name}, {item.size}) in order {order.order_id}")
+                    if is_ajax:
+                        return JsonResponse({'success': False, 'message': error_message, 'error_code': 'invalid_stock'}, status=400)
+                    messages.error(request, error_message)
+                    return redirect('userside:checkout')
+                variant.save()
+                stock_changes.append({
+                    'product': item.product.name,
+                    'variant': f'{item.color_name} - {item.size}',
+                    'quantity': item.quantity,
+                    'stock_after': variant.stock
+                })
+                OrderItem.objects.create(
+                    order=order,
+                    product=item.product,
+                    variant=variant,
+                    color_name=item.color_name,
+                    size=item.size,
+                    quantity=item.quantity,
+                    price=cart_item['original_price'],
+                    discounted_price=cart_item['discounted_price'],
+                    applied_offer=cart_item['applied_offer']
+                )
 
-        # Associate coupons with the order
-        order.coupons.set(applied_coupons)
-        order.referral_coupons.set(applied_referral_coupons)
+            # Log stock changes
+            logger.info(f"ORDER_STOCK_DECREASED - Order: {order.order_id} - Stock Changes: {json.dumps(stock_changes, default=str)}")
 
-        # Handle payment method
-        if payment_method == 'Wallet':
-            # Transaction already created via wallet.debit; create transaction record
-            Transaction.objects.create(
-                wallet=wallet,
-                transaction_type='DEBIT',
-                amount=total,
-                description=f"Payment for order {order.order_id}",
-                source_order=order
-            )
-            logger.info(f"User {request.user.email} paid ₹{total} from wallet for order {order.order_id}")
-            order.is_paid = True
-            order.status = 'pending'
-            order.save()
+            # Associate coupons with the order
+            order.coupons.set(applied_coupons)
+            order.referral_coupons.set(applied_referral_coupons)
 
-            # Mark coupons as used
-            for coupon in applied_coupons:
-                coupon.used_by.add(request.user)
-                coupon.save()
-            for coupon in applied_referral_coupons:
-                coupon.used = True
-                coupon.save()
+            # Handle payment method
+            if payment_method == 'Wallet':
+                # Transaction already created via wallet.debit; create transaction record
+                Transaction.objects.create(
+                    wallet=wallet,
+                    transaction_type='DEBIT',
+                    amount=total,
+                    description=f"Payment for order {order.order_id}",
+                    source_order=order
+                )
+                logger.info(f"User {request.user.email} paid ₹{total} from wallet for order {order.order_id}")
+                order.is_paid = True
+                order.status = 'pending'
+                order.save()
 
-            # Clear session data
-            if 'coupon_codes' in request.session:
-                del request.session['coupon_codes']
-            if 'referral_coupon_codes' in request.session:
-                del request.session['referral_coupon_codes']
-            request.session.modified = True
+                # Mark coupons as used
+                for coupon in applied_coupons:
+                    coupon.used_by.add(request.user)
+                    coupon.save()
+                for coupon in applied_referral_coupons:
+                    coupon.used = True
+                    coupon.save()
 
-            # Clear cart
-            cart_items.delete()
+                # Clear session data
+                if 'coupon_codes' in request.session:
+                    del request.session['coupon_codes']
+                if 'referral_coupon_codes' in request.session:
+                    del request.session['referral_coupon_codes']
+                request.session.modified = True
 
-            messages.success(request, 'Order placed successfully using wallet!')
-            return redirect('userside:order_success', order_id=order.id)
+                # Clear cart
+                cart_items.delete()
 
-        elif payment_method == 'Online':
-            if payment_gateway == 'razorpay':
-                # Clear cart for online payment after successful payment (handled in initiate_payment)
-                return redirect('userside:initiate_payment', order_id=order.id)
-            else:
-                messages.error(request, 'Unsupported payment gateway selected.')
-                return redirect('userside:checkout')
-        else:  # COD
-            # Mark COD orders as paid
-            order.is_paid = True
-            order.status = 'pending'
-            order.save()
+                success_message = 'Order placed successfully using wallet!'
+                if is_ajax:
+                    return JsonResponse({
+                        'success': True,
+                        'message': success_message,
+                        'order_id': order.id,
+                        'redirect_url': reverse('userside:order_success', args=[order.id])
+                    })
+                messages.success(request, success_message)
+                return redirect('userside:order_success', order_id=order.id)
 
-            # Mark coupons as used for COD
-            for coupon in applied_coupons:
-                coupon.used_by.add(request.user)
-                coupon.save()
-            for coupon in applied_referral_coupons:
-                coupon.used = True
-                coupon.save()
+            elif payment_method == 'Online':
+                if payment_gateway == 'razorpay':
+                    if is_ajax:
+                        return JsonResponse({
+                            'success': True,
+                            'message': 'Proceeding to payment',
+                            'order_id': order.id,
+                            'redirect_url': reverse('userside:initiate_payment', args=[order.id])
+                        })
+                    return redirect('userside:initiate_payment', order_id=order.id)
+                else:
+                    error_message = 'Unsupported payment gateway selected.'
+                    logger.warning(error_message)
+                    if is_ajax:
+                        return JsonResponse({'success': False, 'message': error_message, 'error_code': 'unsupported_gateway'}, status=400)
+                    messages.error(request, error_message)
+                    return redirect('userside:checkout')
+            else:  # COD
+                order.is_paid = False  # COD orders are unpaid until delivered
+                order.status = 'pending'
+                order.save()
 
-            # Clear session data for COD
-            if 'coupon_codes' in request.session:
-                del request.session['coupon_codes']
-            if 'referral_coupon_codes' in request.session:
-                del request.session['referral_coupon_codes']
-            request.session.modified = True
+                # Mark coupons as used for COD
+                for coupon in applied_coupons:
+                    coupon.used_by.add(request.user)
+                    coupon.save()
+                for coupon in applied_referral_coupons:
+                    coupon.used = True
+                    coupon.save()
 
-            # Clear cart
-            cart_items.delete()
+                # Clear session data for COD
+                if 'coupon_codes' in request.session:
+                    del request.session['coupon_codes']
+                if 'referral_coupon_codes' in request.session:
+                    del request.session['referral_coupon_codes']
+                request.session.modified = True
 
-            messages.success(request, 'Order placed successfully!')
-            return redirect('userside:order_success', order_id=order.id)
+                # Clear cart
+                cart_items.delete()
 
-    return redirect('userside:checkout')
+                success_message = 'Order placed successfully!'
+                if is_ajax:
+                    return JsonResponse({
+                        'success': True,
+                        'message': success_message,
+                        'order_id': order.id,
+                        'redirect_url': reverse('userside:order_success', args=[order.id])
+                    })
+                messages.success(request, success_message)
+                return redirect('userside:order_success', order_id=order.id)
 
+    except Exception as e:
+        error_message = f'An unexpected error occurred: {str(e)}'
+        logger.error(f"Error in place_order for user {request.user.id}: {str(e)}")
+        if is_ajax:
+            return JsonResponse({'success': False, 'message': error_message, 'error_code': 'unexpected_error'}, status=500)
+        messages.error(request, error_message)
+        return redirect('userside:checkout')
+    
 from django.shortcuts import render, get_object_or_404, HttpResponseRedirect
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_POST
@@ -2064,42 +2515,104 @@ from pytz import timezone as pytz_timezone
 from adminside.models import Order, OrderItem
 
 @login_required
+@login_required(login_url='userside:login')
 def order_detail(request, order_id):
     order = get_object_or_404(Order, order_id=order_id, user=request.user)
     
-    # Fetch address
-    address = order.address if order.address else None
-    
-    # Fetch payment method
-    payment_method = order.get_payment_method_display() if order.payment_method else 'Not specified'
-    
-    # Check if all items are cancelled individually
+    # Check if all items are cancelled
     all_items_cancelled = all(item.is_cancelled for item in order.items.all())
     
     # Convert order creation time to IST
-    ist_tz = pytz_timezone('Asia/Kolkata')
+    ist_tz = pytz.timezone('Asia/Kolkata')
     order_time_ist = order.created_at.astimezone(ist_tz)
     
-    # Determine payment status for COD orders
-    is_paid = order.is_paid
-    if order.payment_method == 'cod' and order.status != 'delivered':
-        is_paid = False
-    elif order.payment_method == 'cod' and order.status == 'delivered':
-        is_paid = True
+    # Calculate total refunded amount
+    total_refunded = sum(item.refund_amount for item in order.items.all() if item.is_refunded_to_wallet)
+
+    # Calculate original subtotal and total (all items, using discounted_price or price)
+    original_subtotal = sum((item.discounted_price or item.price or Decimal('0.00')) * item.quantity for item in order.items.all())
+    coupon_discount = order.coupon_discount or Decimal('0.00')
+    referral_discount = order.referral_coupon_discount or Decimal('0.00')
+    original_total = max(original_subtotal - coupon_discount - referral_discount, Decimal('0.00')).quantize(Decimal('0.01'))
+
+    # Calculate adjusted subtotal (active items only)
+    active_items = [item for item in order.items.all() if not item.is_cancelled and not item.is_returned]
+    active_subtotal = sum((item.discounted_price or item.price or Decimal('0.00')) * item.quantity for item in active_items)
+    active_items_count = len(active_items)
     
+    # Count unique products
+    unique_products_count = order.items.values('product__id').distinct().count()
+
+    # Calculate per-product coupon and referral discounts
+    coupon_discount_per_product = (coupon_discount / unique_products_count).quantize(Decimal('0.01')) if unique_products_count > 0 else Decimal('0.00')
+    referral_discount_per_product = (referral_discount / unique_products_count).quantize(Decimal('0.01')) if unique_products_count > 0 else Decimal('0.00')
+
+    # Annotate items with their coupon discount, referral discount, and adjusted subtotal
+    items_with_discounts = []
+    product_discounts = {}  # Track discounts per product_id
+    for item in order.items.all():
+        product_id = item.product.id
+        if product_id not in product_discounts:
+            product_discounts[product_id] = {
+                'coupon_discount': coupon_discount_per_product,
+                'referral_discount': referral_discount_per_product
+            }
+        item_coupon_discount = product_discounts[product_id]['coupon_discount']
+        item_referral_discount = product_discounts[product_id]['referral_discount']
+        item_subtotal = (item.discounted_price or item.price or Decimal('0.00')) * item.quantity
+        items_with_discounts.append({
+            'item': item,
+            'coupon_discount': item_coupon_discount.quantize(Decimal('0.01')),
+            'referral_discount': item_referral_discount.quantize(Decimal('0.01')),
+            'adjusted_subtotal': max(
+                item_subtotal - item_coupon_discount - item_referral_discount,
+                Decimal('0.00')
+            ).quantize(Decimal('0.01'))
+        })
+
+    # Calculate adjusted discount and total for active items
+    if active_items_count > 0 and unique_products_count > 0:
+        active_unique_products = len(set(item.product.id for item in active_items))
+        total_discount_per_product = coupon_discount_per_product + referral_discount_per_product
+        adjusted_discount = (total_discount_per_product * active_unique_products).quantize(Decimal('0.01'))
+        adjusted_total = max(active_subtotal - adjusted_discount, Decimal('0.00')).quantize(Decimal('0.01'))
+    else:
+        adjusted_subtotal = Decimal('0.00')
+        adjusted_discount = Decimal('0.00')
+        adjusted_total = Decimal('0.00')
+
+    logger.info(f"Order {order.order_id}: original_subtotal=₹{original_subtotal:.2f}, coupon_discount=₹{coupon_discount:.2f}, referral_discount=₹{referral_discount:.2f}, original_total=₹{original_total:.2f}")
+    logger.info(f"Order {order.order_id}: active_subtotal=₹{active_subtotal:.2f}, active_items_count={active_items_count}, unique_products_count={unique_products_count}, adjusted_discount=₹{adjusted_discount:.2f}, adjusted_total=₹{adjusted_total:.2f}")
+    logger.info(f"Order {order.order_id}: coupon_discount_per_product=₹{coupon_discount_per_product:.2f}, referral_discount_per_product=₹{referral_discount_per_product:.2f}")
+    for entry in items_with_discounts:
+        item = entry['item']
+        logger.info(f"Item {item.id} (Product: {item.product.name}): adjusted_subtotal=₹{entry['adjusted_subtotal']:.2f}, coupon_discount=₹{entry['coupon_discount']:.2f}, referral_discount=₹{entry['referral_discount']:.2f}")
+
     context = {
         'order': order,
-        'address': address,
-        'payment_method': payment_method,
+        'payment_method': order.get_payment_method_display() if order.payment_method else 'Not specified',
         'all_items_cancelled': all_items_cancelled,
         'order_time_ist': order_time_ist,
-        'is_paid': is_paid,
+        'is_paid': order.is_paid,
+        'total_refunded': total_refunded,
+        'original_subtotal': original_subtotal,
+        'coupon_discount': coupon_discount,
+        'referral_discount': referral_discount,
+        'original_total': original_total,
+        'adjusted_subtotal': active_subtotal,
+        'adjusted_discount': adjusted_discount,
+        'adjusted_total': adjusted_total,
+        'has_cancellations_or_returns': any(item.is_cancelled or item.is_returned for item in order.items.all()),
+        'items_with_discounts': items_with_discounts,
     }
     return render(request, 'userside/orders/order_detail.html', context)
 
+def log_payment_event(event_type, order_id, details=None):
+    logger.info(f"Payment Event: {event_type} | Order ID: {order_id} | Details: {details or 'No details'}")
+
 @login_required(login_url='userside:login')
 def initiate_payment(request, order_id):
-    """Enhanced payment initiation without stock deduction"""
+    """Initiate payment with validation for unlisted products/categories"""
     try:
         order = get_object_or_404(Order, id=order_id, user=request.user)
         
@@ -2114,95 +2627,120 @@ def initiate_payment(request, order_id):
             messages.success(request, "This order is already paid")
             return redirect('userside:order_success', order_id=order.id)
         
-        # Validate Razorpay configuration
-        if not all([settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET]):
-            log_payment_event('CONFIG_ERROR', order.order_id, {'error': 'Missing Razorpay credentials'})
-            messages.error(request, "Payment service configuration error. Please contact support.")
-            return redirect('userside:checkout')
+        # Check for unlisted products or categories
+        order_items = OrderItem.objects.filter(order=order)
+        unlisted_items = []
+        for item in order_items:
+            product = item.product
+            category = product.category
+            if not product.is_listed or not category.is_listed:
+                unlisted_items.append({
+                    'product_name': product.name,
+                    'is_product_listed': product.is_listed,
+                    'is_category_listed': category.is_listed
+                })
         
-        # Validate order amount
-        if order.total <= 0:
-            log_payment_event('INVALID_AMOUNT', order.order_id, {'amount': str(order.total)})
-            messages.error(request, "Invalid order amount")
-            return redirect('userside:checkout')
+        # Store unlisted items in session if any
+        if unlisted_items:
+            log_payment_event('UNLISTED_ITEM', order.order_id, {'unlisted_items': unlisted_items})
+            request.session['unlisted_items_error'] = [
+                f"Product '{item['product_name']}' is no longer available." 
+                for item in unlisted_items
+            ]
+            request.session.modified = True
         
-        # Initialize Razorpay client with detailed error handling
-        try:
-            client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
-            client.payment.all({'count': 1})  # Simple API call to test credentials
-        except razorpay.errors.BadRequestError as e:
-            log_payment_event('AUTH_ERROR', order.order_id, error=str(e))
-            messages.error(request, "Payment service authentication failed. Please contact support.")
-            return redirect('userside:checkout')
-        except Exception as e:
-            log_payment_event('CLIENT_INIT_ERROR', order.order_id, error=str(e))
-            messages.error(request, "Payment service is temporarily unavailable. Please try again later.")
-            return redirect('userside:checkout')
-        
-        # Create Razorpay order with enhanced error handling
-        amount_in_paise = int(order.total * 100)
-        
-        try:
-            razorpay_order_data = {
-                "amount": amount_in_paise,
-                "currency": "INR",
-                "payment_capture": "1",
-                "notes": {
-                    "order_id": str(order.order_id),
-                    "user_id": str(request.user.id),
-                    "user_email": str(request.user.email),
-                    "created_at": timezone.now().isoformat()
+        # Initialize Razorpay client only if no unlisted items
+        razorpay_order = None
+        amount_in_paise = None
+        if not unlisted_items:
+            # Validate Razorpay configuration
+            if not all([settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET]):
+                log_payment_event('CONFIG_ERROR', order.order_id, {'error': 'Missing Razorpay credentials'})
+                messages.error(request, "Payment service configuration error. Please contact support.")
+                return redirect('userside:checkout')
+            
+            # Validate order amount
+            if order.total <= 0:
+                log_payment_event('INVALID_AMOUNT', order.order_id, {'amount': str(order.total)})
+                messages.error(request, "Invalid order amount")
+                return redirect('userside:checkout')
+            
+            # Initialize Razorpay client
+            try:
+                client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
+                client.payment.all({'count': 1})  # Test credentials
+            except razorpay.errors.BadRequestError as e:
+                log_payment_event('AUTH_ERROR', order.order_id, error=str(e))
+                messages.error(request, "Payment service authentication failed. Please contact support.")
+                return redirect('userside:checkout')
+            except Exception as e:
+                log_payment_event('CLIENT_INIT_ERROR', order.order_id, error=str(e))
+                messages.error(request, "Payment service is temporarily unavailable. Please try again later.")
+                return redirect('userside:checkout')
+            
+            # Create Razorpay order
+            amount_in_paise = int(order.total * 100)
+            try:
+                razorpay_order_data = {
+                    "amount": amount_in_paise,
+                    "currency": "INR",
+                    "payment_capture": "1",
+                    "notes": {
+                        "order_id": str(order.order_id),
+                        "user_id": str(request.user.id),
+                        "user_email": str(request.user.email),
+                        "created_at": timezone.now().isoformat()
+                    }
                 }
-            }
+                
+                log_payment_event('CREATING_RAZORPAY_ORDER', order.order_id, razorpay_order_data)
+                razorpay_order = client.order.create(razorpay_order_data)
+                log_payment_event('RAZORPAY_ORDER_CREATED', order.order_id, {
+                    'razorpay_order_id': razorpay_order['id'],
+                    'amount': razorpay_order['amount'],
+                    'status': razorpay_order['status']
+                })
+                
+            except razorpay.errors.BadRequestError as e:
+                log_payment_event('RAZORPAY_BAD_REQUEST', order.order_id, error=str(e))
+                error_detail = str(e)
+                if 'amount' in error_detail.lower():
+                    messages.error(request, f"Invalid payment amount: ₹{order.total}. Please contact support.")
+                else:
+                    messages.error(request, f"Payment request error: {error_detail}")
+                return redirect('userside:order_failure', order_id=order.id)
+                
+            except razorpay.errors.GatewayError as e:
+                log_payment_event('RAZORPAY_GATEWAY_ERROR', order.order_id, error=str(e))
+                messages.error(request, "Payment gateway is temporarily unavailable. Please try again in a few minutes.")
+                return redirect('userside:order_failure', order_id=order.id)
+                
+            except razorpay.errors.ServerError as e:
+                log_payment_event('RAZORPAY_SERVER_ERROR', order.order_id, error=str(e))
+                messages.error(request, "Payment service is temporarily down. Please try again later.")
+                return redirect('userside:order_failure', order_id=order.id)
+                
+            except Exception as e:
+                log_payment_event('RAZORPAY_UNEXPECTED_ERROR', order.order_id, error=str(e))
+                messages.error(request, f"Failed to create payment request: {str(e)}")
+                return redirect('userside:order_failure', order_id=order.id)
             
-            log_payment_event('CREATING_RAZORPAY_ORDER', order.order_id, razorpay_order_data)
-            razorpay_order = client.order.create(razorpay_order_data)
-            log_payment_event('RAZORPAY_ORDER_CREATED', order.order_id, {
+            # Store session data for verification
+            session_key = f'razorpay_order_{order.id}'
+            request.session[session_key] = {
                 'razorpay_order_id': razorpay_order['id'],
-                'amount': razorpay_order['amount'],
-                'status': razorpay_order['status']
-            })
-            
-        except razorpay.errors.BadRequestError as e:
-            log_payment_event('RAZORPAY_BAD_REQUEST', order.order_id, error=str(e))
-            error_detail = str(e)
-            if 'amount' in error_detail.lower():
-                messages.error(request, f"Invalid payment amount: ₹{order.total}. Please contact support.")
-            else:
-                messages.error(request, f"Payment request error: {error_detail}")
-            return redirect('userside:order_failure', order_id=order.id)
-            
-        except razorpay.errors.GatewayError as e:
-            log_payment_event('RAZORPAY_GATEWAY_ERROR', order.order_id, error=str(e))
-            messages.error(request, "Payment gateway is temporarily unavailable. Please try again in a few minutes.")
-            return redirect('userside:order_failure', order_id=order.id)
-            
-        except razorpay.errors.ServerError as e:
-            log_payment_event('RAZORPAY_SERVER_ERROR', order.order_id, error=str(e))
-            messages.error(request, "Payment service is temporarily down. Please try again later.")
-            return redirect('userside:order_failure', order_id=order.id)
-            
-        except Exception as e:
-            log_payment_event('RAZORPAY_UNEXPECTED_ERROR', order.order_id, error=str(e))
-            messages.error(request, f"Failed to create payment request: {str(e)}")
-            return redirect('userside:order_failure', order_id=order.id)
-        
-        # Store session data for verification
-        session_key = f'razorpay_order_{order.id}'
-        request.session[session_key] = {
-            'razorpay_order_id': razorpay_order['id'],
-            'amount': amount_in_paise,
-            'created_at': timezone.now().isoformat()
-        }
-        request.session.modified = True
-        
-        log_payment_event('SESSION_STORED', order.order_id, {'session_key': session_key})
+                'amount': amount_in_paise,
+                'created_at': timezone.now().isoformat()
+            }
+            request.session.modified = True
+            log_payment_event('SESSION_STORED', order.order_id, {'session_key': session_key})
         
         return render(request, 'userside/payment_integration.html', {
             'order': order,
             'razorpay_key': settings.RAZORPAY_KEY_ID,
             'razorpay_amount': amount_in_paise,
-            'razorpay_order_id': razorpay_order['id'],
+            'razorpay_order_id': razorpay_order['id'] if razorpay_order else None,
+            'has_unlisted_items': bool(unlisted_items),
             'debug': settings.DEBUG
         })
         
@@ -2211,10 +2749,24 @@ def initiate_payment(request, order_id):
         messages.error(request, "An unexpected error occurred. Please try again.")
         return redirect('userside:checkout')
 
+@require_POST
+def clear_session_error(request):
+    """Clear a specific session key"""
+    try:
+        data = json.loads(request.body)
+        key = data.get('key')
+        if key in request.session:
+            del request.session[key]
+            request.session.modified = True
+            return JsonResponse({'success': True})
+        return JsonResponse({'success': False, 'message': 'Key not found in session'})
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': str(e)})
+
 @login_required(login_url='userside:login')
 @require_POST
 def verify_payment(request, order_id):
-    """Enhanced payment verification with SweetAlert message"""
+    """Enhanced payment verification with SweetAlert message and cart clearing"""
     try:
         order = get_object_or_404(Order, id=order_id, user=request.user)
         
@@ -2347,10 +2899,9 @@ def verify_payment(request, order_id):
                         coupon.save()
                         referral_coupons_processed += 1
                 
-                log_payment_event('COUPONS_PROCESSED', order.order_id, {
-                    'regular_coupons': regular_coupons_processed,
-                    'referral_coupons': referral_coupons_processed
-                })
+                # Clear the cart for the user
+                CartItem.objects.filter(user=request.user, is_listed=True).delete()
+                log_payment_event('CART_CLEARED', order.order_id, {'user_id': request.user.id})
                 
                 session_keys_to_clear = [
                     'coupon_codes', 
@@ -2393,6 +2944,7 @@ def verify_payment(request, order_id):
         return redirect('userside:order_failure', order_id=order_id)
 
 @login_required(login_url='userside:login')
+@login_required(login_url='userside:login')
 def order_success(request, order_id):
     """Enhanced order success page"""
     try:
@@ -2411,7 +2963,7 @@ def order_success(request, order_id):
         order_items = []
         for item in order.items.all():
             order_items.append({
-                'name': item.product.name,
+                'name': item.product.name if item.product else "Deleted Product",
                 'quantity': item.quantity,
                 'original_price': item.price,
                 'discounted_price': item.discounted_price or item.price,
@@ -2611,6 +3163,7 @@ logger = logging.getLogger(__name__)
 @login_required(login_url='userside:login')
 @require_POST
 def return_order_item(request, item_id):
+    # Fetch the order item with validation
     item = get_object_or_404(
         OrderItem,
         id=item_id,
@@ -2621,34 +3174,85 @@ def return_order_item(request, item_id):
         order__status='delivered'
     )
 
+    # Validate return reason
     reason = request.POST.get('reason', '').strip()
     if not reason:
         messages.error(request, "Please provide a reason for returning the item.")
         return HttpResponseRedirect(reverse('userside:order_detail', args=[item.order.order_id]))
 
     with transaction.atomic():
-        # Mark item as returned
-        item.is_returned = True
-        item.return_reason = reason
-        item.save()
+        try:
+            # Calculate refund amount
+            order = item.order
+            # Count unique products in the order
+            unique_products_count = order.items.values('product__id').distinct().count()
+            if unique_products_count == 0:
+                logger.error(f"No unique products found in order {order.order_id} for refund calculation.")
+                messages.error(request, "Error: No items in the order.")
+                return HttpResponseRedirect(reverse('userside:order_detail', args=[order.order_id]))
 
-        # Restore stock
-        if item.variant:
-            item.variant.stock += item.quantity
-            item.variant.save()
-            logger.info(f"Stock restored: {item.quantity} units for {item.product.name} ({item.color_name}, {item.size})")
-        else:
-            logger.warning(f"No variant for OrderItem {item.id}; stock not restored.")
+            # Base price: use discounted_price if available, else price
+            item_price = item.discounted_price or item.price
+            if item_price is None or item_price <= 0:
+                logger.error(f"Invalid price for item {item.id}: discounted_price={item.discounted_price}, price={item.price}")
+                messages.error(request, "Error: Invalid item price.")
+                return HttpResponseRedirect(reverse('userside:order_detail', args=[order.order_id]))
 
-        # Mark order as return requested
-        order = item.order
-        order.return_requested = True
-        order.save()
+            item_total = item_price * item.quantity
+            logger.info(f"Item {item.id} (Product: {item.product.name}): Base price=₹{item_price:.2f}, Quantity={item.quantity}, Item total=₹{item_total:.2f}")
 
-        messages.success(request, f"Return request for '{item.product.name}' submitted. Awaiting admin approval.")
+            # Equal distribution of order-level discounts by unique products
+            coupon_discount = order.coupon_discount or Decimal('0.00')
+            referral_discount = order.referral_coupon_discount or Decimal('0.00')
+            coupon_discount_per_product = (coupon_discount / unique_products_count).quantize(Decimal('0.01')) if unique_products_count > 0 else Decimal('0.00')
+            referral_discount_per_product = (referral_discount / unique_products_count).quantize(Decimal('0.01')) if unique_products_count > 0 else Decimal('0.00')
+            total_discount_per_product = coupon_discount_per_product + referral_discount_per_product
+
+            logger.info(f"Order {order.order_id}: Unique products={unique_products_count}, Coupon discount=₹{coupon_discount:.2f}, Referral discount=₹{referral_discount:.2f}")
+            logger.info(f"Item {item.id}: Coupon discount per product=₹{coupon_discount_per_product:.2f}, Referral discount per product=₹{referral_discount_per_product:.2f}, Total discount per product=₹{total_discount_per_product:.2f}")
+
+            # Calculate refund amount
+            refund_amount = (item_total - total_discount_per_product).quantize(Decimal('0.01'))
+            refund_amount = max(refund_amount, Decimal('0.00'))  # Ensure non-negative refund
+            logger.info(f"Item {item.id}: Refund amount after discounts=₹{refund_amount:.2f}")
+
+            # Mark item as returned and store refund amount
+            item.is_returned = True
+            item.return_reason = reason
+            item.refund_amount = refund_amount
+            item.save()
+
+            # Restore stock
+            if item.variant:
+                item.variant.stock += item.quantity
+                item.variant.save()
+                logger.info(f"Stock restored: {item.quantity} units for {item.product.name} ({item.color_name}, {item.size})")
+            else:
+                logger.warning(f"No variant for OrderItem {item.id}; stock not restored.")
+
+            # Mark order as return requested
+            order.return_requested = True
+            order.save()
+
+            # Check if any other items in the order are accepted (refunded)
+            has_accepted_items = order.items.filter(is_refunded_to_wallet=True).exists()
+            if has_accepted_items:
+                # Mark rejected items as delivered (is_returned=False)
+                rejected_items = order.items.filter(is_returned=False, return_reason__startswith='Rejected: ')
+                for rejected_item in rejected_items:
+                    rejected_item.return_reason = f"{rejected_item.return_reason} (Marked as delivered due to other accepted returns)"
+                    rejected_item.save()
+                    logger.info(f"Item {rejected_item.id} in order {order.order_id} marked as delivered due to other accepted returns.")
+
+            messages.success(request, f"Return request for '{item.product.name}' submitted. Awaiting admin approval. Estimated refund: ₹{item.refund_amount:.2f}")
+            logger.info(f"Return request for item {item.id} in order {order.order_id} completed successfully.")
+
+        except Exception as e:
+            logger.error(f"Error processing return for item {item.id} in order {order.order_id}: {str(e)}", exc_info=True)
+            messages.error(request, f"Error processing return: {str(e)}")
+            return HttpResponseRedirect(reverse('userside:order_detail', args=[order.order_id]))
 
     return HttpResponseRedirect(reverse('userside:order_detail', args=[item.order.order_id]))
-
 
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
@@ -2715,54 +3319,177 @@ def product_variants_api(request, product_id):
         'variants': variant_data
     })
 
+from django.shortcuts import get_object_or_404, redirect
 from django.http import HttpResponse
-from django.shortcuts import get_object_or_404
 from django.template.loader import render_to_string
+from django.contrib import messages
+from django.utils import timezone
+import pytz
+from decimal import Decimal
+from datetime import date
 from weasyprint import HTML
-from adminside.models import Order
-from django.contrib.auth.decorators import login_required
-from pytz import timezone as pytz_timezone
+from adminside.models import Order, OrderItem, ProductOffer, CategoryOffer
+import logging
 
-@login_required
+logger = logging.getLogger(__name__)
+
 def download_invoice(request, order_id):
     order = get_object_or_404(Order, id=order_id, user=request.user)
     
     # Convert order creation time to IST
-    ist_tz = pytz_timezone('Asia/Kolkata')
+    ist_tz = pytz.timezone('Asia/Kolkata')
     order_time_ist = order.created_at.astimezone(ist_tz)
     
-    # Fetch payment method consistent with order_detail view
+    # Fetch payment method
     payment_method = order.get_payment_method_display() if order.payment_method else 'Not specified'
     
     # Determine payment status for COD orders
     is_paid = order.is_paid
-    if order.payment_method == 'cod' and order.status != 'delivered':
-        is_paid = False
-    elif order.payment_method == 'cod' and order.status == 'delivered':
-        is_paid = True
-
+    if order.payment_method == 'COD':
+        is_paid = order.status == 'delivered'
+    
+    # Get all items and delivered items
+    all_items = order.items.all()
+    delivered_items = order.items.filter(is_cancelled=False, is_returned=False)
+    
+    # Calculate original price and collect offer details for delivered items
+    original_price = Decimal('0.00')
+    offer_details = []
+    
+    for item in delivered_items:
+        # Get the base price from the item
+        base_price = item.price
+        quantity = item.quantity
+        item_original_total = base_price * quantity
+        
+        # Initialize discount details
+        offer_applied = item.applied_offer
+        discount_percentage = Decimal('0.00')
+        discount_amount = Decimal('0.00')
+        discounted_unit_price = item.discounted_price or base_price
+        item_discounted_total = discounted_unit_price * quantity
+        
+        # Check for ProductOffer or CategoryOffer for additional context
+        if not offer_applied and item.discounted_price and item.discounted_price < base_price:
+            discount_amount = (base_price - item.discounted_price) * quantity
+            discount_percentage = (discount_amount / item_original_total * 100).quantize(Decimal('0.01'))
+            product_offer = ProductOffer.objects.filter(
+                product=item.product,
+                is_active=True,
+                is_deleted=False,
+                start_date__lte=date.today(),
+                end_date__gte=date.today()
+            ).first()
+            category_offer = CategoryOffer.objects.filter(
+                category=item.product.category,
+                is_active=True,
+                is_deleted=False,
+                start_date__lte=date.today(),
+                end_date__gte=date.today()
+            ).first()
+            if product_offer:
+                offer_applied = f"Product Offer: {product_offer.name} ({discount_percentage}%)"
+            elif category_offer:
+                offer_applied = f"Category Offer: {category_offer.name} ({discount_percentage}%)"
+            else:
+                offer_applied = f"Offer ({discount_percentage}%)"
+        
+        original_price += item_original_total
+        
+        offer_details.append({
+            'item': item,
+            'original_price': item_original_total,
+            'offer_applied': offer_applied,
+            'discount_amount': discount_amount,
+            'discounted_total': item_discounted_total,
+            'discounted_unit_price': discounted_unit_price
+        })
+    
+    # Initialize coupon information
+    coupon_info = {
+        'coupon_code': order.coupon_code or 'N/A',
+        'discount_percentage': Decimal('0.00'),
+        'discount_amount': Decimal('0.00'),
+        'type': order.coupon_type or 'Coupon'
+    }
+    
+    # Apportion coupon discount based on delivered items
+    total_items_count = all_items.count()
+    delivered_items_count = delivered_items.count()
+    if total_items_count > 0 and delivered_items_count > 0:
+        # Check for regular coupon first
+        coupon = order.coupons.filter(
+            valid_from__lte=date.today(),
+            valid_until__gte=date.today()
+        ).first()
+        if coupon and order.coupon_discount and order.coupon_discount > 0:
+            coupon_per_item = order.coupon_discount / total_items_count
+            coupon_info['discount_amount'] = (coupon_per_item * delivered_items_count).quantize(Decimal('0.01'))
+            coupon_info['coupon_code'] = coupon.code
+            coupon_info['discount_percentage'] = coupon.discount_percentage
+            coupon_info['type'] = 'Coupon'
+        # Check for referral coupon
+        elif order.referral_coupon_discount and order.referral_coupon_discount > 0:
+            referral_coupon = order.referral_coupons.filter(
+                valid_from__lte=date.today(),
+                valid_until__gte=date.today(),
+                used=False
+            ).first()
+            coupon_per_item = order.referral_coupon_discount / total_items_count
+            coupon_info['discount_amount'] = (coupon_per_item * delivered_items_count).quantize(Decimal('0.01'))
+            coupon_info['coupon_code'] = referral_coupon.code if referral_coupon else order.coupon_code or 'N/A'
+            coupon_info['discount_percentage'] = (
+                referral_coupon.discount_percentage if referral_coupon else
+                order.coupon_discount_percentage or
+                (order.referral_coupon_discount / original_price * 100).quantize(Decimal('0.01')) if original_price > 0 else Decimal('0.00')
+            )
+            coupon_info['type'] = 'Referral Coupon'
+        # Fallback to stored coupon details if no active coupon is found but discount exists
+        elif order.coupon_discount and order.coupon_discount > 0:
+            coupon_per_item = order.coupon_discount / total_items_count
+            coupon_info['discount_amount'] = (coupon_per_item * delivered_items_count).quantize(Decimal('0.01'))
+            coupon_info['coupon_code'] = order.coupon_code or 'N/A'
+            coupon_info['discount_percentage'] = (
+                order.coupon_discount_percentage or
+                (order.coupon_discount / original_price * 100).quantize(Decimal('0.01')) if original_price > 0 else Decimal('0.00')
+            )
+            coupon_info['type'] = order.coupon_type or 'Coupon'
+    
+    # Calculate final total (only delivered items)
+    final_total = sum(item['discounted_total'] for item in offer_details) - coupon_info['discount_amount'] + order.shipping_price + order.tax
+    
     context = {
         'order': order,
         'order_time_ist': order_time_ist,
         'payment_method': payment_method,
-        'address': order.address,
+        'is_paid': is_paid,
         'request': request,
-        'is_paid': is_paid,  # Add is_paid to context for consistency
+        'offer_details': offer_details,
+        'coupon_info': coupon_info,
+        'shipping_price': order.shipping_price,
+        'tax': order.tax,
+        'final_total': final_total
     }
     
-    # Render the HTML template to a string
-    html_string = render_to_string('userside/invoice.html', context)
+    try:
+        # Render the HTML template to a string
+        html_string = render_to_string('userside/invoice.html', context)
+        
+        # Convert HTML to PDF
+        pdf_file = HTML(string=html_string).write_pdf()
+        
+        # Create HTTP response with PDF
+        response = HttpResponse(content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename="invoice_{order.order_id}.pdf"'
+        response.write(pdf_file)
+        
+        logger.info(f"Invoice downloaded for order {order.order_id} by user {request.user.email}")
+        return response
     
-    # Convert HTML to PDF
-    pdf_file = HTML(string=html_string).write_pdf()
-    
-    # Create HTTP response with PDF
-    response = HttpResponse(content_type='application/pdf')
-    response['Content-Disposition'] = f'attachment; filename="invoice_{order.order_id}.pdf"'
-    response.write(pdf_file)
-    
-    return response
-
+    except Exception as e:
+        logger.error(f"Error generating invoice for order {order.order_id}: {e}", exc_info=True)
+        messages.error(request, "Error generating invoice.")
+        return redirect('userside:order_detail', order_id=order.order_id)
 import logging
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
@@ -2774,7 +3501,7 @@ from adminside.models import Wallet, Transaction
 
 logger = logging.getLogger(__name__)
 
-@login_required
+@login_required(login_url='userside:login')
 def wallet(request):
     # Get or create the user's wallet
     wallet, created = Wallet.objects.get_or_create(user=request.user)
@@ -2794,7 +3521,7 @@ def wallet(request):
                     description="Manual wallet top-up",
                 )
                 wallet.credit(amount)
-                logger.info(f"User {request.user.email} added ₹{amount} to wallet.")
+                logger.info(f"User {request.user.email} added ₹{amount} to wallet. New balance: ₹{wallet.balance}")
                 messages.success(request, f"₹{amount:.2f} added to your wallet successfully!")
                 return redirect('userside:wallet')
         except ValueError:

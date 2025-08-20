@@ -1,14 +1,263 @@
 {% extends 'base.html' %}
 {% block content %}
-<div class="container mt-5">
-    <h4>Verify Your Email</h4>
-    <form method="POST">
-        {% csrf_token %}
-        <div class="mb-3">
-            <label for="otp" class="form-label">Enter OTP sent to your email:</label>
-            <input type="text" name="otp" class="form-control" required>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-black: #000000;
+            --primary-white: #ffffff;
+            --gray-50: #f8f9fa;
+            --gray-100: #e9ecef;
+            --gray-200: #dee2e6;
+            --gray-300: #ced4da;
+            --gray-600: #6c757d;
+            --gray-700: #495057;
+            --gray-900: #212529;
+            --success-color: #28a745;
+            --green-hover: #2ecc71;
+            --blue-gradient-start: #4fc3f7;
+            --blue-gradient-end: #1565c0;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, var(--gray-50) 0%, var(--gray-100) 100%);
+            line-height: 1.6;
+            color: var(--gray-900);
+        }
+
+        .otp-container {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1.5rem;
+        }
+
+        .otp-card {
+            background: var(--primary-white);
+            border-radius: 24px;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1), 0 4px 8px rgba(0, 0, 0, 0.05);
+            max-width: 480px;
+            width: 100%;
+            border: 1px solid var(--gray-200);
+            padding: 2.5rem;
+        }
+
+        .otp-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .otp-action {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--primary-black);
+            margin-bottom: 0.5rem;
+            letter-spacing: 0.5px;
+        }
+
+        .otp-subtitle {
+            color: var(--gray-600);
+            font-size: 1rem;
+            font-weight: 400;
+            max-width: 80%;
+            margin: 0 auto;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+            position: relative;
+        }
+
+        .form-label {
+            font-weight: 600;
+            font-size: 0.875rem;
+            margin-bottom: 0.5rem;
+            color: var(--gray-700);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .form-label i {
+            font-size: 1rem;
+            color: var(--gray-600);
+        }
+
+        .form-control {
+            background-color: var(--gray-50);
+            border: 2px solid var(--gray-200);
+            border-radius: 12px;
+            padding: 1rem;
+            font-size: 1.25rem;
+            color: var(--gray-900);
+            transition: all 0.3s ease;
+            width: 100%;
+            font-family: 'Inter', sans-serif;
+            text-align: center;
+            letter-spacing: 3px;
+        }
+
+        .form-control:focus {
+            background-color: var(--primary-white);
+            border-color: var(--primary-black);
+            box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.1);
+            outline: none;
+        }
+
+        .form-control::placeholder {
+            color: var(--gray-600);
+            font-weight: 400;
+            letter-spacing: normal;
+        }
+
+        .submit-btn {
+            background: var(--primary-black);
+            color: var(--primary-white);
+            border: none;
+            border-radius: 12px;
+            padding: 1rem 2rem;
+            font-weight: 700;
+            font-size: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: all 0.3s ease;
+            width: 100%;
+            margin: 1.5rem 0 1rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .submit-btn:hover {
+            background: var(--green-hover);
+            color: var(--primary-white);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(46, 204, 113, 0.3);
+        }
+
+        .submit-btn:active {
+            background: var(--primary-black);
+            color: var(--primary-white);
+            transform: translateY(0);
+            box-shadow: none;
+        }
+
+        .submit-btn:disabled {
+            background: var(--gray-300);
+            color: var(--gray-600);
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .submit-btn.loading::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 20px;
+            height: 20px;
+            border: 2px solid transparent;
+            border-top: 2px solid var(--primary-white);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: translate(-50%, -50%) rotate(0deg); }
+            100% { transform: translate(-50%, -50%) rotate(360deg); }
+        }
+
+        @media (max-width: 576px) {
+            .otp-card {
+                padding: 1.5rem;
+                border-radius: 16px;
+            }
+
+            .otp-action {
+                font-size: 1.25rem;
+            }
+
+            .otp-subtitle {
+                font-size: 0.875rem;
+            }
+
+            .form-control {
+                padding: 0.75rem;
+                font-size: 1rem;
+                letter-spacing: 2px;
+            }
+
+            .submit-btn {
+                padding: 0.75rem 1.5rem;
+                font-size: 0.875rem;
+            }
+        }
+
+        .form-control:focus,
+        .submit-btn:focus {
+            outline: 2px solid var(--green-hover);
+            outline-offset: 2px;
+        }
+
+        @media (prefers-contrast: high) {
+            .form-control {
+                border-width: 3px;
+            }
+            
+            .submit-btn {
+                border: 2px solid var(--primary-black);
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            * {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="otp-container">
+        <div class="otp-card">
+            <div class="otp-header">
+                <h3 class="otp-action">Verify Your Email</h3>
+                <p class="otp-subtitle">Enter the OTP sent to your registered email to complete your verification.</p>
+            </div>
+
+            <form method="POST" id="otpForm">
+                {% csrf_token %}
+                <div class="form-group">
+                    <label class="form-label" for="otp">
+                        <i class="bi bi-key"></i>OTP Code
+                    </label>
+                    <input type="text" name="otp" id="otp" class="form-control" placeholder="Enter OTP" maxlength="6" required>
+                </div>
+                <button type="submit" class="submit-btn" id="submitOtpBtn">
+                    <i class="bi bi-check-circle"></i>Verify
+                </button>
+            </form>
         </div>
-        <button type="submit" class="btn btn-primary">Verify</button>
-    </form>
-</div>
+    </div>
+</body>
 {% endblock %}

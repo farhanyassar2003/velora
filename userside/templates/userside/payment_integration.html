@@ -46,24 +46,6 @@
             transform: translateY(-2px);
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
         }
-        .btn-secondary-outline {
-            border: 2px solid var(--gray-400);
-            color: var(--gray-900);
-            padding: 0.75rem 1.5rem;
-            border-radius: 0.5rem;
-            font-weight: 600;
-            text-decoration: none;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.3s ease;
-        }
-        .btn-secondary-outline:hover {
-            border-color: var(--gray-600);
-            color: var(--gray-900);
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-        }
         .loading {
             opacity: 0.6;
             pointer-events: none;
@@ -75,10 +57,36 @@
         .loading .spinner {
             display: inline-block;
         }
+        .toast-container {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            z-index: 9999;
+        }
+        .toast-body {
+            font-size: 0.9rem;
+        }
     </style>
 {% endblock %}
 
 {% block content %}
+    <!-- Toast for Unlisted Items -->
+    {% if request.session.unlisted_items_error %}
+    <div class="toast-container">
+        <div id="unlistedItemsToast" class="toast align-items-center text-bg-danger border-0" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="d-flex">
+                <div class="toast-body">
+                    {% for message in request.session.unlisted_items_error %}
+                        {{ message }}<br>
+                    {% endfor %}
+                    Redirecting to <a href="{% url 'userside:view_cart' %}" class="text-white">cart</a>...
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
     <div class="container my-5">
         <div class="row justify-content-center">
             <div class="col-lg-6">
@@ -101,100 +109,130 @@
     <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            var button = document.getElementById('rzp-button');
-            
-            var options = {
-                "key": "{{ razorpay_key }}", // Your Razorpay Key ID
-                "amount": "{{ razorpay_amount }}", // Amount in paise
-                "currency": "INR",
-                "name": "Velora",
-                "description": "Order #{{ order.order_id }}",
-                "order_id": "{{ razorpay_order_id }}", // Razorpay Order ID
-                "handler": function (response) {
-                    // Show loading state
-                    button.classList.add('loading');
-                    
-                    // Create a form to submit payment data for verification
-                    var form = document.createElement('form');
-                    form.method = 'POST';
-                    form.action = "{% url 'userside:verify_payment' order.id %}";
-                    
-                    // Add CSRF token
-                    var csrfInput = document.createElement('input');
-                    csrfInput.type = 'hidden';
-                    csrfInput.name = 'csrfmiddlewaretoken';
-                    csrfInput.value = '{{ csrf_token }}';
-                    form.appendChild(csrfInput);
-                    
-                    // Add payment data
-                    var fields = ['razorpay_payment_id', 'razorpay_order_id', 'razorpay_signature'];
-                    fields.forEach(function(field) {
-                        var input = document.createElement('input');
-                        input.type = 'hidden';
-                        input.name = field;
-                        input.value = response[field];
-                        form.appendChild(input);
-                    });
-                    
-                    document.body.appendChild(form);
-                    form.submit();
-                },
-                "prefill": {
-                    "name": "{{ request.user.get_full_name|default:'' }}",
-                    "email": "{{ request.user.email|default:'' }}",
-                    "contact": "{{ order.address.phone|default:'' }}"
-                },
-                "theme": {
-                    "color": "#000000"
-                },
-                "modal": {
-                    "ondismiss": function() {
-                        // Redirect to failure page if user closes the payment modal
-                        console.log('Payment modal dismissed by user');
+            const button = document.getElementById('rzp-button');
+            const hasUnlistedItems = {{ has_unlisted_items|yesno:"true,false" }};
+
+            // Handle toast and redirection for unlisted items
+            if (hasUnlistedItems) {
+                button.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const toastElement = document.getElementById('unlistedItemsToast');
+                    if (toastElement) {
+                        const toast = new bootstrap.Toast(toastElement, {
+                            autohide: true,
+                            delay: 3000
+                        });
+                        toast.show();
+                        // Clear session error
+                        fetch("{% url 'userside:clear_session_error' %}", {
+                            method: 'POST',
+                            headers: {
+                                'X-CSRFToken': '{{ csrf_token }}',
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({ key: 'unlisted_items_error' })
+                        }).then(response => response.json())
+                          .then(data => {
+                              if (data.success) {
+                                  console.log('Session error cleared');
+                              } else {
+                                  console.error('Failed to clear session:', data.message);
+                              }
+                          })
+                          .catch(error => {
+                              console.error('Error clearing session:', error);
+                          });
+                        // Redirect to cart after toast
                         setTimeout(function() {
-                            window.location.href = "{% url 'userside:order_failure' order.id %}";
-                        }, 1000);
+                            window.location.href = "{% url 'userside:view_cart' %}";
+                        }, 3500);
                     }
-                },
-                "retry": {
-                    "enabled": true,
-                    "max_count": 3
-                },
-                "timeout": 300, // 5 minutes timeout
-                "remember_customer": false,
-                "readonly": {
-                    "email": false,
-                    "contact": false,
-                    "name": false
-                }
-            };
-            
-            var rzp = new Razorpay(options);
-            
-            // Handle payment failures
-            rzp.on('payment.failed', function (response) {
-                console.error('Payment failed:', response.error);
-                alert('Payment failed: ' + response.error.description);
-                window.location.href = "{% url 'userside:order_failure' order.id %}";
-            });
-            
-            button.onclick = function(e) {
-                e.preventDefault();
-                button.classList.add('loading');
+                });
+            } else {
+                // Razorpay setup for valid orders
+                const options = {
+                    "key": "{{ razorpay_key }}",
+                    "amount": "{{ razorpay_amount }}",
+                    "currency": "INR",
+                    "name": "Velora",
+                    "description": "Order #{{ order.order_id }}",
+                    "order_id": "{{ razorpay_order_id }}",
+                    "handler": function (response) {
+                        button.classList.add('loading');
+                        const form = document.createElement('form');
+                        form.method = 'POST';
+                        form.action = "{% url 'userside:verify_payment' order.id %}";
+                        
+                        const csrfInput = document.createElement('input');
+                        csrfInput.type = 'hidden';
+                        csrfInput.name = 'csrfmiddlewaretoken';
+                        csrfInput.value = '{{ csrf_token }}';
+                        form.appendChild(csrfInput);
+                        
+                        const fields = ['razorpay_payment_id', 'razorpay_order_id', 'razorpay_signature'];
+                        fields.forEach(function(field) {
+                            const input = document.createElement('input');
+                            input.type = 'hidden';
+                            input.name = field;
+                            input.value = response[field];
+                            form.appendChild(input);
+                        });
+                        
+                        document.body.appendChild(form);
+                        form.submit();
+                    },
+                    "prefill": {
+                        "name": "{{ request.user.get_full_name|default:'' }}",
+                        "email": "{{ request.user.email|default:'' }}",
+                        "contact": "{{ order.address.phone|default:'' }}"
+                    },
+                    "theme": {
+                        "color": "#000000"
+                    },
+                    "modal": {
+                        "ondismiss": function() {
+                            console.log('Payment modal dismissed by user');
+                            setTimeout(function() {
+                                window.location.href = "{% url 'userside:order_failure' order.id %}";
+                            }, 1000);
+                        }
+                    },
+                    "retry": {
+                        "enabled": true,
+                        "max_count": 3
+                    },
+                    "timeout": 300,
+                    "remember_customer": false,
+                    "readonly": {
+                        "email": false,
+                        "contact": false,
+                        "name": false
+                    }
+                };
                 
-                try {
-                    rzp.open();
-                } catch (error) {
-                    console.error('Error opening Razorpay:', error);
-                    button.classList.remove('loading');
-                    alert('Failed to open payment gateway. Please try again.');
-                }
+                const rzp = new Razorpay(options);
                 
-                // Remove loading state after a delay if payment modal doesn't open
-                setTimeout(function() {
-                    button.classList.remove('loading');
-                }, 2000);
-            };
+                rzp.on('payment.failed', function (response) {
+                    console.error('Payment failed:', response.error);
+                    alert('Payment failed: ' + response.error.description);
+                    window.location.href = "{% url 'userside:order_failure' order.id %}";
+                });
+                
+                button.onclick = function(e) {
+                    e.preventDefault();
+                    button.classList.add('loading');
+                    try {
+                        rzp.open();
+                    } catch (error) {
+                        console.error('Error opening Razorpay:', error);
+                        button.classList.remove('loading');
+                        alert('Failed to open payment gateway. Please try again.');
+                    }
+                    setTimeout(function() {
+                        button.classList.remove('loading');
+                    }, 2000);
+                };
+            }
         });
     </script>
 {% endblock %}

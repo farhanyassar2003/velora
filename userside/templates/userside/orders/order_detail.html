@@ -167,6 +167,7 @@
         .status-badge-delivered { background-color: #198754; }
         .status-badge-cancelled { background-color: #6c757d; }
         .status-badge-returned { background-color: #dc3545; }
+        .status-badge-rejected { background-color: #dc3545; }
         .address-section {
             margin-bottom: 1.5rem;
         }
@@ -179,6 +180,13 @@
             font-size: 0.9rem;
             color: var(--gray-600);
             margin-bottom: 0.5rem;
+        }
+        .highlight-total {
+            background-color: var(--gray-100);
+            padding: 0.25rem 0.75rem;
+            border-radius: 0.375rem;
+            font-weight: 700;
+            display: inline-block;
         }
         @media (max-width: 768px) {
             .page-title {
@@ -275,77 +283,148 @@
                             </span>
                         </div>
                         <div class="d-flex justify-content-between align-items-center mb-2">
-                            <span class="text-gray-700">Total Amount:</span>
-                            <span class="fw-semibold text-primaryBlack">₹{{ order.total|floatformat:2 }}</span>
+                            <span class="text-gray-700">Original Subtotal:</span>
+                            <span class="fw-semibold text-primaryBlack">₹{{ original_subtotal|floatformat:2 }}</span>
                         </div>
-                        {% if address %}
-                            <div class="address-section mt-4 pt-3 border-top">
-                                <h3 class="fs-5 fw-bold text-primaryBlack">Shipping Address</h3>
-                                <p>{{ address.address_line1 }}</p>
-                                {% if address.address_line2 %}<p>{{ address.address_line2 }}</p>{% endif %}
-                                <p>{{ address.city }}, {{ address.state }} {{ address.postal_code }}</p>
-                                <p>{{ address.country }}</p>
-                            </div>
-                        {% else %}
-                            <div class="alert alert-warning mt-4">
-                                No shipping address provided for this order.
+                        {% if coupon_discount > 0 %}
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span class="text-gray-700">Coupon Discount:</span>
+                                <span class="fw-semibold text-primaryBlack">-₹{{ coupon_discount|floatformat:2 }}</span>
                             </div>
                         {% endif %}
+                        {% if referral_discount > 0 %}
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span class="text-gray-700">Referral Coupon Discount:</span>
+                                <span class="fw-semibold text-primaryBlack">-₹{{ referral_discount|floatformat:2 }}</span>
+                            </div>
+                        {% endif %}
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="text-gray-700 fw-bold">Original Total:</span>
+                            <span class="fw-bold text-primaryBlack highlight-total">₹{{ original_total|floatformat:2 }}</span>
+                        </div>
+                        {% if has_cancellations_or_returns %}
+                            <div class="border-top pt-3 mt-3">
+                                <h2 class="fs-4 fw-bold text-primaryBlack mb-3">Amount After Return/Cancellation</h2>
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <span class="text-gray-700">Final Subtotal:</span>
+                                    <span class="fw-semibold text-primaryBlack">₹{{ adjusted_subtotal|floatformat:2 }}</span>
+                                </div>
+                                {% if adjusted_discount > 0 %}
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <span class="text-gray-700">Final Coupon Discount:</span>
+                                        <span class="fw-semibold text-primaryBlack">-₹{{ adjusted_discount|floatformat:2 }}</span>
+                                    </div>
+                                {% endif %}
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <span class="text-gray-700 fw-bold">Final Total:</span>
+                                    <span class="fw-bold text-primaryBlack highlight-total">₹{{ adjusted_total|floatformat:2 }}</span>
+                                </div>
+                            </div>
+                        {% endif %}
+                        {% if total_refunded > 0 %}
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span class="text-gray-700">Total Refunded to Wallet:</span>
+                                <span class="fw-semibold text-primaryBlack">₹{{ total_refunded|floatformat:2 }}</span>
+                            </div>
+                        {% endif %}
+                        <div class="address-section mt-4 pt-3 border-top">
+                            <h3 class="fs-5 fw-bold text-primaryBlack">Shipping Address</h3>
+                            <p>{{ order.get_shipping_address }}</p>
+                        </div>
 
                         <h3 class="fs-5 fw-bold text-primaryBlack mb-3 mt-4 pt-3 border-top">Items in this Order</h3>
                         <div class="space-y-3">
-                            {% for item in order.items.all %}
-                                <div class="card order-item-card mb-3">
-                                    <img src="{% if item.product and item.product.product_images.exists %}{{ item.product.get_primary_image }}{% else %}/static/images/placeholder.jpg{% endif %}" alt="{{ item.product.name|default:'Product' }}" class="product-image">
-                                    <div class="product-info">
-                                        <h4 class="font-semibold fs-6 text-primaryBlack mb-1">
-                                            {{ item.product.name|default:"Deleted Product" }} (x{{ item.quantity }})
-                                            {% if item.variant %}
-                                                - {{ item.variant.color_variant.color_name }} ({{ item.size }})
-                                            {% elif item.size %}
-                                                - {{ item.size }}
-                                            {% endif %}
-                                        </h4>
-                                        <p class="text-sm text-gray-600 mb-2">Price: ₹{{ item.price|floatformat:2 }} each</p>
-                                        <p class="text-sm text-gray-600 mb-0">Subtotal: ₹{{ item.total|floatformat:2 }}</p>
-                                    </div>
-                                    <div class="actions w-100 mt-2">
-                                        {% if item.is_returned %}
-                                            <p class="text-muted mt-2">
-                                                <i class="bi bi-info-circle me-1"></i>Item Returned<br>
-                                                <strong>Reason:</strong> {{ item.return_reason|default:"No reason provided" }}
+                            {% for entry in items_with_discounts %}
+                                {% with item=entry.item %}
+                                    <div class="card order-item-card mb-3">
+                                        <img src="{% if item.product and item.product.product_images.exists %}{{ item.product.get_primary_image }}{% else %}/static/images/placeholder.jpg{% endif %}" alt="{{ item.product.name|default:'Product' }}" class="product-image">
+                                        <div class="product-info">
+                                            <h4 class="font-semibold fs-6 text-primaryBlack mb-1">
+                                                {{ item.product.name|default:"Deleted Product" }} (x{{ item.quantity }})
+                                                {% if item.variant %}
+                                                    - {{ item.color_name }} ({{ item.size }})
+                                                {% elif item.size %}
+                                                    - {{ item.size }}
+                                                {% endif %}
+                                            </h4>
+                                            <p class="text-sm text-gray-600 mb-2">
+                                                Price: ₹{{ item.price|floatformat:2 }} each
+                                                {% if item.discounted_price %}
+                                                    (Discounted: ₹{{ item.discounted_price|floatformat:2 }} each)
+                                                {% endif %}
+                                                {% if item.applied_offer %}
+                                                    <br><small>Offer: {{ item.applied_offer }}</small>
+                                                {% endif %}
                                             </p>
-                                        {% elif item.is_cancelled %}
-                                            <p class="text-muted mt-2">
-                                                <i class="bi bi-info-circle me-1"></i>Item Cancelled<br>
-                                                <strong>Reason:</strong> {{ item.cancel_reason|default:"No reason provided" }}
-                                            </p>
-                                        {% else %}
-                                            {% if order.status != 'delivered' and order.status != 'cancelled' and order.status != 'returned' %}
-                                                <form action="{% url 'userside:cancel_order_item' item.id %}" method="post" class="cancel-item-form">
-                                                    {% csrf_token %}
-                                                    <div class="d-flex gap-2 align-items-center">
-                                                        <input type="text" name="reason" class="form-control form-control-sm" placeholder="Reason for cancellation" required>
-                                                        <button type="submit" class="btn btn-danger-outline btn-sm">
-                                                            <i class="bi bi-x-circle me-1"></i>Cancel Item
-                                                        </button>
-                                                    </div>
-                                                </form>
+                                            {% if entry.coupon_discount > 0 %}
+                                                <p class="text-sm text-gray-600 mb-0">Coupon Discount: -₹{{ entry.coupon_discount|floatformat:2 }}</p>
                                             {% endif %}
-                                            {% if order.status == 'delivered' and not item.is_returned and not item.is_cancelled %}
-                                                <form action="{% url 'userside:return_order_item' item.id %}" method="post" class="return-item-form">
-                                                    {% csrf_token %}
-                                                    <div class="d-flex gap-2 align-items-center">
-                                                        <input type="text" name="reason" class="form-control form-control-sm" placeholder="Reason for return" required>
-                                                        <button type="submit" class="btn btn-secondary-outline btn-sm">
-                                                            <i class="bi bi-arrow-return-left me-1"></i>Return Item
-                                                        </button>
-                                                    </div>
-                                                </form>
+                                            {% if entry.referral_discount > 0 %}
+                                                <p class="text-sm text-gray-600 mb-0">Referral Coupon Discount: -₹{{ entry.referral_discount|floatformat:2 }}</p>
                                             {% endif %}
-                                        {% endif %}
+                                            <p class="text-sm text-gray-600 mb-0">Subtotal: ₹{{ entry.adjusted_subtotal|floatformat:2 }}</p>
+                                            {% if item.is_cancelled %}
+                                                <p class="text-sm text-gray-600 mb-0">
+                                                    <span class="status-badge status-badge-cancelled">Cancelled</span><br>
+                                                    <strong>Reason:</strong> {{ item.cancel_reason|default:"No reason provided" }}
+                                                </p>
+                                            {% elif item.is_returned %}
+                                                <p class="text-sm text-gray-600 mb-0">
+                                                    <span class="status-badge status-badge-returned">
+                                                        {% if item.is_refunded_to_wallet %}
+                                                            Refunded
+                                                        {% else %}
+                                                            Return Requested
+                                                        {% endif %}
+                                                    </span><br>
+                                                    <strong>Reason:</strong> {{ item.return_reason|default:"No reason provided" }}
+                                                    {% if not item.is_refunded_to_wallet %}
+                                                        <br><strong>Estimated Refund:</strong> ₹{{ item.refund_amount|floatformat:2 }}
+                                                    {% else %}
+                                                        <br><strong>Refunded Amount:</strong> ₹{{ item.refund_amount|floatformat:2 }}
+                                                    {% endif %}
+                                                </p>
+                                            {% elif item.return_reason and item.return_reason|slice:":9" == "Rejected:" %}
+                                                <p class="text-sm text-gray-600 mb-0">
+                                                    <span class="status-badge status-badge-rejected">Rejected (Delivered)</span><br>
+                                                    <strong>Reason:</strong> {{ item.return_reason|slice:"9:"|default:"No reason provided" }}
+                                                </p>
+                                            {% endif %}
+                                        </div>
+                                        <div class="actions w-100 mt-2">
+                                            {% if item.is_returned %}
+                                                <!-- No actions for returned items -->
+                                            {% elif item.is_cancelled %}
+                                                <!-- No actions for cancelled items -->
+                                            {% elif item.return_reason and item.return_reason|slice:":9" == "Rejected:" %}
+                                                <!-- No actions for rejected items -->
+                                            {% else %}
+                                                {% if order.status != 'delivered' and order.status != 'cancelled' and order.status != 'returned' %}
+                                                    <form action="{% url 'userside:cancel_order_item' item.id %}" method="post" class="cancel-item-form">
+                                                        {% csrf_token %}
+                                                        <div class="d-flex gap-2 align-items-center">
+                                                            <input type="text" name="reason" class="form-control form-control-sm" placeholder="Reason for cancellation" required>
+                                                            <button type="submit" class="btn btn-danger-outline btn-sm">
+                                                                <i class="bi bi-x-circle me-1"></i>Cancel Item
+                                                            </button>
+                                                        </div>
+                                                    </form>
+                                                {% endif %}
+                                                {% if order.status == 'delivered' and not item.is_returned and not item.is_cancelled %}
+                                                    <form action="{% url 'userside:return_order_item' item.id %}" method="post" class="return-item-form">
+                                                        {% csrf_token %}
+                                                        <div class="d-flex gap-2 align-items-center">
+                                                            <input type="text" name="reason" class="form-control form-control-sm" placeholder="Reason for return" required>
+                                                            <button type="submit" class="btn btn-secondary-outline btn-sm">
+                                                                <i class="bi bi-arrow-return-left me-1"></i>Return Item
+                                                            </button>
+                                                        </div>
+                                                    </form>
+                                                {% endif %}
+                                            {% endif %}
+                                        </div>
                                     </div>
-                                </div>
+                                {% endwith %}
                             {% endfor %}
                         </div>
 
@@ -373,9 +452,11 @@
                                     This order's current status ({{ order.get_status_display }}) prevents full cancellation.
                                 </div>
                             {% endif %}
-                            <a href="{% url 'userside:download_invoice' order.id %}" class="btn btn-primary-black btn-sm flex-grow-1 w-100 w-md-auto">
-                                <i class="bi bi-file-earmark-arrow-down me-2"></i>Download Invoice (PDF)
-                            </a>
+                            {% if order.status == 'delivered' or is_paid %}
+                                <a href="{% url 'userside:download_invoice' order.id %}" class="btn btn-primary-black btn-sm flex-grow-1 w-100 w-md-auto">
+                                    <i class="bi bi-file-earmark-arrow-down me-2"></i>Download Invoice (PDF)
+                                </a>
+                            {% endif %}
                         </div>
                     </div>
                 </div>
@@ -458,6 +539,13 @@
             returnItemForms.forEach(form => {
                 handleFormSubmission(form, 'Item return requested successfully.', 'Failed to request item return.');
             });
+
+            // Check for server-side messages
+            {% if messages %}
+                {% for message in messages %}
+                    showToast("{{ message }}");
+                {% endfor %}
+            {% endif %}
         });
     </script>
 {% endblock %}

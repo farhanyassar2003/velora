@@ -1,7 +1,6 @@
 {% extends "base.html" %}
 
 {% block extra_head %}
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -139,13 +138,11 @@
             padding: 8px 0;
             font-size: 0.875rem;
         }
-
         .top-bar a {
             color: var(--primary-white);
             text-decoration: none;
             transition: opacity 0.3s ease;
         }
-
         .top-bar a:hover {
             opacity: 0.8;
             color: var(--primary-white);
@@ -347,19 +344,15 @@
             .hero-title {
                 font-size: 2.5rem;
             }
-
             .hero-description {
                 font-size: 1.125rem;
             }
-
             .section-title h2 {
                 font-size: 2rem;
             }
-
             .brand-logo {
                 font-size: 2rem;
             }
-
             .category-card {
                 height: 300px;
             }
@@ -368,7 +361,6 @@
             .hero-title {
                 font-size: 2rem;
             }
-
             .btn-hero-primary,
             .btn-hero-secondary {
                 display: block;
@@ -455,13 +447,19 @@
                 {% for category in categories %}
                 <div class="col-lg-4 col-md-6">
                     <a href="{% url 'userside:product_list' %}?category={{ category.name|lower }}" class="category-card d-block">
-                        {% if category.image %}
-                        <img src="{{ category.image.url }}" alt="{{ category.name }}" class="category-image">
+                        {% with products=category.products.all %}
+                        {% if products %}
+                            {% with random_product=products|random %}
+                            <img src="{% if random_product.get_primary_image %}{{ random_product.get_primary_image }}{% else %}https://via.placeholder.com/400x400/f3f4f6/9ca3af?text={{ category.name|urlencode }}{% endif %}"
+                                 alt="{{ category.name }}"
+                                 class="category-image">
+                            {% endwith %}
                         {% else %}
-                        <div class="category-image d-flex align-items-center justify-content-center" style="background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);">
-                            <i class="bi bi-bag" style="font-size: 4rem; color: #9ca3af;"></i>
-                        </div>
+                            <div class="category-image d-flex align-items-center justify-content-center" style="background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);">
+                                <i class="bi bi-bag" style="font-size: 4rem; color: #9ca3af;"></i>
+                            </div>
                         {% endif %}
+                        {% endwith %}
                         <div class="category-overlay"></div>
                         <div class="category-content">
                             <h3 class="category-name">{{ category.name }}</h3>

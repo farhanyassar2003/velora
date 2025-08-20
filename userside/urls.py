@@ -46,6 +46,7 @@ urlpatterns = [
     path('add-to-cart/<int:product_id>/', views.add_to_cart, name='add_to_cart'),
     path('cart/update/<int:cart_item_id>/<str:action>/', views.update_cart_quantity, name='update_cart_quantity'),
     path('cart/remove/<int:cart_item_id>/', views.remove_from_cart, name='remove_from_cart'),
+    path('clear-session-error/', views.clear_session_error, name='clear_session_error'),
 
     # ===========================# Checkout & Order Placement URLs# ===========================
     path('checkout/', views.checkout_view, name='checkout'),

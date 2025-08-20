@@ -97,20 +97,31 @@
         .form-control {
             border: 1px solid var(--gray-300);
             border-radius: 0.5rem;
-            padding: 0.75rem 1rem;
+            padding: 0.85rem 1.25rem;
             font-size: 1rem;
             transition: all 0.3s ease;
             background-color: var(--gray-50);
+            width: 100%;
+            max-width: 700px;
+            padding-right: 3rem;
+            box-sizing: border-box;
+            box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.05);
         }
         .form-control:focus {
-            border-color: var(--primary-black);
-            box-shadow: 0 0 0 0.2rem rgba(0, 0, 0, 0.1);
+            border-color: transparent;
+            border-image: var(--blue-gradient) 1;
+            box-shadow: 0 0 0 0.2rem rgba(59, 130, 246, 0.3);
             background-color: var(--primary-white);
         }
         .form-label {
             font-weight: 600;
             color: var(--gray-800);
             margin-bottom: 0.5rem;
+        }
+        .input-group {
+            position: relative;
+            width: 100%;
+            max-width: 700px;
         }
         .btn-primary-black {
             background: var(--blue-gradient);
@@ -162,10 +173,11 @@
         .profile-image-container:hover .edit-profile-overlay {
             opacity: 1;
         }
-        .edit-profile-overlay span {
+        .edit-profile-overlay .overlay-action {
             font-size: 0.9rem;
             font-weight: 600;
             text-align: center;
+            cursor: pointer;
         }
         .edit-profile-overlay i {
             font-size: 1.5rem;
@@ -177,6 +189,11 @@
             color: #991b1b;
             border: 1px solid #fecaca;
             box-shadow: 0 2px 8px rgba(239, 68, 68, 0.1);
+        }
+        .text-danger {
+            color: #ef4444 !important;
+            font-size: 0.875rem;
+            margin-top: 0.25rem;
         }
         .sidebar-toggle {
             display: none;
@@ -191,6 +208,55 @@
         .sidebar-toggle:hover {
             background: var(--blue-gradient-hover);
             transform: translateY(-2px);
+        }
+        .toast-container {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 1055;
+        }
+        .toast {
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            background-color: var(--primary-white);
+            border: 1px solid var(--gray-200);
+        }
+        .toast-header {
+            background: var(--blue-gradient);
+            color: var(--primary-white);
+            border-radius: 0.5rem 0.5rem 0 0;
+            font-weight: 600;
+        }
+        .toast-body {
+            padding: 1rem;
+            color: var(--gray-900);
+        }
+        .btn-confirm {
+            background: var(--blue-gradient);
+            color: var(--primary-white);
+            border: none;
+            border-radius: 0.4rem;
+            padding: 0.5rem 1rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        .btn-confirm:hover {
+            background: var(--blue-gradient-hover);
+            transform: translateY(-1px);
+        }
+        .btn-cancel {
+            background: #dc3545;
+            color: var(--primary-white);
+            border: none;
+            border-radius: 0.4rem;
+            padding: 0.5rem 1rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        .btn-cancel:hover {
+            background: #b02a37;
+            transform: translateY(-1px);
         }
         @media (max-width: 768px) {
             .sidebar {
@@ -217,6 +283,9 @@
             .profile-image {
                 width: 100px;
                 height: 100px;
+            }
+            .form-control, .input-group {
+                max-width: none;
             }
         }
         @media (max-width: 576px) {
@@ -278,11 +347,11 @@
                         <div class="text-center mb-4">
                             <div class="profile-image-container" id="profileImageContainer">
                                 <img id="profileImage" 
-                                     src="{% if user.profile_image %}{{ user.profile_image.url }}{% else %}{% static 'images/default-profile.png' %}{% endif %}" 
-                                     alt="Profile" 
+                                     src="{% if user.profile_image %}{{ user.profile_image.url }}{% else %}{% static 'userside/images/download (1).jpg' %}{% endif %}" 
+                                     alt="Profile Image" 
                                      class="profile-image">
                                 <div class="edit-profile-overlay" id="editProfileOverlay">
-                                    <div class="text-center">
+                                    <div class="text-center overlay-action" id="overlayContent">
                                         <i class="bi bi-camera"></i>
                                         <br>
                                         <span>Edit Photo</span>
@@ -291,23 +360,61 @@
                             </div>
                         </div>
                         
+                        <!-- Toast Notification -->
+                        <div class="toast-container">
+                            <div id="removeImageToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+                                <div class="toast-header">
+                                    <strong class="me-auto">Confirm Action</strong>
+                                    <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+                                </div>
+                                <div class="toast-body">
+                                    Are you sure you want to remove your profile image?
+                                    <div class="mt-2 d-flex gap-2 justify-content-end">
+                                        <button type="button" class="btn btn-confirm" id="confirmRemove">Confirm</button>
+                                        <button type="button" class="btn btn-cancel" data-bs-dismiss="toast">Cancel</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         <form method="POST" enctype="multipart/form-data" id="profileForm">
                             {% csrf_token %}
+                            <input type="hidden" name="remove_image" id="removeImageInput" value="false" style="width: 500px;">
                             <div class="mb-3">
                                 <label for="{{ form.first_name.id_for_label }}" class="form-label">First Name</label>
-                                {{ form.first_name }}
+                                <div class="input-group">
+                                    {{ form.first_name }}
+                                </div>
+                                {% if form.first_name.errors %}
+                                    <div class="text-danger mt-1">{{ form.first_name.errors }}</div>
+                                {% endif %}
                             </div>
                             <div class="mb-3">
-                                <label for="{{ form.last_name.id_for_label }}" class="form-label">Last Name</label>
-                                {{ form.last_name }}
+                                <label for="{{ form.last_name.id_for_label }}" class="form-label" >Last Name</label>
+                                <div class="input-group">
+                                    {{ form.last_name }}
+                                </div>
+                                {% if form.last_name.errors %}
+                                    <div class="text-danger mt-1">{{ form.last_name.errors }}</div>
+                                {% endif %}
                             </div>
                             <div class="mb-3">
                                 <label for="{{ form.email.id_for_label }}" class="form-label">Email</label>
-                                {{ form.email }}
+                                <div class="input-group">
+                                    {{ form.email }}
+                                </div>
+                                {% if form.email.errors %}
+                                    <div class="text-danger mt-1">{{ form.email.errors }}</div>
+                                {% endif %}
                             </div>
                             <div class="mb-3">
                                 <label for="{{ form.phone_number.id_for_label }}" class="form-label">Phone Number</label>
-                                {{ form.phone_number }}
+                                <div class="input-group">
+                                    {{ form.phone_number }}
+                                </div>
+                                {% if form.phone_number.errors %}
+                                    <div class="text-danger mt-1">{{ form.phone_number.errors }}</div>
+                                {% endif %}
                             </div>
                             
                             <input type="file" 
@@ -330,62 +437,158 @@
             const profileImageContainer = document.getElementById("profileImageContainer");
             const profileImageInput = document.getElementById("profileImageInput");
             const profileImage = document.getElementById("profileImage");
-            
-            // This is the core fix: attach the click event to the container and trigger the hidden input's click.
-            profileImageContainer.addEventListener("click", function () {
-                profileImageInput.click();
+            const removeImageInput = document.getElementById("removeImageInput");
+            const overlayContent = document.getElementById("overlayContent");
+            const profileForm = document.getElementById("profileForm");
+            const firstNameInput = document.getElementById("id_first_name");
+            const lastNameInput = document.getElementById("id_last_name");
+            const emailInput = document.getElementById("id_email");
+            const phoneNumberInput = document.getElementById("id_phone_number");
+            const removeImageToast = document.getElementById("removeImageToast");
+            const confirmRemoveBtn = document.getElementById("confirmRemove");
+
+            // Initialize Bootstrap Toast
+            const toast = new bootstrap.Toast(removeImageToast);
+
+            // Default image URL
+            const defaultImageUrl = "{% static 'userside/images/download (1).jpg' %}";
+            let isDefaultImage = profileImage.src.includes(defaultImageUrl);
+
+            // Function to update overlay content
+            function updateOverlayContent() {
+                if (isDefaultImage) {
+                    overlayContent.innerHTML = `
+                        <i class="bi bi-camera"></i>
+                        <br>
+                        <span>Edit Photo</span>
+                    `;
+                    profileImageContainer.onclick = function () {
+                        profileImageInput.click();
+                    };
+                } else {
+                    overlayContent.innerHTML = `
+                        <i class="bi bi-trash"></i>
+                        <br>
+                        <span>Remove Image</span>
+                    `;
+                    profileImageContainer.onclick = function () {
+                        toast.show();
+                    };
+                }
+            }
+
+            // Confirm remove image action
+            confirmRemoveBtn.addEventListener("click", function () {
+                profileImage.src = defaultImageUrl;
+                profileImageInput.value = "";
+                removeImageInput.value = "true";
+                isDefaultImage = true;
+                updateOverlayContent();
+                toast.hide();
             });
 
-            // Handle file input change
+            // Initialize overlay content
+            updateOverlayContent();
+
+            // Image upload handler
             profileImageInput.addEventListener("change", function (event) {
                 const file = event.target.files[0];
                 if (file) {
-                    // Validate file type
                     if (!file.type.match('image.*')) {
                         alert('Please select an image file.');
                         return;
                     }
-                    
-                    // Validate file size (5MB limit)
                     if (file.size > 5 * 1024 * 1024) {
                         alert('File size should be less than 5MB.');
                         return;
                     }
-                    
                     const reader = new FileReader();
                     reader.onload = function (e) {
                         profileImage.src = e.target.result;
+                        removeImageInput.value = "false";
+                        isDefaultImage = false;
+                        updateOverlayContent();
                     };
                     reader.readAsDataURL(file);
                 }
             });
-        });
 
-        // Sidebar toggle functions
-        function toggleSidebar() {
-            const sidebar = document.getElementById('sidebar');
-            sidebar.classList.toggle('show');
-        }
+            // Form validation
+            profileForm.addEventListener("submit", function (event) {
+                let isValid = true;
 
-        // Close sidebar when clicking outside on mobile
-        document.addEventListener('click', function(event) {
-            const sidebar = document.getElementById('sidebar');
-            const toggle = document.querySelector('.sidebar-toggle');
-            
-            // Use window.matchMedia for responsive checks
-            if (window.matchMedia('(max-width: 768px)').matches) {
-                if (!sidebar.contains(event.target) && !toggle.contains(event.target)) {
+                // Reset validation states
+                [firstNameInput, lastNameInput, emailInput, phoneNumberInput].forEach(input => {
+                    input.classList.remove("is-invalid");
+                });
+
+                // First name validation
+                if (!firstNameInput.value.trim()) {
+                    firstNameInput.classList.add("is-invalid");
+                    isValid = false;
+                } else if (!/^[a-zA-Z]+$/.test(firstNameInput.value.trim())) {
+                    firstNameInput.classList.add("is-invalid");
+                    isValid = false;
+                }
+
+                // Last name validation
+                if (!lastNameInput.value.trim()) {
+                    lastNameInput.classList.add("is-invalid");
+                    isValid = false;
+                } else if (!/^[a-zA-Z]+$/.test(lastNameInput.value.trim())) {
+                    lastNameInput.classList.add("is-invalid");
+                    isValid = false;
+                }
+
+                // Email validation
+                if (!emailInput.value.trim()) {
+                    emailInput.classList.add("is-invalid");
+                    isValid = false;
+                }
+
+                // Phone number validation
+                if (!phoneNumberInput.value.trim()) {
+                    phoneNumberInput.classList.add("is-invalid");
+                    isValid = false;
+                } else if (!/^\d{10}$/.test(phoneNumberInput.value.trim())) {
+                    phoneNumberInput.classList.add("is-invalid");
+                    isValid = false;
+                } else if (phoneNumberInput.value.trim().startsWith('0')) {
+                    phoneNumberInput.classList.add("is-invalid");
+                    isValid = false;
+                } else if (/^(\d)\1{9}$/.test(phoneNumberInput.value.trim())) {
+                    phoneNumberInput.classList.add("is-invalid");
+                    isValid = false;
+                }
+
+                if (!isValid) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                }
+            });
+
+            // Sidebar toggle functions
+            function toggleSidebar() {
+                const sidebar = document.getElementById('sidebar');
+                sidebar.classList.toggle('show');
+            }
+
+            document.addEventListener('click', function(event) {
+                const sidebar = document.getElementById('sidebar');
+                const toggle = document.querySelector('.sidebar-toggle');
+                if (window.matchMedia('(max-width: 768px)').matches) {
+                    if (!sidebar.contains(event.target) && !toggle.contains(event.target)) {
+                        sidebar.classList.remove('show');
+                    }
+                }
+            });
+
+            window.addEventListener('resize', function() {
+                const sidebar = document.getElementById('sidebar');
+                if (window.innerWidth > 768) {
                     sidebar.classList.remove('show');
                 }
-            }
-        });
-
-        // Close sidebar on window resize
-        window.addEventListener('resize', function() {
-            const sidebar = document.getElementById('sidebar');
-            if (window.innerWidth > 768) {
-                sidebar.classList.remove('show');
-            }
+            });
         });
     </script>
 {% endblock %}

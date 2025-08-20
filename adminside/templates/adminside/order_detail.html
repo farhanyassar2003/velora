@@ -66,7 +66,6 @@
                         <span class="text-gray-800 font-semibold">Status:</span>
                         <span class="inline-block px-3 py-1 rounded-lg text-sm font-semibold uppercase shadow-sm
                             {% if order.status == 'pending' %}bg-yellow-100 text-yellow-800
-                            {% elif order.status == 'processing' %}bg-cyan-100 text-cyan-800
                             {% elif order.status == 'shipped' %}bg-blue-100 text-blue-800
                             {% elif order.status == 'out_for_delivery' %}bg-purple-100 text-purple-800
                             {% elif order.status == 'delivered' %}bg-green-100 text-green-800
@@ -80,25 +79,80 @@
                         <span class="text-gray-800 font-semibold">Order Date:</span>
                         <span class="font-medium text-gray-900">{{ order.created_at|date:"F j, Y, H:i" }}</span>
                     </div>
-                </div>
-
-                <!-- Payment Details -->
-                <h3 class="text-xl font-bold text-gray-900 mb-4 border-l-4 border-indigo-900 pl-3 border-t pt-4 border-gray-200">Payment Details</h3>
-                <div class="mb-6 space-y-4">
-                    <p class="text-gray-800 font-semibold">Payment Method: <span class="font-medium text-gray-900">{{ order.get_payment_method_display }}</span></p>
-                    <p class="text-gray-800 font-semibold">Total Order Amount: <span class="font-medium text-gray-900">₹{{ order.total|floatformat:2 }}</span></p>
-                    <p class="text-gray-800 font-semibold">Payment Status: <span class="font-medium text-gray-900">{% if order.is_paid %}Paid{% else %}Unpaid{% endif %}</span></p>
+                    <div>
+                        <span class="text-gray-800 font-semibold">Payment Method:</span>
+                        <span class="font-medium text-gray-900">{{ order.get_payment_method_display }}</span>
+                    </div>
+                    <div>
+                        <span class="text-gray-800 font-semibold">Payment Status:</span>
+                        <span class="font-medium text-gray-900">{% if order.is_paid %}Paid{% else %}Unpaid{% endif %}</span>
+                    </div>
+                    <div>
+                        <span class="text-gray-800 font-semibold">Subtotal:</span>
+                        <span class="font-medium text-gray-900">₹{{ order.subtotal|floatformat:2 }}</span>
+                    </div>
+                    {% if order.coupon_discount > 0 %}
+                        <div>
+                            <span class="text-gray-800 font-semibold">Coupon Discount:</span>
+                            <span class="font-medium text-gray-900">-₹{{ order.coupon_discount|floatformat:2 }}</span>
+                        </div>
+                    {% endif %}
+                    {% if order.referral_coupon_discount > 0 %}
+                        <div>
+                            <span class="text-gray-800 font-semibold">Referral Coupon Discount:</span>
+                            <span class="font-medium text-gray-900">-₹{{ order.referral_coupon_discount|floatformat:2 }}</span>
+                        </div>
+                    {% endif %}
+                    {% if order.discount > 0 %}
+                        <div>
+                            <span class="text-gray-800 font-semibold">Other Discount:</span>
+                            <span class="font-medium text-gray-900">-₹{{ order.discount|floatformat:2 }}</span>
+                        </div>
+                    {% endif %}
+                    <div>
+                        <span class="text-gray-800 font-semibold">Shipping:</span>
+                        <span class="font-medium text-gray-900">₹{{ order.shipping_price|floatformat:2 }}</span>
+                    </div>
+                    <div>
+                        <span class="text-gray-800 font-semibold">Tax:</span>
+                        <span class="font-medium text-gray-900">₹{{ order.tax|floatformat:2 }}</span>
+                    </div>
+                    <div>
+                        <span class="text-gray-800 font-semibold">Total:</span>
+                        <span class="font-medium text-gray-900">₹{{ order.total|floatformat:2 }}</span>
+                    </div>
+                    {% if has_cancellations_or_returns %}
+                        <div class="border-t pt-3 mt-3 col-span-2">
+                            <h3 class="text-xl font-bold text-gray-900 mb-4 border-l-4 border-indigo-900 pl-3">Amount After Return/Cancellation</h3>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <span class="text-gray-800 font-semibold">Subtotal:</span>
+                                    <span class="font-medium text-gray-900">₹{{ adjusted_subtotal|floatformat:2 }}</span>
+                                </div>
+                                {% if adjusted_discount > 0 %}
+                                    <div>
+                                        <span class="text-gray-800 font-semibold">Coupon Discount:</span>
+                                        <span class="font-medium text-gray-900">-₹{{ adjusted_discount|floatformat:2 }}</span>
+                                    </div>
+                                {% endif %}
+                                <div>
+                                    <span class="text-gray-800 font-semibold">Final Total:</span>
+                                    <span class="font-medium text-gray-900">₹{{ adjusted_total|floatformat:2 }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    {% endif %}
                 </div>
 
                 <!-- Shipping Address -->
                 <h3 class="text-xl font-bold text-gray-900 mb-4 border-l-4 border-indigo-900 pl-3 border-t pt-4 border-gray-200">Shipping Address</h3>
                 <div class="mb-6 space-y-4">
-                    {% if order.address %}
-                        <p class="text-gray-800 font-semibold">{{ order.address.full_name }}</p>
-                        <p class="text-gray-800">{{ order.address.house_name }}{% if order.address.street %}, {{ order.address.street }}{% endif %}{% if order.address.landmark %}, {{ order.address.landmark }}{% endif %}</p>
-                        <p class="text-gray-800">{{ order.address.city }}, {{ order.address.state }} - {{ order.address.pincode }}</p>
-                        <p class="text-gray-800">{{ order.address.country }}</p>
-                        <p class="text-gray-800 font-semibold">Phone: <span class="font-medium text-gray-900">{{ order.address.phone }}</span></p>
+                    {% if order.shipping_full_name or order.shipping_address_line1 %}
+                        <p class="text-gray-800 font-semibold">{{ order.shipping_full_name|default:order.user.get_full_name|default:"Customer" }}</p>
+                        <p class="text-gray-800">{{ order.shipping_address_line1 }}{% if order.shipping_address_line2 %}, {{ order.shipping_address_line2 }}{% endif %}</p>
+                        <p class="text-gray-800">{{ order.shipping_city }}, {{ order.shipping_state }} - {{ order.shipping_postal_code }}</p>
+                        <p class="text-gray-800">{{ order.shipping_country }}</p>
+                        <p class="text-gray-800 font-semibold">Phone: <span class="font-medium text-gray-900">{{ order.shipping_phone|default:"Not provided" }}</span></p>
                     {% else %}
                         <p class="text-gray-800">No shipping address provided for this order.</p>
                     {% endif %}
@@ -111,8 +165,8 @@
                         <label for="status" class="block text-sm font-bold text-gray-800">Change Status</label>
                         <select name="status" id="status" class="mt-1 block w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-offset-2 focus:ring-indigo-900 focus:border-indigo-900 transition-colors"
                                 {% if order.status == "delivered" or order.status == "cancelled" or order.status == "returned" %}disabled{% endif %}>
-                            {% for key, value in status_choices %}
-                                {% if key != 'returned' %}  <!-- Exclude 'returned' from manual status changes -->
+                            {% for key, value in order.STATUS_CHOICES %}
+                                {% if key != 'returned' %}
                                     <option value="{{ key }}" {% if order.status == key %}selected{% endif %}>{{ value }}</option>
                                 {% endif %}
                             {% endfor %}
@@ -125,53 +179,68 @@
                     {% endif %}
                 </form>
 
-                <!-- Return Request -->
-                {% if order.return_requested and not order.return_verified %}
-                    <div class="bg-yellow-100 text-yellow-800 p-4 rounded-lg border border-yellow-300 mb-6">
-                        <strong class="font-bold text-yellow-900">Return Requested:</strong> The user has requested a return.
-                        <ul class="list-disc pl-5 mt-2 text-gray-800">
-                            {% for item in order.items.all %}
-                                {% if item.is_returned %}
-                                    <li><strong class="font-semibold">{{ item.product.name }}</strong> (Size: {{ item.size }}): {{ item.return_reason }}</li>
-                                {% endif %}
-                            {% endfor %}
-                        </ul>
-                        <form method="POST" action="{% url 'adminside:confirm_return' order.order_id %}" class="mt-3" id="returnForm">
-                            {% csrf_token %}
-                            <label class="flex items-center space-x-2 mb-2">
-                                <input type="checkbox" name="verify_return" id="verify_return" class="h-4 w-4 text-indigo-900 focus:ring-2 focus:ring-offset-2 focus:ring-indigo-900 border-gray-300 rounded transition-colors">
-                                <span class="text-sm font-bold text-gray-800">Verify Return & Refund Wallet</span>
-                            </label>
-                            <button type="submit" class="enhanced-button bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-gradient-to-r hover:from-green-600 hover:to-green-700 transition-all font-bold text-sm">Confirm Return & Refund</button>
-                        </form>
-                    </div>
-                {% endif %}
-
                 <!-- Order Items -->
-                <h3 class="text-xl font-bold text-gray-900 mb-4 border-l-4 border-indigo-900 pl-3 border-t pt-4 border-gray-200">Order Items</h3>
+                <h3 class="text-xl font-bold text-gray-900 mb-4 border-l-4 border-indigo-900 pl-3 border-t ptenable4 border-gray-200">Order Items</h3>
                 <div class="space-y-4">
-                    {% for item in order.items.all %}
-                        <div class="metric-card bg-white p-5 rounded-xl shadow-lg border border-gray-200 flex flex-col md:flex-row items-start md:items-center gap-4">
-                            {% if item.variant and item.variant.color_variant and item.variant.color_variant.image %}
-                                <img src="{{ item.variant.color_variant.image.url }}" alt="{{ item.product.name }} - {{ item.variant.color_variant.color_name }}" class="w-24 h-24 object-cover rounded-lg">
-                            {% elif item.product.image %}
-                                <img src="{{ item.product.image.url }}" alt="{{ item.product.name }}" class="w-24 h-24 object-cover rounded-lg">
-                            {% elif item.product.product_images.first %}
-                                <img src="{{ item.product.product_images.first.image.url }}" alt="{{ item.product.name }}" class="w-24 h-24 object-cover rounded-lg">
-                            {% else %}
-                                <img src="https://via.placeholder.com/80" alt="No Image" class="w-24 h-24 object-cover rounded-lg">
-                            {% endif %}
-                            <div class="flex-1">
-                                <h4 class="text-lg font-bold text-gray-900">{{ item.product.name }} (Size: {{ item.size }}) (x{{ item.quantity }})</h4>
-                                <p class="text-sm text-gray-600">Price: ₹{{ item.price|floatformat:2 }} each</p>
-                                <p class="text-sm text-gray-600">Subtotal: ₹{{ item.subtotal|floatformat:2 }}</p>
-                                {% if item.is_cancelled %}
-                                    <span class="inline-block px-3 py-1 bg-red-100 text-red-800 rounded-lg text-sm mt-2 font-semibold uppercase shadow-sm">Cancelled (Reason: {{ item.cancel_reason }})</span>
-                                {% elif item.is_returned %}
-                                    <span class="inline-block px-3 py-1 bg-yellow-100 text-yellow-800 rounded-lg text-sm mt-2 font-semibold uppercase shadow-sm">Return Requested (Reason: {{ item.return_reason }})</span>
+                    {% for entry in items_with_discounts %}
+                        {% with item=entry.item %}
+                            <div class="metric-card bg-white p-5 rounded-xl shadow-lg border border-gray-200 flex flex-col md:flex-row items-start md:items-center gap-4">
+                                {% if item.variant and item.variant.color_variant and item.variant.color_variant.image %}
+                                    <img src="{{ item.variant.color_variant.image.url }}" alt="{{ item.product.name }} - {{ item.color_name|default:item.variant.color_variant.color_name }}" class = "w-24 h-24 object-cover rounded-lg">
+                                {% elif item.product.image %}
+                                    <img src="{{ item.product.image.url }}" alt="{{ item.product.name }}" class="w-24 h-24 object-cover rounded-lg">
+                                {% elif item.product.product_images.first %}
+                                    <img src="{{ item.product.product_images.first.image.url }}" alt="{{ item.product.name }}" class="w-24 h-24 object-cover rounded-lg">
+                                {% else %}
+                                    <img src="https://via.placeholder.com/80" alt="No Image" class="w-24 h-24 object-cover rounded-lg">
                                 {% endif %}
+                                <div class="flex-1">
+                                    <h4 class="text-lg font-bold text-gray-900">{{ item.product.name }} (Size: {{ item.size }}) (x{{ item.quantity }})</h4>
+                                    <p class="text-sm text-gray-600">Price: ₹{{ item.price|floatformat:2 }} each</p>
+                                    {% if item.discounted_price %}
+                                        <p class="text-sm text-gray-600">Discounted Price: ₹{{ item.discounted_price|floatformat:2 }} each</p>
+                                    {% endif %}
+                                    {% if entry.coupon_discount > 0 %}
+                                        <p class="text-sm text-gray-600">Coupon Discount: -₹{{ entry.coupon_discount|floatformat:2 }}</p>
+                                    {% endif %}
+                                    {% if entry.referral_discount > 0 %}
+                                        <p class="text-sm text-gray-600">Referral Coupon Discount: -₹{{ entry.referral_discount|floatformat:2 }}</p>
+                                    {% endif %}
+                                    <p class="text-sm text-gray-600">Subtotal: ₹{{ entry.adjusted_subtotal|floatformat:2 }}</p>
+                                    {% if item.is_cancelled %}
+                                        <span class="inline-block px-3 py-1 bg-red-100 text-red-800 rounded-lg text-sm mt-2 font-semibold uppercase shadow-sm">Cancelled (Reason: {{ item.cancel_reason|default:"No reason provided" }})</span>
+                                    {% elif item.is_returned %}
+                                        <span class="inline-block px-3 py-1 bg-yellow-100 text-yellow-800 rounded-lg text-sm mt-2 font-semibold uppercase shadow-sm">Return Requested (Reason: {{ item.return_reason|default:"No reason provided" }})</span>
+                                        {% if not item.is_refunded_to_wallet %}
+                                            <form method="POST" action="{% url 'adminside:confirm_return' order_id=order.order_id %}" class="mt-3" id="returnForm-{{ item.id }}">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="item_id" value="{{ item.id }}">
+                                                <div class="space-y-3">
+                                                    <!-- Confirm Return -->
+                                                    <div>
+                                                        <label class="flex items-center space-x-2 mb-2">
+                                                            <input type="checkbox" name="verify_return" id="verify_return-{{ item.id }}" class="h-4 w-4 text-indigo-900 focus:ring-2 focus:ring-offset-2 focus:ring-indigo-900 border-gray-300 rounded transition-colors">
+                                                            <span class="text-sm font-bold text-gray-800">Verify Return & Refund Wallet</span>
+                                                        </label>
+                                                        <button type="submit" name="action" value="confirm" class="enhanced-button bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-gradient-to-r hover:from-green-600 hover:to-green-700 transition-all font-bold text-sm">Confirm Return & Refund</button>
+                                                    </div>
+                                                    <!-- Reject Return -->
+                                                    <div class="border-t pt-3">
+                                                        <label for="reject_reason-{{ item.id }}" class="block text-sm font-bold text-gray-800 mb-1">Reason for Rejection</label>
+                                                        <textarea name="reject_reason" id="reject_reason-{{ item.id }}" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-offset-2 focus:ring-indigo-900 focus:border-indigo-900 transition-colors" rows="3" placeholder="Enter reason for rejecting the return"></textarea>
+                                                        <button type="submit" name="action" value="reject" class="enhanced-button bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-gradient-to-r hover:from-red-600 hover:to-red-700 transition-all font-bold text-sm mt-2">Reject Return</button>
+                                                    </div>
+                                                </div>
+                                            </form>
+                                        {% else %}
+                                            <span class="inline-block px-3 py-1 bg-green-100 text-green-800 rounded-lg text-sm mt-2 font-semibold uppercase shadow-sm">Return Confirmed & Refunded (₹{{ item.refund_amount|floatformat:2 }})</span>
+                                        {% endif %}
+                                    {% elif item.return_reason and item.return_reason|slice:":9" == "Rejected:" %}
+                                        <span class="inline-block px-3 py-1 bg-red-100 text-red-800 rounded-lg text-sm mt-2 font-semibold uppercase shadow-sm">Rejected (Delivered) (Reason: {{ item.return_reason|slice:"9:"|default:"No reason provided" }})</span>
+                                    {% endif %}
+                                </div>
                             </div>
-                        </div>
+                        {% endwith %}
                     {% endfor %}
                 </div>
             </div>
@@ -201,8 +270,10 @@
             }
 
             // Check for server-side toast message on page load
-            {% if toast_message %}
-                showToast("{{ toast_message.message }}", "{{ toast_message.bgColor }}", "{{ toast_message.textColor }}");
+            {% if messages %}
+                {% for message in messages %}
+                    showToast("{{ message }}", {% if message.tags == 'success' %}'#16A34A'{% elif message.tags == 'error' or message.tags == 'warning' %}'#EF4444'{% else %}'#4B0082'{% endif %}, '#FFFFFF');
+                {% endfor %}
             {% endif %}
 
             // Check for status update form submission
@@ -215,21 +286,34 @@
                 });
             }
 
-            // Check for return confirmation form submission
-            const returnForm = document.getElementById('returnForm');
-            if (returnForm) {
-                returnForm.addEventListener('submit', function (e) {
-                    const verifyReturn = document.getElementById('verify_return').checked;
-                    if (verifyReturn) {
-                        showToast('Return confirmed and refund processed successfully!', '#16A34A', '#FFFFFF');
-                    } else {
-                        showToast('Return verification cancelled.', '#EF4444', '#FFFFFF');
+            // Check for return confirmation or rejection form submissions (item-specific)
+            document.querySelectorAll('[id^="returnForm-"]').forEach(form => {
+                form.addEventListener('submit', function (e) {
+                    const itemId = form.id.split('-')[1];
+                    const action = e.submitter.value; // 'confirm' or 'reject'
+                    const verifyReturn = document.getElementById(`verify_return-${itemId}`).checked;
+                    const rejectReason = document.getElementById(`reject_reason-${itemId}`).value.trim();
+
+                    if (action === 'confirm') {
+                        if (verifyReturn) {
+                            showToast('Return confirmed and refund processed successfully!', '#16A34A', '#FFFFFF');
+                        } else {
+                            e.preventDefault(); // Prevent form submission
+                            showToast('Please check "Verify Return & Refund Wallet" to confirm.', '#EF4444', '#FFFFFF');
+                        }
+                    } else if (action === 'reject') {
+                        if (!rejectReason) {
+                            e.preventDefault(); // Prevent form submission
+                            showToast('Please provide a reason for rejecting the return.', '#EF4444', '#FFFFFF');
+                        } else {
+                            showToast('Return rejected successfully!', '#EF4444', '#FFFFFF');
+                        }
                     }
                 });
-            }
+            });
 
             // Prevent caching of toast messages by appending timestamp to form actions
-            const forms = [statusForm, returnForm];
+            const forms = [statusForm, ...document.querySelectorAll('[id^="returnForm-"]')];
             forms.forEach(form => {
                 if (form) {
                     const action = form.getAttribute('action') || '';

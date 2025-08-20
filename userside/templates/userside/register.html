@@ -30,6 +30,9 @@
             --danger-color: #dc3545;
             --blue-gradient-start: #4fc3f7;
             --blue-gradient-end: #1565c0;
+            --google-hover-color: #e3f2fd;
+            --input-gradient-start: #ffffff;
+            --input-gradient-end: #f0f4ff; /* Subtle gradient for inputs */
         }
 
         * {
@@ -196,21 +199,33 @@
         }
 
         .form-control {
-            background-color: var(--gray-50);
+            background: linear-gradient(135deg, var(--input-gradient-start) 0%, var(--input-gradient-end) 100%);
             border: 1px solid var(--gray-200);
-            border-radius: 6px;
-            padding: 0.5rem 0.75rem;
+            border-radius: 8px; /* Slightly larger border radius for a softer look */
+            padding: 0.6rem 0.85rem; /* Slightly more padding for comfort */
             font-size: 0.85rem;
             color: var(--gray-900);
             transition: all 0.3s ease;
             width: 100%;
             font-family: 'Inter', sans-serif;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05); /* Subtle shadow for depth */
+        }
+
+        .form-control:hover {
+            border-color: var(--blue-gradient-start); /* Hover effect with gradient color */
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Enhanced shadow on hover */
+        }
+
+        /* Increase width for specific input fields */
+        #id_email, #id_phone_number, #id_password1, #id_password2 {
+            width: 100%;
+            max-width: 500px; /* Further increased width */
         }
 
         .form-control:focus {
-            background-color: var(--primary-white);
-            border-color: var(--primary-black);
-            box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.1);
+            background: var(--primary-white);
+            border-color: var(--blue-gradient-end);
+            box-shadow: 0 0 8px rgba(21, 101, 192, 0.3); /* Enhanced focus glow */
             outline: none;
         }
 
@@ -307,7 +322,7 @@
         }
 
         .google-btn:hover {
-            background: var(--gray-50);
+            background: var(--google-hover-color);
             border-color: var(--gray-300);
             color: var(--gray-700);
             text-decoration: none;
@@ -369,6 +384,16 @@
             gap: 0.2rem;
         }
 
+        .warning-message {
+            color: var(--danger-color);
+            font-size: 0.7rem;
+            font-weight: 500;
+            margin-top: 0.2rem;
+            display: flex;
+            align-items: center;
+            gap: 0.2rem;
+        }
+
         .success-message {
             background: rgba(40, 167, 69, 0.1);
             border: 1px solid var(--success-color);
@@ -388,13 +413,15 @@
         }
 
         .alert-messages .error-message,
-        .alert-messages .success-message {
+        .alert-messages .success-message,
+        .alert-messages .warning-message {
             margin-top: 0;
             margin-bottom: 0.2rem;
         }
 
         .alert-messages .error-message:last-child,
-        .alert-messages .success-message:last-child {
+        .alert-messages .success-message:last-child,
+        .alert-messages .warning-message:last-child {
             margin-bottom: 0;
         }
 
@@ -414,7 +441,7 @@
         }
 
         .form-control.with-icon {
-            padding-right: 2.2rem;
+            padding-right: 2.8rem; /* Increased to accommodate eye icon in wider inputs */
         }
 
         .password-toggle {
@@ -496,6 +523,10 @@
                 margin-bottom: 0.6rem;
                 font-size: 0.85rem;
             }
+
+            #id_email, #id_phone_number, #id_password1, #id_password2 {
+                max-width: 100%;
+            }
         }
 
         @media (max-width: 768px) {
@@ -556,6 +587,10 @@
             .form-control {
                 padding: 0.4rem 0.6rem;
                 font-size: 0.75rem;
+            }
+
+            .form-control.with-icon {
+                padding-right: 2.4rem; /* Adjusted for smaller screens */
             }
 
             .submit-btn {
@@ -646,11 +681,17 @@
                                             <i class="bi bi-person"></i>First Name
                                         </label>
                                         <div class="input-group">
-                                            {{ form.first_name }}
+                                            {{ form.first_name|cut:"required" }}
                                         </div>
                                         {% for error in form.first_name.errors %}
-                                            <div class="error-message">{{ error }}</div>
+                                            <div class="error-message"><i class="bi bi-exclamation-triangle"></i>{{ error }}</div>
                                         {% endfor %}
+                                        <div class="warning-message" id="first_name_warning" style="display: none;">
+                                            <i class="bi bi-exclamation-triangle"></i>First name is required
+                                        </div>
+                                        <div class="warning-message" id="first_name_format_warning" style="display: none;">
+                                            <i class="bi bi-exclamation-triangle"></i>First name must contain only letters
+                                        </div>
                                     </div>
                                 </div>
                                 <div class="col-md-6">
@@ -659,11 +700,14 @@
                                             <i class="bi bi-person"></i>Last Name (Optional)
                                         </label>
                                         <div class="input-group">
-                                            {{ form.last_name }}
+                                            {{ form.last_name|cut:"required" }}
                                         </div>
                                         {% for error in form.last_name.errors %}
-                                            <div class="error-message">{{ error }}</div>
+                                            <div class="error-message"><i class="bi bi-exclamation-triangle"></i>{{ error }}</div>
                                         {% endfor %}
+                                        <div class="warning-message" id="last_name_format_warning" style="display: none;">
+                                            <i class="bi bi-exclamation-triangle"></i>Last name must contain only letters
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -673,12 +717,14 @@
                                     <i class="bi bi-envelope"></i>Email Address
                                 </label>
                                 <div class="input-group">
-                                    {{ form.email }}
-                                    <i class="bi bi-envelope input-icon"></i>
+                                    {{ form.email|cut:"required" }}
                                 </div>
                                 {% for error in form.email.errors %}
-                                    <div class="error-message">{{ error }}</div>
+                                    <div class="error-message"><i class="bi bi-exclamation-triangle"></i>{{ error }}</div>
                                 {% endfor %}
+                                <div class="warning-message" id="email_warning" style="display: none;">
+                                    <i class="bi bi-exclamation-triangle"></i>Email address is required
+                                </div>
                             </div>
 
                             <div class="form-group">
@@ -686,12 +732,17 @@
                                     <i class="bi bi-telephone"></i>Phone Number
                                 </label>
                                 <div class="input-group">
-                                    {{ form.phone_number }}
-                                    <i class="bi bi-telephone input-icon"></i>
+                                    {{ form.phone_number|cut:"required" }}
                                 </div>
                                 {% for error in form.phone_number.errors %}
-                                    <div class="error-message">{{ error }}</div>
+                                    <div class="error-message"><i class="bi bi-exclamation-triangle"></i>{{ error }}</div>
                                 {% endfor %}
+                                <div class="warning-message" id="phone_number_warning" style="display: none;">
+                                    <i class="bi bi-exclamation-triangle"></i>Phone number is required
+                                </div>
+                                <div class="warning-message" id="phone_number_format_warning" style="display: none;">
+                                    <i class="bi bi-exclamation-triangle"></i>Phone number must be 10 digits, not start with 0, and not all zeros
+                                </div>
                             </div>
 
                             <div class="form-group">
@@ -699,14 +750,17 @@
                                     <i class="bi bi-lock"></i>Password
                                 </label>
                                 <div class="input-group">
-                                    {{ form.password1 }}
+                                    {{ form.password1|cut:"required" }}
                                     <button type="button" class="password-toggle" onclick="togglePassword('id_password1', this)">
                                         <i class="bi bi-eye"></i>
                                     </button>
                                 </div>
                                 {% for error in form.password1.errors %}
-                                    <div class="error-message">{{ error }}</div>
+                                    <div class="error-message"><i class="bi bi-exclamation-triangle"></i>{{ error }}</div>
                                 {% endfor %}
+                                <div class="warning-message" id="password1_warning" style="display: none;">
+                                    <i class="bi bi-exclamation-triangle"></i>Password is required
+                                </div>
                             </div>
 
                             <div class="form-group">
@@ -714,14 +768,17 @@
                                     <i class="bi bi-lock"></i>Confirm Password
                                 </label>
                                 <div class="input-group">
-                                    {{ form.password2 }}
+                                    {{ form.password2|cut:"required" }}
                                     <button type="button" class="password-toggle" onclick="togglePassword('id_password2', this)">
                                         <i class="bi bi-eye"></i>
                                     </button>
                                 </div>
                                 {% for error in form.password2.errors %}
-                                    <div class="error-message">{{ error }}</div>
+                                    <div class="error-message"><i class="bi bi-exclamation-triangle"></i>{{ error }}</div>
                                 {% endfor %}
+                                <div class="warning-message" id="password2_warning" style="display: none;">
+                                    <i class="bi bi-exclamation-triangle"></i>Confirm password is required
+                                </div>
                             </div>
 
                             <div class="form-group">
@@ -729,11 +786,10 @@
                                     <i class="bi bi-gift"></i>Referral Code (Optional)
                                 </label>
                                 <div class="input-group">
-                                    {{ form.referral_code }}
-                                    <i class="bi bi-gift input-icon"></i>
+                                    {{ form.referral_code|cut:"required" }}
                                 </div>
                                 {% for error in form.referral_code.errors %}
-                                    <div class="error-message">{{ error }}</div>
+                                    <div class="error-message"><i class="bi bi-exclamation-triangle"></i>{{ error }}</div>
                                 {% endfor %}
                             </div>
 
@@ -838,36 +894,73 @@
             submitBtn.disabled = true;
 
             const formData = {
-                first_name: document.getElementById('id_first_name').value,
-                last_name: document.getElementById('id_last_name').value,
-                email: document.getElementById('id_email').value,
-                phone_number: document.getElementById('id_phone_number').value,
-                password: document.getElementById('id_password1').value,
-                referral_code: document.getElementById('id_referral_code').value
+                first_name: document.getElementById('id_first_name').value.trim(),
+                last_name: document.getElementById('id_last_name').value.trim(),
+                email: document.getElementById('id_email').value.trim(),
+                phone_number: document.getElementById('id_phone_number').value.trim(),
+                password: document.getElementById('id_password1').value.trim(),
+                referral_code: document.getElementById('id_referral_code').value.trim()
             };
 
             console.log('Submitting form data:', formData);
 
             document.querySelectorAll('.error-message').forEach(el => el.remove());
             document.querySelectorAll('.success-message').forEach(el => el.remove());
+            document.querySelectorAll('.warning-message').forEach(el => el.style.display = 'none');
 
-            if (!formData.first_name || !formData.email || !formData.phone_number || !formData.password) {
-                const errorElement = document.createElement('div');
-                errorElement.className = 'error-message';
-                errorElement.innerHTML = '<i class="bi bi-exclamation-triangle"></i>Please fill all required fields.';
-                let alertMessages = document.querySelector('.alert-messages');
-                if (!alertMessages) {
-                    alertMessages = document.createElement('div');
-                    alertMessages.className = 'alert-messages';
-                    document.querySelector('.form-section').insertBefore(alertMessages, document.getElementById('registerForm'));
-                }
-                alertMessages.appendChild(errorElement);
-                submitBtn.classList.remove('loading');
-                submitBtn.disabled = false;
-                return;
+            let hasErrors = false;
+
+            // Validate first name
+            if (!formData.first_name) {
+                document.getElementById('first_name_warning').style.display = 'flex';
+                document.getElementById('id_first_name').style.borderColor = 'var(--danger-color)';
+                hasErrors = true;
+            } else if (!/^[A-Za-z]+$/.test(formData.first_name)) {
+                document.getElementById('first_name_format_warning').style.display = 'flex';
+                document.getElementById('id_first_name').style.borderColor = 'var(--danger-color)';
+                hasErrors = true;
             }
 
-            if (formData.password !== document.getElementById('id_password2').value) {
+            // Validate last name (if provided)
+            if (formData.last_name && !/^[A-Za-z]+$/.test(formData.last_name)) {
+                document.getElementById('last_name_format_warning').style.display = 'flex';
+                document.getElementById('id_last_name').style.borderColor = 'var(--danger-color)';
+                hasErrors = true;
+            }
+
+            // Validate email
+            if (!formData.email) {
+                document.getElementById('email_warning').style.display = 'flex';
+                document.getElementById('id_email').style.borderColor = 'var(--danger-color)';
+                hasErrors = true;
+            }
+
+            // Validate phone number
+            if (!formData.phone_number) {
+                document.getElementById('phone_number_warning').style.display = 'flex';
+                document.getElementById('id_phone_number').style.borderColor = 'var(--danger-color)';
+                hasErrors = true;
+            } else if (!/^[1-9][0-9]{9}$/.test(formData.phone_number) || /^0+$/.test(formData.phone_number)) {
+                document.getElementById('phone_number_format_warning').style.display = 'flex';
+                document.getElementById('id_phone_number').style.borderColor = 'var(--danger-color)';
+                hasErrors = true;
+            }
+
+            // Validate password
+            if (!formData.password) {
+                document.getElementById('password1_warning').style.display = 'flex';
+                document.getElementById('id_password1').style.borderColor = 'var(--danger-color)';
+                hasErrors = true;
+            }
+
+            // Validate confirm password
+            if (!document.getElementById('id_password2').value.trim()) {
+                document.getElementById('password2_warning').style.display = 'flex';
+                document.getElementById('id_password2').style.borderColor = 'var(--danger-color)';
+                hasErrors = true;
+            }
+
+            if (formData.password !== document.getElementById('id_password2').value.trim()) {
                 const errorElement = document.createElement('div');
                 errorElement.className = 'error-message';
                 errorElement.innerHTML = '<i class="bi bi-exclamation-triangle"></i>Passwords do not match.';
@@ -878,6 +971,10 @@
                     document.querySelector('.form-section').insertBefore(alertMessages, document.getElementById('registerForm'));
                 }
                 alertMessages.appendChild(errorElement);
+                hasErrors = true;
+            }
+
+            if (hasErrors) {
                 submitBtn.classList.remove('loading');
                 submitBtn.disabled = false;
                 return;
@@ -927,10 +1024,11 @@
                                 const fieldErrors = errors[field].map(error => error.message).join(', ');
                                 const errorElement = document.createElement('div');
                                 errorElement.className = 'error-message';
-                                errorElement.innerHTML = `<i class="bi bi-exclamation-triangle"></i>${field}: ${fieldErrors}`;
+                                errorElement.innerHTML = `<i class="bi bi-exclamation-triangle"></i>${fieldErrors}`;
                                 const fieldElement = document.querySelector(`#id_${field}`);
                                 if (fieldElement) {
                                     fieldElement.parentElement.appendChild(errorElement);
+                                    fieldElement.style.borderColor = 'var(--danger-color)';
                                 }
                             });
                         } catch (e) {
@@ -974,29 +1072,77 @@
                     control.placeholder = 'Enter your last name (optional)';
                 } else if (control.name === 'email') {
                     control.placeholder = 'Enter your email address';
-                    control.classList.add('with-icon');
                 } else if (control.name === 'phone_number') {
                     control.placeholder = 'Enter your phone number';
-                    control.classList.add('with-icon');
                 } else if (control.name === 'password1') {
                     control.placeholder = 'Create a strong password';
+                    control.classList.add('with-icon');
                 } else if (control.name === 'password2') {
                     control.placeholder = 'Confirm your password';
+                    control.classList.add('with-icon');
                 } else if (control.name === 'referral_code') {
                     control.placeholder = 'Enter referral code (optional)';
-                    control.classList.add('with-icon');
                 }
 
                 control.addEventListener('blur', function() {
-                    if (this.value.trim() !== '' || !this.required) {
-                        this.style.borderColor = 'var(--success-color)';
+                    const warningId = `${this.name}_warning`;
+                    const formatWarningId = `${this.name}_format_warning`;
+                    const warningElement = document.getElementById(warningId);
+                    const formatWarningElement = document.getElementById(formatWarningId);
+
+                    if (this.name === 'first_name') {
+                        if (!this.value.trim()) {
+                            if (warningElement) warningElement.style.display = 'flex';
+                            this.style.borderColor = 'var(--danger-color)';
+                        } else if (!/^[A-Za-z]+$/.test(this.value.trim())) {
+                            if (formatWarningElement) formatWarningElement.style.display = 'flex';
+                            this.style.borderColor = 'var(--danger-color)';
+                        } else {
+                            if (warningElement) warningElement.style.display = 'none';
+                            if (formatWarningElement) formatWarningElement.style.display = 'none';
+                            this.style.borderColor = 'var(--success-color)';
+                        }
+                    } else if (this.name === 'last_name') {
+                        if (this.value.trim() && !/^[A-Za-z]+$/.test(this.value.trim())) {
+                            if (formatWarningElement) formatWarningElement.style.display = 'flex';
+                            this.style.borderColor = 'var(--danger-color)';
+                        } else {
+                            if (formatWarningElement) formatWarningElement.style.display = 'none';
+                            this.style.borderColor = this.value.trim() ? 'var(--success-color)' : 'var(--gray-200)';
+                        }
+                    } else if (this.name === 'phone_number') {
+                        if (!this.value.trim()) {
+                            if (warningElement) warningElement.style.display = 'flex';
+                            this.style.borderColor = 'var(--danger-color)';
+                        } else if (!/^[1-9][0-9]{9}$/.test(this.value.trim()) || /^0+$/.test(this.value.trim())) {
+                            if (formatWarningElement) formatWarningElement.style.display = 'flex';
+                            this.style.borderColor = 'var(--danger-color)';
+                        } else {
+                            if (warningElement) warningElement.style.display = 'none';
+                            if (formatWarningElement) formatWarningElement.style.display = 'none';
+                            this.style.borderColor = 'var(--success-color)';
+                        }
+                    } else if (this.name !== 'last_name' && this.name !== 'referral_code') {
+                        if (!this.value.trim()) {
+                            if (warningElement) warningElement.style.display = 'flex';
+                            this.style.borderColor = 'var(--danger-color)';
+                        } else {
+                            if (warningElement) warningElement.style.display = 'none';
+                            this.style.borderColor = 'var(--success-color)';
+                        }
                     } else {
-                        this.style.borderColor = 'var(--danger-color)';
+                        this.style.borderColor = this.value.trim() ? 'var(--success-color)' : 'var(--gray-200)';
                     }
                 });
 
                 control.addEventListener('focus', function() {
                     this.style.borderColor = 'var(--primary-black)';
+                    const warningId = `${this.name}_warning`;
+                    const formatWarningId = `${this.name}_format_warning`;
+                    const warningElement = document.getElementById(warningId);
+                    const formatWarningElement = document.getElementById(formatWarningId);
+                    if (warningElement) warningElement.style.display = 'none';
+                    if (formatWarningElement) formatWarningElement.style.display = 'none';
                 });
             });
         });

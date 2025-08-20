@@ -158,6 +158,9 @@
                             <div class="form-group">
                                 <label class="block text-sm font-semibold text-gray-800 mb-2">{{ product_form.name.label }}</label>
                                 {{ product_form.name }}
+                                <div class="text-red-600 text-sm mt-2" id="error-name" style="display: none;">
+                                    <i class="bi bi-exclamation-circle"></i> Product name is required
+                                </div>
                                 {% if product_form.name.errors %}
                                     <div class="text-red-600 text-sm mt-2">{{ product_form.name.errors }}</div>
                                 {% endif %}
@@ -165,6 +168,9 @@
                             <div class="form-group">
                                 <label class="block text-sm font-semibold text-gray-800 mb-2">{{ product_form.category.label }}</label>
                                 {{ product_form.category }}
+                                <div class="text-red-600 text-sm mt-2" id="error-category" style="display: none;">
+                                    <i class="bi bi-exclamation-circle"></i> Category is required
+                                </div>
                                 {% if product_form.category.errors %}
                                     <div class="text-red-600 text-sm mt-2">{{ product_form.category.errors }}</div>
                                 {% endif %}
@@ -172,6 +178,9 @@
                             <div class="form-group md:col-span-2">
                                 <label class="block text-sm font-semibold text-gray-800 mb-2">{{ product_form.description.label }}</label>
                                 {{ product_form.description }}
+                                <div class="text-red-600 text-sm mt-2" id="error-description" style="display: none;">
+                                    <i class="bi bi-exclamation-circle"></i> Description is required
+                                </div>
                                 {% if product_form.description.errors %}
                                     <div class="text-red-600 text-sm mt-2">{{ product_form.description.errors }}</div>
                                 {% endif %}
@@ -179,6 +188,9 @@
                             <div class="form-group">
                                 <label class="block text-sm font-semibold text-gray-800 mb-2">{{ product_form.price.label }}</label>
                                 {{ product_form.price }}
+                                <div class="text-red-600 text-sm mt-2" id="error-price" style="display: none;">
+                                    <i class="bi bi-exclamation-circle"></i> Price is required
+                                </div>
                                 {% if product_form.price.errors %}
                                     <div class="text-red-600 text-sm mt-2">{{ product_form.price.errors }}</div>
                                 {% endif %}
@@ -232,6 +244,9 @@
                                 <div class="form-group">
                                     <label class="block text-sm font-semibold text-gray-800 mb-2">{{ form.color_name.label }}</label>
                                     {{ form.color_name }}
+                                    <div class="text-red-600 text-sm mt-2" id="error-variant-{{ forloop.counter0 }}-color_name" style="display: none;">
+                                        <i class="bi bi-exclamation-circle"></i> Color name is required
+                                    </div>
                                     {% if form.color_name.errors %}
                                         <div class="text-red-600 text-sm mt-2">{{ form.color_name.errors }}</div>
                                     {% endif %}
@@ -247,6 +262,9 @@
                                 <div class="form-group">
                                     <label class="block text-sm font-semibold text-gray-800 mb-2">{{ form.size.label }}</label>
                                     {{ form.size }}
+                                    <div class="text-red-600 text-sm mt-2" id="error-variant-{{ forloop.counter0 }}-size" style="display: none;">
+                                        <i class="bi bi-exclamation-circle"></i> Size is required
+                                    </div>
                                     {% if form.size.errors %}
                                         <div class="text-red-600 text-sm mt-2">{{ form.size.errors }}</div>
                                     {% endif %}
@@ -254,6 +272,9 @@
                                 <div class="form-group">
                                     <label class="block text-sm font-semibold text-gray-800 mb-2">{{ form.stock.label }}</label>
                                     {{ form.stock }}
+                                    <div class="text-red-600 text-sm mt-2" id="error-variant-{{ forloop.counter0 }}-stock" style="display: none;">
+                                        <i class="bi bi-exclamation-circle"></i> Stock is required
+                                    </div>
                                     {% if form.stock.errors %}
                                         <div class="text-red-600 text-sm mt-2">{{ form.stock.errors }}</div>
                                     {% endif %}
@@ -279,6 +300,9 @@
                                                 </div>
                                             {% endfor %}
                                         {% endif %}
+                                    </div>
+                                    <div class="text-red-600 text-sm mt-2" id="error-variant-{{ forloop.counter0 }}-images" style="display: none;">
+                                        <i class="bi bi-exclamation-circle"></i> At least one image is required
                                     </div>
                                     <div class="text-red-600 text-sm mt-2 variant-image-error" data-variant-index="{{ forloop.counter0 }}" style="display: none;"></div>
                                     <div class="text-teal-600 text-sm mt-2 variant-image-status" data-variant-index="{{ forloop.counter0 }}" style="display: none;"></div>
@@ -359,6 +383,14 @@
             });
         }
         initializeVariantImages();
+
+        // Remove required attributes from all form fields
+        function removeRequiredAttributes() {
+            document.querySelectorAll('input, select, textarea').forEach(field => {
+                field.removeAttribute('required');
+            });
+        }
+        removeRequiredAttributes();
 
         // Event Listeners
         variantContainer.addEventListener('dragover', handleDragOver);
@@ -718,6 +750,10 @@
                 variantTotalForms.value = currentTotal + 1;
                 variantCroppedImages[newIndex] = [];
                 console.log(`Added new variant with index ${newIndex}. Total forms: ${variantTotalForms.value}`);
+                // Remove required attributes from new variant fields
+                newVariantRow.querySelectorAll('input, select, textarea').forEach(field => {
+                    field.removeAttribute('required');
+                });
             });
         }
 
@@ -739,11 +775,20 @@
                         element.value = '';
                     }
                 }
+                // Remove required attribute
+                element.removeAttribute('required');
             });
             newRow.querySelectorAll('label[for]').forEach(label => {
                 label.setAttribute('for', label.getAttribute('for').replace(/id_variants-\d+-/, `id_variants-${index}-`));
             });
-            newRow.querySelectorAll('.text-red-600').forEach(error => error.remove());
+            newRow.querySelectorAll('.text-red-600').forEach(error => {
+                if (error.id && error.id.startsWith('error-variant-')) {
+                    error.id = error.id.replace(/error-variant-\d+-/, `error-variant-${index}-`);
+                    error.style.display = 'none';
+                } else if (!error.classList.contains('variant-image-error')) {
+                    error.remove();
+                }
+            });
             const previewContainer = newRow.querySelector('.variant-image-preview');
             previewContainer.innerHTML = '';
             previewContainer.dataset.variantIndex = index;
@@ -761,28 +806,71 @@
             console.log('Form submission attempted');
             let hasErrors = false;
             let activeVariants = 0;
+
+            // Clear previous custom error messages
+            document.querySelectorAll('.text-red-600[id^="error-"]').forEach(error => {
+                error.style.display = 'none';
+            });
             document.querySelectorAll('.bg-red-50').forEach(alert => {
                 if (alert.textContent.includes('At least one variant is required')) {
                     alert.remove();
                 }
             });
+
+            // Validate product fields
+            const productFields = [
+                { id: 'id_name', errorId: 'error-name' },
+                { id: 'id_category', errorId: 'error-category' },
+                { id: 'id_description', errorId: 'error-description' },
+                { id: 'id_price', errorId: 'error-price' }
+            ];
+
+            productFields.forEach(field => {
+                const input = document.getElementById(field.id);
+                if (input && !input.value.trim()) {
+                    document.getElementById(field.errorId).style.display = 'block';
+                    hasErrors = true;
+                }
+            });
+
+            // Validate variant fields
             document.querySelectorAll('.variant-row').forEach(row => {
                 const index = row.dataset.variantIndex;
-                const colorNameInput = row.querySelector(`input[name="variants-${index}-color_name"]`);
                 const deleteInput = row.querySelector(`input[name="variants-${index}-DELETE"]`);
                 if ((deleteInput && deleteInput.value === 'on') || row.style.display === 'none') {
                     return;
                 }
+                const colorNameInput = row.querySelector(`input[name="variants-${index}-color_name"]`);
                 const hasContent = colorNameInput.value.trim();
                 if (!hasContent) {
                     return;
                 }
                 activeVariants++;
-                if (!colorNameInput.value.trim()) {
-                    showImageError('Color name is required for each variant.', { type: 'variant', index });
+
+                const variantFields = [
+                    { id: `id_variants-${index}-color_name`, errorId: `error-variant-${index}-color_name` },
+                    { id: `id_variants-${index}-size`, errorId: `error-variant-${index}-size` },
+                    { id: `id_variants-${index}-stock`, errorId: `error-variant-${index}-stock` }
+                ];
+
+                variantFields.forEach(field => {
+                    const input = document.getElementById(field.id);
+                    if (input && !input.value.trim()) {
+                        document.getElementById(field.errorId).style.display = 'block';
+                        hasErrors = true;
+                    }
+                });
+
+                // Validate images
+                const previewContainer = document.querySelector(`.variant-image-preview[data-variant-index="${index}"]`);
+                const totalImages = (variantCroppedImages[index] || []).filter(file => file && ALLOWED_IMAGE_TYPES.includes(file.type)).length +
+                                    previewContainer.querySelectorAll('.image-preview-item:not([data-is-replaced="true"])').length;
+                if (totalImages === 0) {
+                    document.getElementById(`error-variant-${index}-images`).style.display = 'block';
                     hasErrors = true;
                 }
             });
+
             if (activeVariants === 0) {
                 const errorAlert = document.createElement('div');
                 errorAlert.className = 'bg-red-50 text-red-700 border border-red-200 rounded-xl p-4 mb-4';
@@ -790,14 +878,19 @@
                 variantContainer.insertBefore(errorAlert, variantContainer.firstChild);
                 hasErrors = true;
             }
+
             if (hasErrors) {
                 e.preventDefault();
                 submitBtn.disabled = false;
                 submitBtn.innerHTML = '<i class="bi bi-check-circle"></i> Update Product';
                 return false;
             }
+
             Object.keys(variantCroppedImages).forEach(index => {
-                updateHiddenImageInputs({ type: 'variant', index });
+                const row = document.querySelector(`.variant-row[data-variant-index="${index}"]`);
+                if (row && row.style.display !== 'none') {
+                    updateHiddenImageInputs({ type: 'variant', index });
+                }
             });
             document.querySelectorAll('.variant-image-input').forEach(input => {
                 input.value = '';

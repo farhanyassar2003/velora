@@ -29,6 +29,8 @@
             --danger-color: #dc3545;
             --blue-gradient-start: #4fc3f7;
             --blue-gradient-end: #1565c0;
+            --input-gradient-start: #ffffff;
+            --input-gradient-end: #f0f4ff; /* Subtle gradient for inputs */
         }
 
         * {
@@ -199,27 +201,34 @@
             font-size: 0.8rem;
             color: var(--gray-600);
             width: 12px;
-            height: 12px;
+            height: | 12px;
             display: flex;
             align-items: center;
             justify-content: center;
         }
 
         .form-control {
-            background-color: var(--gray-50);
+            background: linear-gradient(135deg, var(--input-gradient-start) 0%, var(--input-gradient-end) 100%);
             border: 1px solid var(--gray-200);
-            border-radius: 6px;
-            padding: 0.5rem 0.75rem;
+            border-radius: 8px;
+            padding: 0.6rem 0.85rem;
             font-size: 0.85rem;
             color: var(--gray-900);
+            transition: all 0.3s ease;
             width: 100%;
             font-family: 'Inter', sans-serif;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+
+        .form-control:hover {
+            border-color: var(--blue-gradient-start);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
         }
 
         .form-control:focus {
-            background-color: var(--primary-white);
-            border-color: var(--primary-black);
-            box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.1);
+            background: var(--primary-white);
+            border-color: var(--blue-gradient-end);
+            box-shadow: 0 0 8px rgba(21, 101, 192, 0.3);
             outline: none;
         }
 
@@ -228,23 +237,17 @@
             font-weight: 400;
         }
 
+        #id_username, #id_password {
+            width: 100%;
+            max-width: 550px; /* Increased width */
+        }
+
         .input-group {
             position: relative;
         }
 
-        .input-icon {
-            position: absolute;
-            right: 0.6rem;
-            top: 50%;
-            transform: translateY(-50%);
-            color: var(--gray-600);
-            font-size: 0.8rem;
-            pointer-events: none;
-            z-index: 2;
-        }
-
         .form-control.with-icon {
-            padding-right: 2.2rem;
+            padding-right: 3rem; /* Adjusted for wider input */
         }
 
         .password-toggle {
@@ -257,7 +260,7 @@
             color: var(--gray-600);
             cursor: pointer;
             font-size: 0.8rem;
-            z-index: 2;
+            z-index: 3;
             padding: 0.15rem;
             display: flex;
             align-items: center;
@@ -265,6 +268,11 @@
         }
 
         .password-toggle:hover {
+            color: var(--gray-800);
+        }
+
+        .password-toggle:focus {
+            outline: none;
             color: var(--gray-800);
         }
 
@@ -540,6 +548,10 @@
                 margin-bottom: 0.6rem;
                 font-size: 0.85rem;
             }
+
+            #id_username, #id_password {
+                max-width: 100%;
+            }
         }
 
         @media (max-width: 768px) {
@@ -596,6 +608,10 @@
             .form-control {
                 padding: 0.4rem 0.6rem;
                 font-size: 0.75rem;
+            }
+
+            .form-control.with-icon {
+                padding-right: 2.4rem;
             }
 
             .submit-btn {
@@ -686,8 +702,11 @@
                                     <span>Email or Username</span>
                                 </label>
                                 <div class="input-group">
-                                    <input type="text" class="form-control with-icon" id="id_username" name="username" placeholder="Enter your email or username">
-                                    <i class="bi bi-envelope input-icon"></i>
+                                    <input type="text" class="form-control" id="id_username" name="username" placeholder="Enter your email or username">
+                                </div>
+                                <div class="invalid-feedback" id="username_error" style="display: none;">
+                                    <i class="bi bi-exclamation-circle"></i>
+                                    <span>Email or username is required</span>
                                 </div>
                                 {% if form.username.errors %}
                                     <div class="invalid-feedback" style="display: flex;">
@@ -703,10 +722,14 @@
                                     <span>Password</span>
                                 </label>
                                 <div class="input-group">
-                                    <input type="password" class="form-control" id="id_password" name="password" placeholder="Enter your password">
+                                    <input type="password" class="form-control with-icon" id="id_password" name="password" placeholder="Enter your password">
                                     <button type="button" class="password-toggle" onclick="togglePassword('id_password', this)">
                                         <i class="bi bi-eye"></i>
                                     </button>
+                                </div>
+                                <div class="invalid-feedback" id="password_error" style="display: none;">
+                                    <i class="bi bi-exclamation-circle"></i>
+                                    <span>Password is required</span>
                                 </div>
                                 {% if form.password.errors %}
                                     <div class="invalid-feedback" style="display: flex;">
@@ -799,19 +822,63 @@
             const formControls = form.querySelectorAll('.form-control');
 
             form.addEventListener('submit', function(e) {
+                e.preventDefault(); // Prevent default form submission for validation
                 const submitBtn = document.getElementById('submitBtn');
                 
                 submitBtn.classList.add('loading');
                 submitBtn.disabled = true;
 
+                // Clear previous client-side error messages
+                document.querySelectorAll('.invalid-feedback').forEach(el => {
+                    if (el.id === 'username_error' || el.id === 'password_error') {
+                        el.style.display = 'none';
+                    }
+                });
+                document.querySelectorAll('.message.error').forEach(el => el.remove());
+
                 const formData = {
-                    username: document.getElementById('id_username').value,
-                    password: document.getElementById('id_password').value,
+                    username: document.getElementById('id_username').value.trim(),
+                    password: document.getElementById('id_password').value.trim(),
                     remember_me: document.getElementById('remember_me').checked
                 };
 
-                if (!formData.username || !formData.password) {
-                    e.preventDefault();
+                let hasErrors = false;
+
+                // Check for empty fields and display individual error messages
+                if (!formData.username) {
+                    document.getElementById('username_error').style.display = 'flex';
+                    document.getElementById('id_username').style.borderColor = 'var(--danger-color)';
+                    hasErrors = true;
+                } else if (!validation.username.pattern.test(formData.username) && !isValidEmail(formData.username)) {
+                    const errorMessage = document.createElement('div');
+                    errorMessage.className = 'invalid-feedback';
+                    errorMessage.style.display = 'flex';
+                    errorMessage.innerHTML = `<i class="bi bi-exclamation-circle"></i><span>${validation.username.messages.pattern}</span>`;
+                    document.getElementById('id_username').parentElement.appendChild(errorMessage);
+                    document.getElementById('id_username').style.borderColor = 'var(--danger-color)';
+                    hasErrors = true;
+                } else {
+                    document.getElementById('id_username').style.borderColor = 'var(--success-color)';
+                }
+
+                if (!formData.password) {
+                    document.getElementById('password_error').style.display = 'flex';
+                    document.getElementById('id_password').style.borderColor = 'var(--danger-color)';
+                    hasErrors = true;
+                } else if (formData.password.length < validation.password.minLength) {
+                    const errorMessage = document.createElement('div');
+                    errorMessage.className = 'invalid-feedback';
+                    errorMessage.style.display = 'flex';
+                    errorMessage.innerHTML = `<i class="bi bi-exclamation-circle"></i><span>${validation.password.messages.minLength}</span>`;
+                    document.getElementById('id_password').parentElement.appendChild(errorMessage);
+                    document.getElementById('id_password').style.borderColor = 'var(--danger-color)';
+                    hasErrors = true;
+                } else {
+                    document.getElementById('id_password').style.borderColor = 'var(--success-color)';
+                }
+
+                // Display general error message only if both fields are empty
+                if (!formData.username && !formData.password) {
                     const errorMessage = document.createElement('div');
                     errorMessage.className = 'message error';
                     errorMessage.innerHTML = '<i class="bi bi-exclamation-circle"></i><span>Please fill all required fields.</span>';
@@ -821,26 +888,70 @@
                         form.parentElement.insertBefore(messagesContainer, form);
                     }
                     messagesContainer.appendChild(errorMessage);
+                    hasErrors = true;
+                }
+
+                if (hasErrors) {
                     submitBtn.classList.remove('loading');
                     submitBtn.disabled = false;
                     return;
                 }
 
-                if (!validation.username.pattern.test(formData.username) && !isValidEmail(formData.username)) {
-                    e.preventDefault();
-                    const errorMessage = document.createElement('div');
-                    errorMessage.className = 'message error';
-                    errorMessage.innerHTML = '<i class="bi bi-exclamation-circle"></i><span>Invalid email or username format.</span>';
-                    const messagesContainer = document.querySelector('.messages') || document.createElement('div');
-                    if (!messagesContainer.className) {
-                        messagesContainer.className = 'messages';
-                        form.parentElement.insertBefore(messagesContainer, form);
+                // If no errors, submit the form
+                form.submit();
+            });
+
+            // Add real-time validation on blur
+            formControls.forEach(control => {
+                control.addEventListener('blur', function() {
+                    const fieldName = this.name;
+                    const value = this.value.trim();
+                    const errorElement = document.getElementById(`${fieldName}_error`);
+                    const existingError = this.parentElement.querySelector('.invalid-feedback:not(#username_error):not(#password_error)');
+
+                    if (existingError) {
+                        existingError.remove();
                     }
-                    messagesContainer.appendChild(errorMessage);
-                    submitBtn.classList.remove('loading');
-                    submitBtn.disabled = false;
-                    return;
-                }
+
+                    if (!value) {
+                        if (errorElement) {
+                            errorElement.style.display = 'flex';
+                            this.style.borderColor = 'var(--danger-color)';
+                        }
+                    } else if (fieldName === 'username' && !validation.username.pattern.test(value) && !isValidEmail(value)) {
+                        const errorMessage = document.createElement('div');
+                        errorMessage.className = 'invalid-feedback';
+                        errorMessage.style.display = 'flex';
+                        errorMessage.innerHTML = `<i class="bi bi-exclamation-circle"></i><span>${validation.username.messages.pattern}</span>`;
+                        this.parentElement.appendChild(errorMessage);
+                        this.style.borderColor = 'var(--danger-color)';
+                    } else if (fieldName === 'password' && value.length < validation.password.minLength) {
+                        const errorMessage = document.createElement('div');
+                        errorMessage.className = 'invalid-feedback';
+                        errorMessage.style.display = 'flex';
+                        errorMessage.innerHTML = `<i class="bi bi-exclamation-circle"></i><span>${validation.password.messages.minLength}</span>`;
+                        this.parentElement.appendChild(errorMessage);
+                        this.style.borderColor = 'var(--danger-color)';
+                    } else {
+                        if (errorElement) {
+                            errorElement.style.display = 'none';
+                        }
+                        this.style.borderColor = 'var(--success-color)';
+                    }
+                });
+
+                control.addEventListener('focus', function() {
+                    const fieldName = this.name;
+                    const errorElement = document.getElementById(`${fieldName}_error`);
+                    const existingError = this.parentElement.querySelector('.invalid-feedback:not(#username_error):not(#password_error)');
+                    if (errorElement) {
+                        errorElement.style.display = 'none';
+                    }
+                    if (existingError) {
+                        existingError.remove();
+                    }
+                    this.style.borderColor = 'var(--primary-black)';
+                });
             });
 
             const firstField = form.querySelector('.form-control');
