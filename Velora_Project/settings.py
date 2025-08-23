@@ -50,6 +50,7 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'social_django.middleware.SocialAuthExceptionMiddleware',
     'userside.middleware.BlockUserMiddleware',
+    
 ]
 
 ROOT_URLCONF = 'Velora_Project.urls'

@@ -599,9 +599,21 @@ def user_login(request):
     response['Expires'] = '0'
     return response
 
+from django.contrib.auth import logout
+from django.views.decorators.cache import never_cache
+from django.shortcuts import redirect
+from django.http import HttpResponse
+
+@never_cache
 def logout_view(request):
+    request.session.flush()
     logout(request)
-    return redirect('userside:landing_page')
+    response = redirect('userside:landing_page')
+    # Set cache-control headers to prevent caching
+    response['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+    response['Pragma'] = 'no-cache'
+    response['Expires'] = '0'
+    return response
 
 def login_redirect(request):
     if request.user.is_authenticated:
@@ -610,7 +622,9 @@ def login_redirect(request):
         return redirect('userside:login')
 
 # ===========================# Landing Page and Category Views# ===========================
+from django.views.decorators.cache import cache_control
 @never_cache
+@cache_control(no_cache=True, must_revalidate=True, no_store=True)
 def landing_page(request):
     # Redirect admin users away from user landing page
     if request.user.is_superuser:
@@ -765,9 +779,12 @@ from decimal import Decimal
 from django.views.decorators.csrf import csrf_protect
 from django.contrib import messages
 import traceback
+from django.views.decorators.cache import cache_control
 
 logger = logging.getLogger(__name__)
 
+@never_cache
+@cache_control(no_cache=True, must_revalidate=True, no_store=True)
 def product_detail_view(request, id):
     product = get_object_or_404(Product, id=id, is_deleted=False)
     
@@ -895,6 +912,7 @@ from django.contrib.auth import get_user_model
 import random
 
 @login_required(login_url='userside:login')
+@cache_control(no_cache=True, must_revalidate=True, no_store=True)
 def user_profile(request):
     user = request.user
     orders = Order.objects.filter(user=user).order_by('-created_at')
@@ -925,7 +943,8 @@ from adminside.models import Address
 import logging
 
 logger = logging.getLogger(__name__)
-
+@login_required(login_url='userside:login')
+@cache_control(no_cache=True, must_revalidate=True, no_store=True)
 def my_addresses(request):
     try:
         addresses = Address.objects.filter(user=request.user)
@@ -1035,6 +1054,7 @@ def delete_address(request, address_id):
         return redirect('userside:my_addresses')
 
 @login_required(login_url='userside:login')
+@cache_control(no_cache=True, must_revalidate=True, no_store=True)
 def edit_profile(request):
     User = get_user_model()
     if request.method == 'POST':
@@ -1083,7 +1103,9 @@ def verify_email_otp(request):
             messages.error(request, 'Invalid OTP.')
     return render(request, 'userside/verify_email.html')
 
-@login_required(login_url='login')
+
+@login_required(login_url='/login')
+@cache_control(no_cache=True, must_revalidate=True, no_store=True)
 def change_password(request):
     if request.method == 'POST':
         form = ChangePasswordForm(request.user, request.POST)
@@ -1097,7 +1119,8 @@ def change_password(request):
     return render(request, 'userside/change_password.html', {'form': form})
 
 # ===========================# Order Views# ===========================
-@login_required(login_url='login')
+@login_required(login_url='userside:login')
+@cache_control(no_cache=True, must_revalidate=True, no_store=True)
 def order_list(request):
     query = request.GET.get('search', '')
     orders = Order.objects.filter(user=request.user).order_by('-created_at')
@@ -1447,9 +1470,12 @@ def add_to_cart(request, product_id):
             logger.error("Unexpected error in add_to_cart: %s", str(e), exc_info=True)
             return JsonResponse({
                 'success': False,
-                'message': 'An unexpected error occurred. Please try again later.'
+                'message': 'please login to continue.'
             }, status=500)
-@login_required(login_url='login')
+
+from django.views.decorators.cache import cache_control
+@login_required(login_url='/login')
+@cache_control(no_cache=True, must_revalidate=True, no_store=True)
 def view_cart(request):
     cart_items = CartItem.objects.filter(user=request.user, is_listed=True).select_related('product')
     cart_items = cart_items.prefetch_related('product__variants', 'product__category')
@@ -1626,14 +1652,30 @@ from django.conf import settings
 from datetime import date
 from decimal import Decimal
 import json
+from django.views.decorators.cache import cache_control
 from django.db import transaction
 from adminside.models import Coupon, Address, CartItem, ProductOffer, CategoryOffer, Order, OrderItem, ReferralCoupon, Wallet, Transaction
 
 logger = logging.getLogger(__name__)
 
+@cache_control(no_cache=True, must_revalidate=True, no_store=True)
 @login_required(login_url='userside:login')
+@never_cache
 def checkout_view(request):
+    # Check if an order was just placed
+    if request.session.get('order_placed', False):
+        del request.session['order_placed']
+        request.session.modified = True
+        messages.info(request, 'Your order has been placed. Browse more products!')
+        return redirect('userside:product_list')
+
     cart_items = CartItem.objects.filter(user=request.user, is_listed=True).select_related('product')
+    
+    # Check if cart is empty
+    if not cart_items.exists():
+        messages.info(request, 'Your cart is empty. Please add items to proceed.')
+        return redirect('userside:product_list')
+
     addresses = Address.objects.filter(user=request.user)
     default_address = addresses.filter(is_default=True).first()
 
@@ -1821,7 +1863,9 @@ def checkout_view(request):
         'wallet_balance_deficit': wallet_balance_deficit,
         'payment_method': request.session.get('payment_method', None) 
     }
-    return render(request, 'userside/checkout.html', context)
+    response = render(request, 'userside/checkout.html', context)
+    response['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+    return response
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
@@ -2055,7 +2099,7 @@ import json
 import logging
 
 logger = logging.getLogger(__name__)
-
+@cache_control(no_cache=True, must_revalidate=True, no_store=True)
 @login_required(login_url='userside:login')
 @transaction.atomic
 def place_order(request):
@@ -2516,6 +2560,7 @@ from adminside.models import Order, OrderItem
 
 @login_required
 @login_required(login_url='userside:login')
+@cache_control(no_cache=True, must_revalidate=True, no_store=True)
 def order_detail(request, order_id):
     order = get_object_or_404(Order, order_id=order_id, user=request.user)
     
@@ -2943,7 +2988,7 @@ def verify_payment(request, order_id):
         messages.error(request, "An unexpected error occurred during payment verification.")
         return redirect('userside:order_failure', order_id=order_id)
 
-@login_required(login_url='userside:login')
+@cache_control(no_cache=True, must_revalidate=True, no_store=True)
 @login_required(login_url='userside:login')
 def order_success(request, order_id):
     """Enhanced order success page"""
@@ -3101,6 +3146,7 @@ def save_address_checkout(request):
 
 
 @login_required
+@cache_control(no_cache=True, must_revalidate=True, no_store=True)
 def address_list(request):
     addresses = Address.objects.filter(user=request.user)
     return render(request, 'userside/my_addresses.html', {'addresses': addresses})
@@ -3145,6 +3191,7 @@ def remove_from_wishlist(request, product_id):
     })
 
 @login_required
+@cache_control(no_cache=True, must_revalidate=True, no_store=True)
 def wishlist_page(request):
     wishlist_items = Wishlist.objects.filter(user=request.user).select_related('product')
     return render(request, 'userside/wishlist.html', {'wishlist_items': wishlist_items})
@@ -3502,6 +3549,7 @@ from adminside.models import Wallet, Transaction
 logger = logging.getLogger(__name__)
 
 @login_required(login_url='userside:login')
+@cache_control(no_cache=True, must_revalidate=True, no_store=True)
 def wallet(request):
     # Get or create the user's wallet
     wallet, created = Wallet.objects.get_or_create(user=request.user)

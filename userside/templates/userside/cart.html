@@ -403,155 +403,182 @@
 
     <!-- Bootstrap JS (Bundle includes Popper) -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        function showToast(message, type = 'warning') {
-            const toast = document.getElementById('toast');
-            toast.textContent = message;
-            toast.className = 'toast';
-            if (type === 'error') {
-                toast.style.backgroundColor = '#dc3545';
-            } else if (type === 'warning') {
-                toast.style.backgroundColor = '#ffc107';
+<script>
+    function showToast(message, type = 'warning') {
+        const toast = document.getElementById('toast');
+        toast.textContent = message;
+        toast.className = 'toast';
+        if (type === 'error') {
+            toast.style.backgroundColor = '#dc3545';
+        } else if (type === 'warning') {
+            toast.style.backgroundColor = '#ffc107';
+        }
+        toast.classList.add('show');
+        setTimeout(() => toast.classList.remove('show'), 3000);
+    }
+
+    function proceedToCheckout() {
+        let hasUnlistedItem = false;
+        let outOfStock = false;
+        document.querySelectorAll('.cart-item-card').forEach(card => {
+            const itemId = card.getAttribute('data-item-id');
+            const stock = parseInt(card.getAttribute('data-stock'), 10) || 0;
+            const isListed = card.getAttribute('data-is-listed') === 'true';
+            console.log(`Item ${itemId} - Stock: ${stock}, Is Listed: ${isListed}`);
+            if (!isListed) {
+                hasUnlistedItem = true;
             }
-            toast.classList.add('show');
-            setTimeout(() => toast.classList.remove('show'), 3000);
+            if (stock <= 0) {
+                outOfStock = true;
+            }
+        });
+
+        if (hasUnlistedItem) {
+            console.log('Unlisted item or category detected, showing toast');
+            showToast('One or more products are currently unavailable. Please remove them to proceed.', 'error');
+        } else if (outOfStock) {
+            console.log('Out of stock detected, showing toast');
+            showToast('One or more items are out of stock. Please remove them to proceed.', 'error');
+        } else {
+            console.log('All items are listed and in stock, proceeding to checkout');
+            window.location.href = '{% url "userside:checkout" %}';
+        }
+    }
+
+    function changeQuantity(itemId, action, stockLimit) {
+        const quantityDisplay = document.getElementById(`quantity_${itemId}`);
+        if (!quantityDisplay) {
+            console.error(`Quantity display not found for item ${itemId}`);
+            showToast('Error updating quantity.', 'error');
+            return;
         }
 
-        function proceedToCheckout() {
-            let hasUnlistedItem = false;
-            let outOfStock = false;
-            document.querySelectorAll('.cart-item-card').forEach(card => {
-                const itemId = card.getAttribute('data-item-id');
-                const stock = parseInt(card.getAttribute('data-stock'), 10) || 0;
-                const isListed = card.getAttribute('data-is-listed') === 'true';
-                console.log(`Item ${itemId} - Stock: ${stock}, Is Listed: ${isListed}`);
-                if (!isListed) {
-                    hasUnlistedItem = true;
-                }
-                if (stock <= 0) {
-                    outOfStock = true;
-                }
-            });
+        let currentQuantity = parseInt(quantityDisplay.textContent, 10);
+        if (isNaN(currentQuantity)) {
+            console.error(`Invalid current quantity for item ${itemId}: ${quantityDisplay.textContent}`);
+            showToast('Error updating quantity.', 'error');
+            return;
+        }
 
-            if (hasUnlistedItem) {
-                console.log('Unlisted item or category detected, showing toast');
-                showToast('One or more products are currently unavailable. Please remove them to proceed.', 'error');
-            } else if (outOfStock) {
-                console.log('Out of stock detected, showing toast');
-                showToast('One or more items are out of stock. Please remove them to proceed.', 'error');
+        let newQuantity = currentQuantity;
+
+        if (action === 'increment') {
+            if (currentQuantity >= 5) {
+                showToast('Maximum limit is 5 items per product.', 'warning');
+                return;
+            }
+            if (currentQuantity >= stockLimit) {
+                showToast(`Cannot exceed available stock of ${stockLimit}.`, 'error');
+                return;
+            }
+            newQuantity = currentQuantity + 1;
+        } else if (action === 'decrement') {
+            if (currentQuantity <= 1) {
+                showToast('Minimum quantity is 1.', 'warning');
+                return;
+            }
+            newQuantity = currentQuantity - 1;
+        }
+
+        const form = document.getElementById(`quantityForm_${itemId}`);
+        if (!form) {
+            console.error(`Form not found for item ${itemId}`);
+            showToast('Error updating quantity.', 'error');
+            return;
+        }
+
+        const formData = new FormData(form);
+        formData.append('quantity', newQuantity);
+
+        fetch(form.action, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}'
+            }
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! Status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                quantityDisplay.textContent = data.new_quantity;
+                updateItemSubtotal(itemId, data.new_quantity);
+                updateCartTotals();
+                showToast(data.message);
+                console.log(`Updated quantity for item ${itemId} to ${data.new_quantity}`);
             } else {
-                console.log('All items are listed and in stock, proceeding to checkout');
-                window.location.href = '{% url "userside:checkout" %}';
+                showToast(data.message || 'Failed to update quantity.', 'error');
             }
+        })
+        .catch(error => {
+            console.error('Error updating quantity:', error);
+            showToast('An error occurred while updating quantity.', 'error');
+        });
+    }
+
+    function updateItemSubtotal(itemId, quantity) {
+        const card = document.querySelector(`.cart-item-card[data-item-id="${itemId}"]`);
+        if (!card) {
+            console.error(`Card not found for item ${itemId}`);
+            return;
         }
+        const price = parseFloat(card.getAttribute('data-price'));
+        if (isNaN(price)) {
+            console.error(`Invalid price for item ${itemId}: ${card.getAttribute('data-price')}`);
+            return;
+        }
+        const subtotal = price * quantity;
+        const subtotalDisplay = document.getElementById(`subtotal_${itemId}`);
+        if (subtotalDisplay) {
+            subtotalDisplay.textContent = subtotal.toFixed(2);
+            console.log(`Updated subtotal for item ${itemId} to ₹${subtotal.toFixed(2)}`);
+        } else {
+            console.error(`Subtotal display not found for item ${itemId}`);
+        }
+    }
 
-        function changeQuantity(itemId, action, stockLimit) {
-            const quantityDisplay = document.getElementById(`quantity_${itemId}`);
-            let currentQuantity = parseInt(quantityDisplay.textContent, 10);
-            let newQuantity = currentQuantity;
-
-            if (action === 'increment') {
-                if (currentQuantity >= 5) {
-                    showToast('Maximum limit is 5 items per product.', 'warning');
-                    return;
-                }
-                if (currentQuantity >= stockLimit) {
-                    showToast(`Cannot exceed available stock of ${stockLimit}.`, 'error');
-                    return;
-                }
-                newQuantity = currentQuantity + 1;
-            } else if (action === 'decrement') {
-                if (currentQuantity <= 1) {
-                    showToast('Minimum quantity is 1.', 'warning');
-                    return;
-                }
-                newQuantity = currentQuantity - 1;
-            }
-
-            const form = document.getElementById(`quantityForm_${itemId}`);
-            const formData = new FormData(form);
-            formData.append('quantity', newQuantity);
-
-            fetch(form.action, {
-                method: 'POST',
-                body: formData,
-                headers: {
-                    'X-CSRFToken': '{{ csrf_token }}'
-                }
-            })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`HTTP error! Status: ${response.status}`);
-                }
-                return response.json();
-            })
-            .then(data => {
-                if (data.success) {
-                    quantityDisplay.textContent = data.new_quantity;
-                    updateItemSubtotal(itemId, data.new_quantity);
-                    updateCartTotals();
-                    showToast(data.message);
-                    console.log(`Updated quantity for item ${itemId} to ${data.new_quantity}, triggering updates`);
+    function updateCartTotals() {
+        let subtotal = 0;
+        const itemCards = document.querySelectorAll('.cart-item-card');
+        itemCards.forEach(card => {
+            const itemId = card.getAttribute('data-item-id');
+            const subtotalElement = document.getElementById(`subtotal_${itemId}`);
+            if (subtotalElement) {
+                const value = parseFloat(subtotalElement.textContent) || 0;
+                if (isNaN(value)) {
+                    console.error(`Invalid subtotal value for item ${itemId}: ${subtotalElement.textContent}`);
                 } else {
-                    showToast(data.message || 'Failed to update quantity.', 'error');
+                    subtotal += value;
                 }
-            })
-            .catch(error => {
-                console.error('Error updating quantity:', error);
-                showToast('An error occurred while updating quantity.', 'error');
-            });
-        }
-
-        function updateItemSubtotal(itemId, quantity) {
-            const card = document.querySelector(`.cart-item-card[data-item-id="${itemId}"]`);
-            if (!card) {
-                console.error(`Card not found for item ${itemId}`);
-                return;
-            }
-            const priceElement = card.querySelector('[data-price]');
-            if (!priceElement) {
-                console.error(`Price element not found for item ${itemId}`);
-                return;
-            }
-            const price = parseFloat(priceElement.getAttribute('data-price'));
-            if (isNaN(price)) {
-                console.error(`Invalid price for item ${itemId}: ${priceElement.getAttribute('data-price')}`);
-                return;
-            }
-            const subtotal = price * quantity;
-            const subtotalDisplay = card.querySelector(`#subtotal_${itemId}`);
-            if (subtotalDisplay) {
-                subtotalDisplay.textContent = subtotal.toFixed(2);
-                console.log(`Updated subtotal for item ${itemId} to ₹${subtotal.toFixed(2)}`);
             } else {
-                console.error(`Subtotal display not found for item ${itemId}`);
+                console.error(`Subtotal element not found for item ${itemId}`);
             }
-        }
+        });
 
-        function updateCartTotals() {
-            let subtotal = 0;
-            document.querySelectorAll('.cart-item-card').forEach(card => {
-                const subtotalElement = card.querySelector('[id^="subtotal_"]');
-                if (subtotalElement) {
-                    const value = parseFloat(subtotalElement.textContent) || 0;
-                    if (isNaN(value)) {
-                        console.error(`Invalid subtotal value for card: ${subtotalElement.textContent}`);
-                    } else {
-                        subtotal += value;
-                    }
-                }
-            });
-            const subtotalDisplay = document.getElementById('subtotal');
-            const totalDisplay = document.getElementById('total');
-            if (subtotalDisplay && totalDisplay) {
-                subtotalDisplay.textContent = `₹${subtotal.toFixed(2)}`;
-                totalDisplay.textContent = `₹${subtotal.toFixed(2)}`;
-                console.log(`Updated totals: Subtotal ₹${subtotal.toFixed(2)}, Total ₹${subtotal.toFixed(2)}`);
-            } else {
-                console.error('Subtotal or total display elements not found');
+        const subtotalDisplay = document.getElementById('subtotal');
+        const totalDisplay = document.getElementById('total');
+        const itemCountDisplay = document.getElementById('subtotal')?.parentElement?.querySelector('span:first-child');
+
+        if (subtotalDisplay && totalDisplay) {
+            subtotalDisplay.textContent = `₹${subtotal.toFixed(2)}`;
+            totalDisplay.textContent = `₹${subtotal.toFixed(2)}`;
+            if (itemCountDisplay) {
+                itemCountDisplay.textContent = `Subtotal (${itemCards.length} items)`;
             }
+            console.log(`Updated cart totals: Subtotal ₹${subtotal.toFixed(2)}, Total ₹${subtotal.toFixed(2)}, Items: ${itemCards.length}`);
+        } else {
+            console.error('Subtotal or total display elements not found');
+            showToast('Error updating cart totals.', 'error');
         }
+    }
 
-        document.addEventListener('DOMContentLoaded', updateCartTotals);
-    </script>
+    document.addEventListener('DOMContentLoaded', () => {
+        console.log('DOM loaded, updating cart totals');
+        updateCartTotals();
+    });
+</script>
 {% endblock %}

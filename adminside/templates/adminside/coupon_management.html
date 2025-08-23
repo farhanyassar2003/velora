@@ -111,9 +111,7 @@
                                 <tr>
                                     <td colspan="6" class="border-b border-gray-200 px-6 py-8 text-center text-gray-600">
                                         <div class="flex flex-col items-center">
-                                            <svg
-
-class="w-12 h-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <svg class="w-12 h-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2M4 13h2m13-8-4 4-4-4m6 4V8.5"></path>
                                             </svg>
                                             <p class="text-lg font-medium">No coupons found</p>
@@ -225,13 +223,24 @@ class="w-12 h-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
+            // Configure Toast for SweetAlert2
+            const Toast = Swal.mixin({
+                toast: true,
+                position: 'top-end',
+                showConfirmButton: false,
+                timer: 1500,
+                timerProgressBar: true,
+                didOpen: (toast) => {
+                    toast.addEventListener('mouseenter', Swal.stopTimer);
+                    toast.addEventListener('mouseleave', Swal.resumeTimer);
+                }
+            });
+
             // Show error message
             function showError(message) {
-                Swal.fire({
+                Toast.fire({
                     icon: 'error',
-                    title: 'Error',
-                    text: message,
-                    timer: 2000
+                    title: message
                 });
             }
 
@@ -369,33 +378,12 @@ class="w-12 h-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="
                 .then(data => {
                     console.log('Create response data:', data);
                     if (data.success) {
-                        Swal.fire({
+                        Toast.fire({
                             icon: 'success',
-                            title: 'Success',
-                            text: data.message,
-                            timer: 1500
+                            title: data.message
+                        }).then(() => {
+                            location.reload(); // Reload page to ensure pagination consistency
                         });
-                        clearErrors();
-                        const coupon = data.coupon;
-                        const tableBody = document.getElementById('couponTableBody');
-                        const newRow = document.createElement('tr');
-                        newRow.setAttribute('data-coupon-id', coupon.id);
-                        newRow.className = 'hover:bg-blue-50 transition-colors';
-                        newRow.innerHTML = `
-                            <td class="border-b border-gray-200 px-6 py-4 font-medium text-gray-900">${coupon.code}</td>
-                            <td class="border-b border-gray-200 px-6 py-4 text-gray-700">${coupon.discount_percentage}%</td>
-                            <td class="border-b border-gray-200 px-6 py-4 text-gray-700">${coupon.valid_from}</td>
-                            <td class="border-b border-gray-200 px-6 py-4 text-gray-700">${coupon.valid_until}</td>
-                            <td class="border-b border-gray-200 px-6 py-4 text-gray-700">${coupon.used_by_count}</td>
-                            <td class="border-b border-gray-200 px-6 py-4">
-                                <button class="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition-colors font-medium delete-coupon-btn" data-coupon-id="${coupon.id}">
-                                    Delete
-                                </button>
-                            </td>
-                        `;
-                        tableBody.prepend(newRow);
-                        form.reset();
-                        document.getElementById('createCouponModal').classList.add('hidden');
                     } else {
                         showError(data.message || 'Failed to create coupon.');
                     }
@@ -498,19 +486,12 @@ class="w-12 h-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="
                     .then(data => {
                         console.log('Delete response data:', data);
                         if (data.success) {
-                            Swal.fire({
+                            Toast.fire({
                                 icon: 'success',
-                                title: 'Deleted',
-                                text: data.message,
-                                timer: 1500
+                                title: data.message
+                            }).then(() => {
+                                location.reload(); // Reload page to ensure pagination consistency
                             });
-                            const row = document.querySelector(`tr[data-coupon-id="${couponId}"]`);
-                            if (row) {
-                                row.remove();
-                            } else {
-                                console.warn(`Row for coupon ID ${couponId} not found`);
-                            }
-                            document.getElementById('delete-confirm-modal').classList.add('hidden');
                         } else {
                             showError(data.message || 'Failed to delete coupon.');
                         }

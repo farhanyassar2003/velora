@@ -1,31 +1,58 @@
+import json
 import logging
-from django.shortcuts import render, redirect, get_object_or_404
+from datetime import date, datetime, timedelta, time
+from decimal import Decimal
+import io
+
+# Django Imports
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout, get_user_model
 from django.contrib.auth.decorators import login_required, user_passes_test
+from django.core.exceptions import ObjectDoesNotExist
+from django.core.mail import send_mail
 from django.core.paginator import Paginator
-from django.http import JsonResponse
-from django.views.decorators.http import require_POST, require_http_methods
-from django.views.decorators.csrf import csrf_exempt
-from django.db.models import Q
-from django.utils.decorators import method_decorator
-from django.views.decorators.cache import never_cache, patch_cache_control
+from django.db import transaction, IntegrityError
+from django.db.models import Sum, Count, DecimalField, ExpressionWrapper, F, Q
+from django.db.models.functions import Coalesce
 from django.forms import modelformset_factory
+from django.http import HttpResponse, HttpResponseBadRequest, JsonResponse
+from django.shortcuts import render, redirect, get_object_or_404
+from django.utils import timezone
+from django.utils.cache import patch_cache_control
+from django.utils.decorators import method_decorator
+from django.views.decorators.cache import never_cache, cache_control
+from django.views.decorators.csrf import csrf_exempt, csrf_protect
+from django.views.decorators.http import require_POST, require_http_methods
+from django.conf import settings
+from django.urls import reverse
 
-# ===========================# App Imports# ===========================
-from .models import Product, ProductImage,Category, Order,Wallet 
-from .forms import ProductForm, CategoryForm, UserFilterForm
+# ReportLab Imports
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import letter, landscape
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.units import inch
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, HRFlowable
 
+# Openpyxl Imports
+from openpyxl import Workbook
+from openpyxl.styles import Font, Alignment
+
+# Third-Party Imports
+import pytz
+
+# Project-Specific Imports
+from .forms import ProductForm, ProductVariantFormSet, ProductImageFormSet, CategoryForm, UserFilterForm
+from .models import (
+    Product, ProductImage, ProductVariant, ColorVariant, Category, Size,
+    Order, OrderItem, Wallet, Transaction, ProductOffer, CategoryOffer, Coupon
+)
+
+# Set up logging and user model
+logger = logging.getLogger(__name__)
 User = get_user_model()
-logger = logging.getLogger(__name__)
-
-# ===========================# Admin Authentication# ===========================
-import logging
-from django.shortcuts import render, redirect
-from django.contrib.auth import authenticate, login
-from django.contrib.auth import get_user_model
 
 logger = logging.getLogger(__name__)
+
 
 def admin_login(request):
     # Redirect authenticated staff to dashboard
@@ -75,15 +102,6 @@ def admin_login(request):
 def is_admin(user):
     return user.is_staff
 
-from django.shortcuts import render
-from django.contrib.auth.decorators import login_required, user_passes_test
-from django.views.decorators.cache import never_cache
-from django.contrib.auth.models import User
-from django.db.models import Sum, Count
-from datetime import datetime, timedelta
-import json
-from adminside.models import Order
-from django.utils.cache import patch_cache_control
 
 def is_admin(user):
     return user.is_authenticated and user.is_staff and user.is_superuser
@@ -96,29 +114,7 @@ def admin_logout_view(request):
     response['Pragma'] = 'no-cache'
     response['Expires'] = '0'
     return response
-from django.shortcuts import render
-from django.contrib.auth.decorators import login_required, user_passes_test
-from django.db.models import Sum, Count, DecimalField, ExpressionWrapper, F
-from django.db.models.functions import Coalesce  # Correct import
-from django.http import HttpResponse
-from django.utils import timezone
-from .models import Order, OrderItem, Product, Category
-from datetime import datetime, timedelta, date
-import json
-import logging
-from reportlab.lib import colors
-from reportlab.lib.pagesizes import letter
-from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib.units import inch
-from openpyxl import Workbook
-from reportlab.lib.pagesizes import letter, landscape
-from reportlab.platypus import HRFlowable 
-import pytz
-from openpyxl.styles import Font, Alignment
-from django.utils import timezone
-from datetime import datetime, timedelta, time
-import io
+
 
 
 # Set up logging for debugging
@@ -127,8 +123,10 @@ logger = logging.getLogger(__name__)
 def is_admin(user):
     return user.is_staff or user.is_superuser
 
+
 @login_required
 @user_passes_test(is_admin)
+@never_cache
 def sales_report(request):
     report_type = request.GET.get('report_type', 'daily')
     download_format = request.GET.get('download_format')
@@ -572,15 +570,7 @@ def sales_report(request):
     return render(request, 'adminside/dashboard.html', context)
 
 # ===========================# User Management# ===========================
-from django.core.paginator import Paginator
-from django.contrib import messages
-from django.contrib.auth.decorators import login_required
-from django.views.decorators.cache import never_cache
-from django.shortcuts import render, redirect
-from django.contrib.auth import get_user_model
-from django.db.models import Q
-import logging
-from .forms import UserFilterForm  # Ensure this is correctly imported
+
 
 logger = logging.getLogger(__name__)
 
@@ -595,7 +585,8 @@ def user_list(request):
     try:
         User = get_user_model()  # Reference userside.CustomUser
         form = UserFilterForm(request.GET or None)
-        users = User.objects.filter(is_superuser=False, is_staff=False)
+        # Order users by date_joined descending (latest first)
+        users = User.objects.filter(is_superuser=False, is_staff=False).order_by('-date_joined')
 
         if form.is_valid():
             search = form.cleaned_data.get('search')
@@ -610,7 +601,7 @@ def user_list(request):
                 users = users.filter(status=status)
 
         # Pagination
-        paginator = Paginator(users, 5) 
+        paginator = Paginator(users, 5)
         page_number = request.GET.get('page')
         users_page = paginator.get_page(page_number)
 
@@ -624,10 +615,7 @@ def user_list(request):
         messages.error(request, f'An error occurred: {str(e)}')
         return render(request, 'adminside/user_list.html', {'form': form, 'users': []})
 
-from django.contrib.auth import get_user_model
-from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.http import require_POST
-from django.http import JsonResponse
+
 
 @require_POST
 @csrf_exempt
@@ -650,34 +638,14 @@ def toggle_status(request, user_id):
     return JsonResponse({'status': user.status, 'success': True})
 # ===========================# Product Management# ===========================
 
-from django.http import JsonResponse
-from django.shortcuts import render, get_object_or_404, redirect
-from django.contrib import messages
-from django.core.paginator import Paginator
-from django.views.decorators.http import require_http_methods
-from django.contrib.auth.decorators import login_required
-from django.utils.cache import patch_cache_control
 
-from .models import Product, ProductImage, ProductVariant, Category
-from .forms import ProductForm, ProductVariantFormSet
-import logging
 
 logger = logging.getLogger(__name__)
 MIN_IMAGE_COUNT = 3
 ALLOWED_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/webp']
 
-# views.py
-# views.py
-from django.shortcuts import render, redirect
-from django.core.paginator import Paginator
-from django.views.decorators.cache import cache_control
-from django.db.models import Sum, Prefetch
-from .models import Product, Category, ColorVariant, ProductImage
-from .forms import ProductForm, ProductVariantFormSet, ProductImageFormSet
-from django.core.files import File
-
-@cache_control(no_cache=True, must_revalidate=True, no_store=True)
 @user_passes_test(is_admin)
+@never_cache
 def product_list(request):
     
     if request.method == 'POST':
@@ -742,16 +710,9 @@ def product_list(request):
 
 
 
-# views.py - Enhanced debugging version
 
-from django.shortcuts import render, redirect
-from django.contrib.auth.decorators import login_required
-from django.views.decorators.http import require_http_methods
-from django.contrib import messages
-from django.db import transaction
-from .forms import ProductForm, ProductVariantFormSet
-from .models import Product, ProductImage, ProductVariant, ColorVariant
-import logging
+
+
 
 logger = logging.getLogger(__name__)
 
@@ -759,6 +720,7 @@ ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp']
 MAX_IMAGES_PER_VARIANT = 50  # Optional: Set a reasonable limit
 
 @login_required
+@never_cache
 @user_passes_test(is_admin)
 @require_http_methods(["GET", "POST"])
 def add_product(request):
@@ -910,14 +872,8 @@ def add_product(request):
 
 
 
-# views.py
 
-from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib import messages
-from django.db import transaction
-from .forms import ProductForm, ProductVariantFormSet
-from .models import Product, ProductImage, ColorVariant, Category, Size
-import logging
+
 
 logger = logging.getLogger(__name__)
 
@@ -932,6 +888,7 @@ def get_variant_images_for_template(product):
     return variant_images
 
 @user_passes_test(is_admin)
+@never_cache
 def edit_product(request, product_id):
     logger.info("edit_product view called with method: %s, product_id: %s", request.method, product_id)
     
@@ -1127,9 +1084,6 @@ def delete_product(request, product_id):
         return redirect('adminside:product_list')
     return render(request, 'adminside/delete_product.html', {'product': product})
 
-from django.http import JsonResponse
-from django.shortcuts import get_object_or_404
-from .models import Product
 
 def toggle_is_active(request, product_id):
     try:
@@ -1164,12 +1118,9 @@ def toggle_is_listed(request, product_id):
         }, status=500)
 # ===========================# Category Management# ===========================
 
-from django.core.paginator import Paginator
-from django.shortcuts import render, redirect
-from django.urls import reverse
-from .models import Category
-from .forms import CategoryForm
+
 @user_passes_test(is_admin)
+@never_cache
 def category_list(request):
     if request.method == 'POST':
         form = CategoryForm(request.POST)
@@ -1192,6 +1143,7 @@ def category_list(request):
         'success': request.GET.get('success', False)
     })
 @user_passes_test(is_admin)
+@never_cache
 def add_category(request):
     if request.method == 'POST':
         form = CategoryForm(request.POST)
@@ -1237,6 +1189,7 @@ def toggle_delete_category(request, category_id):
 
 # ===========================# Order Management# ===========================
 @user_passes_test(is_admin)
+@never_cache
 def admin_order_list(request):
     search_query = request.GET.get('q', '')
     status_filter = request.GET.get('status', '')
@@ -1258,16 +1211,12 @@ def admin_order_list(request):
         'status_choices': Order.STATUS_CHOICES, 
     })
 
-import logging
-from django.shortcuts import render, get_object_or_404, redirect
-from django.contrib import messages
-from decimal import Decimal
-from django.utils import timezone
-from .models import Order, OrderItem, Wallet, Product, ProductVariant, ColorVariant, ProductImage, Address, Transaction
+
 
 logger = logging.getLogger(__name__)
 
 @user_passes_test(is_admin)
+@never_cache
 @login_required(login_url='adminside:admin_login')
 def admin_order_detail(request, order_id):
     # Use select_related and prefetch_related for efficient data retrieval
@@ -1456,14 +1405,7 @@ def admin_order_detail(request, order_id):
         'has_cancellations_or_returns': any(item.is_cancelled or item.is_returned for item in order.items.all()),
         'items_with_discounts': items_with_discounts,
     })
-from django.http import HttpResponseBadRequest
-from django.shortcuts import redirect, get_object_or_404
-from django.contrib import messages
-from django.db import transaction
-from django.core.mail import send_mail
-from django.conf import settings
-from decimal import Decimal
-import logging
+
 
 logger = logging.getLogger(__name__)
 
@@ -1615,17 +1557,10 @@ def confirm_return(request, order_id):
             logger.error(f"Error processing return for item {item.id} in order {order_id}: {e}", exc_info=True)
             messages.error(request, f"An error occurred while processing the return for item {item.product.name}: {e}")
             return redirect('adminside:admin_order_detail', order_id=order_id)
-from django.shortcuts import render, redirect, get_object_or_404
-from django.http import JsonResponse
-from django.contrib import messages
-from django.core.paginator import Paginator
-from django.contrib.auth.decorators import login_required
-from .models import Product, Category, ProductOffer, CategoryOffer
-from django.db.models import Q
-import json
-from datetime import date
+
 
 @user_passes_test(is_admin)
+@never_cache
 @login_required
 def product_offers(request):
     # Fetch only active listed products for the add/edit modal
@@ -1653,6 +1588,7 @@ def product_offers(request):
     return render(request, 'adminside/product_offers.html', context)
 
 @user_passes_test(is_admin)
+@never_cache
 @login_required
 def category_offers(request):
     # Fetch only active listed categories for the add/edit modal
@@ -1679,15 +1615,7 @@ def category_offers(request):
     }
     return render(request, 'adminside/category_offers.html', context)
 
-from django.http import JsonResponse
-from django.db.models import Q
-from django.core.paginator import Paginator
-from django.shortcuts import render
-from django.views.decorators.csrf import csrf_exempt
-from django.db import IntegrityError
-from django.core.exceptions import ObjectDoesNotExist
-import json
-import logging
+
 
 logger = logging.getLogger(__name__)
 
@@ -1902,12 +1830,7 @@ def manage_offer(request, offer_type):
     logger.warning(f"Invalid request method: {request.method}")
     return JsonResponse({'success': False, 'message': 'Invalid request method.'}, status=400)
 
-from django.contrib.auth.decorators import login_required
-from django.views.decorators.csrf import csrf_protect
-from django.http import JsonResponse
-from django.core.exceptions import ObjectDoesNotExist
-from .models import ProductOffer, CategoryOffer
-import logging
+
 
 logger = logging.getLogger(__name__)
 
@@ -1957,8 +1880,6 @@ def toggle_active_offer(request, offer_type, offer_id):
                 offer = ProductOffer.objects.get(id=offer_id, is_deleted=False)
             elif offer_type == 'category':
                 offer = CategoryOffer.objects.get(id=offer_id, is_deleted=False)
-            elif offer_type == 'referral':
-                offer = ReferralOffer.objects.get(id=offer_id, is_deleted=False)
             else:
                 logger.warning(f"Invalid offer type in toggle_active_offer: {offer_type}")
                 return JsonResponse({'success': False, 'message': 'Invalid offer type.'}, status=400)
@@ -1974,7 +1895,7 @@ def toggle_active_offer(request, offer_type, offer_id):
         except json.JSONDecodeError as e:
             logger.error(f"JSON decode error in toggle_active_offer: {str(e)}")
             return JsonResponse({'success': False, 'message': f'Invalid JSON data: {str(e)}'}, status=400)
-        except (ProductOffer.DoesNotExist, CategoryOffer.DoesNotExist, ReferralOffer.DoesNotExist):
+        except (ProductOffer.DoesNotExist, CategoryOffer.DoesNotExist):
             logger.warning(f"Offer not found in toggle_active_offer: {offer_type} {offer_id}")
             return JsonResponse({'success': False, 'message': 'Offer not found.'}, status=404)
         except Exception as e:
@@ -1984,19 +1905,11 @@ def toggle_active_offer(request, offer_type, offer_id):
     logger.warning(f"Invalid request method in toggle_active_offer: {request.method}")
     return JsonResponse({'success': False, 'message': 'Invalid request method.'}, status=400)
 
-from django.core.paginator import Paginator
-from django.contrib.auth.decorators import login_required
-from django.views.decorators.csrf import csrf_protect
-from django.http import JsonResponse
-from django.shortcuts import render
-from django.db.models import Q
-from .models import Coupon
-import json
-import logging
-from datetime import datetime, date
+
 
 logger = logging.getLogger(__name__)
 @user_passes_test(is_admin)
+@never_cache
 @csrf_protect
 def coupon_management(request):
     if not request.user.is_authenticated or not request.user.is_staff:
@@ -2173,14 +2086,15 @@ def coupon_management(request):
                 'message': f'Error: {str(e)}'
             }, status=500)
 
-    coupons = Coupon.objects.all()
+    # Handle GET request
+    coupons = Coupon.objects.all().order_by('-id')  
     search_query = request.GET.get('search', '')
     if search_query:
         coupons = coupons.filter(
             Q(code__icontains=search_query)
         )
 
-    paginator = Paginator(coupons, 10)
+    paginator = Paginator(coupons, 2)  # 2 items per page
     page_number = request.GET.get('page')
     coupons_page = paginator.get_page(page_number)
 
@@ -2190,12 +2104,7 @@ def coupon_management(request):
     }
     return render(request, 'adminside/coupon_management.html', context)
 
-from django.shortcuts import render, get_object_or_404
-from django.contrib.auth.decorators import login_required
-from django.contrib import messages
-from decimal import Decimal
-from .models import Wallet, Transaction, Order
-import logging
+
 
 logger = logging.getLogger(__name__)
 
@@ -2223,6 +2132,7 @@ def wallet_list(request):
 
 @login_required
 @user_passes_test(is_admin)
+@never_cache
 def transaction_list(request):
     transactions = Transaction.objects.select_related('wallet__user', 'source_order').order_by('-transaction_date')
     search_query = request.GET.get('search', '')
