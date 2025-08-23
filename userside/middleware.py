@@ -14,3 +14,4 @@ class BlockUserMiddleware:
             return redirect(reverse('userside:login'))
         response = self.get_response(request)
         return response
+    

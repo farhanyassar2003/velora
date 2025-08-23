@@ -28,7 +28,7 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
         ('active', 'Active'),
         ('blocked', 'Blocked'),
     ]
-
+    
     email = models.EmailField(unique=True)
     profile_image = models.ImageField(upload_to='profile_images/', blank=True, null=True)
     temp_email = models.EmailField(blank=True, null=True)

@@ -97,31 +97,24 @@
         .form-control {
             border: 1px solid var(--gray-300);
             border-radius: 0.5rem;
-            padding: 0.85rem 1.25rem;
+            padding: 0.75rem 1rem;
             font-size: 1rem;
             transition: all 0.3s ease;
             background-color: var(--gray-50);
-            width: 100%;
-            max-width: 700px;
-            padding-right: 3rem;
-            box-sizing: border-box;
-            box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.05);
         }
         .form-control:focus {
-            border-color: transparent;
-            border-image: var(--blue-gradient) 1;
-            box-shadow: 0 0 0 0.2rem rgba(59, 130, 246, 0.3);
+            border-color: var(--primary-black);
+            box-shadow: 0 0 0 0.2rem rgba(0, 0, 0, 0.1);
             background-color: var(--primary-white);
+        }
+        .form-control.is-invalid {
+            border-color: #dc3545;
+            background-color: #fff5f5;
         }
         .form-label {
             font-weight: 600;
             color: var(--gray-800);
             margin-bottom: 0.5rem;
-        }
-        .input-group {
-            position: relative;
-            width: 100%;
-            max-width: 700px;
         }
         .btn-primary-black {
             background: var(--blue-gradient);
@@ -173,15 +166,29 @@
         .profile-image-container:hover .edit-profile-overlay {
             opacity: 1;
         }
-        .edit-profile-overlay .overlay-action {
+        .edit-profile-overlay span {
             font-size: 0.9rem;
             font-weight: 600;
             text-align: center;
-            cursor: pointer;
         }
         .edit-profile-overlay i {
             font-size: 1.5rem;
             margin-bottom: 0.25rem;
+        }
+        .remove-image-btn {
+            background: #dc3545;
+            color: var(--primary-white);
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            border: none;
+            transition: all 0.3s ease;
+            font-size: 0.875rem;
+        }
+        .remove-image-btn:hover {
+            background: #b02a37;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
         }
         .alert-danger {
             border-radius: 0.75rem;
@@ -190,10 +197,14 @@
             border: 1px solid #fecaca;
             box-shadow: 0 2px 8px rgba(239, 68, 68, 0.1);
         }
-        .text-danger {
-            color: #ef4444 !important;
+        .invalid-feedback {
+            display: none;
+            color: #dc3545;
             font-size: 0.875rem;
             margin-top: 0.25rem;
+        }
+        .form-control.is-invalid ~ .invalid-feedback {
+            display: block;
         }
         .sidebar-toggle {
             display: none;
@@ -208,55 +219,6 @@
         .sidebar-toggle:hover {
             background: var(--blue-gradient-hover);
             transform: translateY(-2px);
-        }
-        .toast-container {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            z-index: 1055;
-        }
-        .toast {
-            border-radius: 0.5rem;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-            background-color: var(--primary-white);
-            border: 1px solid var(--gray-200);
-        }
-        .toast-header {
-            background: var(--blue-gradient);
-            color: var(--primary-white);
-            border-radius: 0.5rem 0.5rem 0 0;
-            font-weight: 600;
-        }
-        .toast-body {
-            padding: 1rem;
-            color: var(--gray-900);
-        }
-        .btn-confirm {
-            background: var(--blue-gradient);
-            color: var(--primary-white);
-            border: none;
-            border-radius: 0.4rem;
-            padding: 0.5rem 1rem;
-            font-weight: 600;
-            transition: all 0.3s ease;
-        }
-        .btn-confirm:hover {
-            background: var(--blue-gradient-hover);
-            transform: translateY(-1px);
-        }
-        .btn-cancel {
-            background: #dc3545;
-            color: var(--primary-white);
-            border: none;
-            border-radius: 0.4rem;
-            padding: 0.5rem 1rem;
-            font-weight: 600;
-            transition: all 0.3s ease;
-        }
-        .btn-cancel:hover {
-            background: #b02a37;
-            transform: translateY(-1px);
         }
         @media (max-width: 768px) {
             .sidebar {
@@ -283,9 +245,6 @@
             .profile-image {
                 width: 100px;
                 height: 100px;
-            }
-            .form-control, .input-group {
-                max-width: none;
             }
         }
         @media (max-width: 576px) {
@@ -351,7 +310,7 @@
                                      alt="Profile Image" 
                                      class="profile-image">
                                 <div class="edit-profile-overlay" id="editProfileOverlay">
-                                    <div class="text-center overlay-action" id="overlayContent">
+                                    <div class="text-center" id="overlayContent">
                                         <i class="bi bi-camera"></i>
                                         <br>
                                         <span>Edit Photo</span>
@@ -360,61 +319,28 @@
                             </div>
                         </div>
                         
-                        <!-- Toast Notification -->
-                        <div class="toast-container">
-                            <div id="removeImageToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
-                                <div class="toast-header">
-                                    <strong class="me-auto">Confirm Action</strong>
-                                    <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
-                                </div>
-                                <div class="toast-body">
-                                    Are you sure you want to remove your profile image?
-                                    <div class="mt-2 d-flex gap-2 justify-content-end">
-                                        <button type="button" class="btn btn-confirm" id="confirmRemove">Confirm</button>
-                                        <button type="button" class="btn btn-cancel" data-bs-dismiss="toast">Cancel</button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
                         <form method="POST" enctype="multipart/form-data" id="profileForm">
                             {% csrf_token %}
-                            <input type="hidden" name="remove_image" id="removeImageInput" value="false" style="width: 500px;">
+                            <input type="hidden" name="remove_image" id="removeImageInput" value="false">
                             <div class="mb-3">
                                 <label for="{{ form.first_name.id_for_label }}" class="form-label">First Name</label>
-                                <div class="input-group">
-                                    {{ form.first_name }}
-                                </div>
-                                {% if form.first_name.errors %}
-                                    <div class="text-danger mt-1">{{ form.first_name.errors }}</div>
-                                {% endif %}
+                                {{ form.first_name }}
+                                <div class="invalid-feedback" id="firstNameError"></div>
                             </div>
                             <div class="mb-3">
-                                <label for="{{ form.last_name.id_for_label }}" class="form-label" >Last Name</label>
-                                <div class="input-group">
-                                    {{ form.last_name }}
-                                </div>
-                                {% if form.last_name.errors %}
-                                    <div class="text-danger mt-1">{{ form.last_name.errors }}</div>
-                                {% endif %}
+                                <label for="{{ form.last_name.id_for_label }}" class="form-label">Last Name</label>
+                                {{ form.last_name }}
+                                <div class="invalid-feedback" id="lastNameError"></div>
                             </div>
                             <div class="mb-3">
                                 <label for="{{ form.email.id_for_label }}" class="form-label">Email</label>
-                                <div class="input-group">
-                                    {{ form.email }}
-                                </div>
-                                {% if form.email.errors %}
-                                    <div class="text-danger mt-1">{{ form.email.errors }}</div>
-                                {% endif %}
+                                {{ form.email }}
+                                <div class="invalid-feedback" id="emailError">Email is required</div>
                             </div>
                             <div class="mb-3">
                                 <label for="{{ form.phone_number.id_for_label }}" class="form-label">Phone Number</label>
-                                <div class="input-group">
-                                    {{ form.phone_number }}
-                                </div>
-                                {% if form.phone_number.errors %}
-                                    <div class="text-danger mt-1">{{ form.phone_number.errors }}</div>
-                                {% endif %}
+                                {{ form.phone_number }}
+                                <div class="invalid-feedback" id="phoneNumberError"></div>
                             </div>
                             
                             <input type="file" 
@@ -444,11 +370,10 @@
             const lastNameInput = document.getElementById("id_last_name");
             const emailInput = document.getElementById("id_email");
             const phoneNumberInput = document.getElementById("id_phone_number");
-            const removeImageToast = document.getElementById("removeImageToast");
-            const confirmRemoveBtn = document.getElementById("confirmRemove");
-
-            // Initialize Bootstrap Toast
-            const toast = new bootstrap.Toast(removeImageToast);
+            const firstNameError = document.getElementById("firstNameError");
+            const lastNameError = document.getElementById("lastNameError");
+            const emailError = document.getElementById("emailError");
+            const phoneNumberError = document.getElementById("phoneNumberError");
 
             // Default image URL
             const defaultImageUrl = "{% static 'userside/images/download (1).jpg' %}";
@@ -467,25 +392,20 @@
                     };
                 } else {
                     overlayContent.innerHTML = `
-                        <i class="bi bi-trash"></i>
-                        <br>
-                        <span>Remove Image</span>
+                        <button type="button" class="remove-image-btn">
+                            <i class="bi bi-trash me-1"></i>Remove Image
+                        </button>
                     `;
-                    profileImageContainer.onclick = function () {
-                        toast.show();
-                    };
+                    const removeImageBtn = overlayContent.querySelector(".remove-image-btn");
+                    removeImageBtn.addEventListener("click", function () {
+                        profileImage.src = defaultImageUrl;
+                        profileImageInput.value = "";
+                        removeImageInput.value = "true";
+                        isDefaultImage = true;
+                        updateOverlayContent();
+                    });
                 }
             }
-
-            // Confirm remove image action
-            confirmRemoveBtn.addEventListener("click", function () {
-                profileImage.src = defaultImageUrl;
-                profileImageInput.value = "";
-                removeImageInput.value = "true";
-                isDefaultImage = true;
-                updateOverlayContent();
-                toast.hide();
-            });
 
             // Initialize overlay content
             updateOverlayContent();
@@ -525,18 +445,22 @@
                 // First name validation
                 if (!firstNameInput.value.trim()) {
                     firstNameInput.classList.add("is-invalid");
+                    firstNameError.textContent = "First name is required";
                     isValid = false;
                 } else if (!/^[a-zA-Z]+$/.test(firstNameInput.value.trim())) {
                     firstNameInput.classList.add("is-invalid");
+                    firstNameError.textContent = "First name should contain only alphabets";
                     isValid = false;
                 }
 
                 // Last name validation
                 if (!lastNameInput.value.trim()) {
                     lastNameInput.classList.add("is-invalid");
+                    lastNameError.textContent = "Last name is required";
                     isValid = false;
                 } else if (!/^[a-zA-Z]+$/.test(lastNameInput.value.trim())) {
                     lastNameInput.classList.add("is-invalid");
+                    lastNameError.textContent = "Last name should contain only alphabets";
                     isValid = false;
                 }
 
@@ -549,15 +473,19 @@
                 // Phone number validation
                 if (!phoneNumberInput.value.trim()) {
                     phoneNumberInput.classList.add("is-invalid");
+                    phoneNumberError.textContent = "Phone number is required";
                     isValid = false;
                 } else if (!/^\d{10}$/.test(phoneNumberInput.value.trim())) {
                     phoneNumberInput.classList.add("is-invalid");
+                    phoneNumberError.textContent = "Phone number must be exactly 10 digits";
                     isValid = false;
                 } else if (phoneNumberInput.value.trim().startsWith('0')) {
                     phoneNumberInput.classList.add("is-invalid");
+                    phoneNumberError.textContent = "Phone number cannot start with 0";
                     isValid = false;
                 } else if (/^(\d)\1{9}$/.test(phoneNumberInput.value.trim())) {
                     phoneNumberInput.classList.add("is-invalid");
+                    phoneNumberError.textContent = "Phone number cannot be all identical digits";
                     isValid = false;
                 }
 

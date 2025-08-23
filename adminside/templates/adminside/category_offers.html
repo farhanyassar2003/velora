@@ -462,7 +462,15 @@
             if (!data.start_date) {
                 showError('start_date', 'Start Date is required.');
                 hasError = true;
-            }
+            } else {
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0); // Reset time to midnight for comparison
+                    const startDate = new Date(data.start_date);
+                    if (startDate < today) {
+                        showError('start_date', 'Start Date must be today or later.');
+                        hasError = true;
+                    }
+                }
             if (!data.end_date) {
                 showError('end_date', 'End Date is required.');
                 hasError = true;
