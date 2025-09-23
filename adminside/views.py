@@ -12,19 +12,20 @@ from django.core.exceptions import ObjectDoesNotExist
 from django.core.mail import send_mail
 from django.core.paginator import Paginator
 from django.db import transaction, IntegrityError
-from django.db.models import Sum, Count, DecimalField, ExpressionWrapper, F, Q
+from django.db.models import Sum, DecimalField, ExpressionWrapper, F, Q
 from django.db.models.functions import Coalesce
 from django.forms import modelformset_factory
 from django.http import HttpResponse, HttpResponseBadRequest, JsonResponse
 from django.shortcuts import render, redirect, get_object_or_404
 from django.utils import timezone
 from django.utils.cache import patch_cache_control
-from django.utils.decorators import method_decorator
-from django.views.decorators.cache import never_cache, cache_control
+from django.views.decorators.cache import never_cache
 from django.views.decorators.csrf import csrf_exempt, csrf_protect
 from django.views.decorators.http import require_POST, require_http_methods
 from django.conf import settings
 from django.urls import reverse
+from django.db.models import Prefetch
+
 
 # ReportLab Imports
 from reportlab.lib import colors
@@ -51,57 +52,43 @@ from .models import (
 logger = logging.getLogger(__name__)
 User = get_user_model()
 
-logger = logging.getLogger(__name__)
-
 
 def admin_login(request):
     # Redirect authenticated staff to dashboard
     if request.user.is_authenticated and (request.user.is_staff or request.user.is_superuser):
         return redirect('adminside:sales_report')
 
-    if request.method == 'POST':
-        logger.debug(f"POST data: {request.POST}")  # Log POST data for debugging
-        email = request.POST.get('email')  # Changed from 'username' to 'email'
+    if request.method == 'POST': 
+        email = request.POST.get('email') 
         password = request.POST.get('password')
 
         if not email or not password:
-            logger.warning(f"Admin login attempt with missing email or password: {request.POST}")
             return render(request, 'adminside/login.html')
 
         try:
-            User = get_user_model()  # Reference userside.CustomUser
-            # Try to find user by email (primary identifier)
+            User = get_user_model() 
             try:
                 user_obj = User.objects.get(email=email)
             except User.DoesNotExist:
-                # Fallback to username for flexibility
+                
                 user_obj = User.objects.get(username=email)
 
             if not (user_obj.is_staff or user_obj.is_superuser):
-                logger.warning(f"Non-admin user attempted login: {email}")
                 return render(request, 'adminside/login.html')
 
-            # Authenticate using email as username (since USERNAME_FIELD = 'email')
+           
             user = authenticate(request, username=user_obj.email, password=password)
             if user is not None:
                 login(request, user)
-                logger.info(f"Admin login successful: {email}")
                 return redirect('adminside:sales_report')
             else:
-                logger.warning(f"Invalid password for admin login: {email}")
                 return render(request, 'adminside/login.html')
         except User.DoesNotExist:
-            logger.warning(f"Admin login attempt with non-existent user: {email}")
             return render(request, 'adminside/login.html')
         except Exception as e:
-            logger.error(f"Error during admin login: {str(e)}")
             return render(request, 'adminside/login.html')
 
     return render(request, 'adminside/login.html')
-
-def is_admin(user):
-    return user.is_staff
-
 
 def is_admin(user):
     return user.is_authenticated and user.is_staff and user.is_superuser
@@ -115,13 +102,6 @@ def admin_logout_view(request):
     response['Expires'] = '0'
     return response
 
-
-
-# Set up logging for debugging
-logger = logging.getLogger(__name__)
-
-def is_admin(user):
-    return user.is_staff or user.is_superuser
 
 
 @login_required
@@ -571,21 +551,17 @@ def sales_report(request):
 
 # ===========================# User Management# ===========================
 
-
-logger = logging.getLogger(__name__)
-
 @user_passes_test(is_admin)
 @never_cache
 def user_list(request):
     if not (request.user.is_authenticated and (request.user.is_staff or request.user.is_superuser)):
-        logger.warning(f"Unauthorized access to user_list by {request.user.email if request.user.is_authenticated else 'anonymous'}")
         messages.error(request, 'You are not authorized to access this page.')
         return redirect('adminside:admin_login')
 
     try:
-        User = get_user_model()  # Reference userside.CustomUser
+        User = get_user_model()  
         form = UserFilterForm(request.GET or None)
-        # Order users by date_joined descending (latest first)
+        
         users = User.objects.filter(is_superuser=False, is_staff=False).order_by('-date_joined')
 
         if form.is_valid():
@@ -611,16 +587,13 @@ def user_list(request):
         }
         return render(request, 'adminside/user_list.html', context)
     except Exception as e:
-        logger.error(f"Error in user_list: {str(e)}")
         messages.error(request, f'An error occurred: {str(e)}')
         return render(request, 'adminside/user_list.html', {'form': form, 'users': []})
-
-
 
 @require_POST
 @csrf_exempt
 def toggle_status(request, user_id):
-    User = get_user_model()  # Dynamically get the active user model
+    User = get_user_model()  
     try:
         user = User.objects.get(pk=user_id)
     except User.DoesNotExist:
@@ -637,10 +610,6 @@ def toggle_status(request, user_id):
     user.save()
     return JsonResponse({'status': user.status, 'success': True})
 # ===========================# Product Management# ===========================
-
-
-
-logger = logging.getLogger(__name__)
 MIN_IMAGE_COUNT = 3
 ALLOWED_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/webp']
 
@@ -653,25 +622,25 @@ def product_list(request):
         variant_formset = ProductVariantFormSet(request.POST, instance=None)
         
         if product_form.is_valid() and variant_formset.is_valid():
-            # Save the product
+            
             product = product_form.save()
-            # Handle cropped images from request.FILES.getlist('images')
+            
             for i, image in enumerate(request.FILES.getlist('images')):
                 ProductImage.objects.create(product=product, image=image)
-            # Process variant formset
+            
             for form in variant_formset:
                 if form.cleaned_data and not form.cleaned_data.get('DELETE'):
                     color_name = form.cleaned_data['color_name']
                     color_hex = form.cleaned_data['color_hex']
                     size = form.cleaned_data['size']
                     stock = form.cleaned_data['stock']
-                    # Create or get ColorVariant
+                    
                     color_variant, _ = ColorVariant.objects.get_or_create(
                         product=product,
                         color_name=color_name,
                         color_hex=color_hex
                     )
-                    # Create ProductVariant
+                    
                     ProductVariant.objects.create(
                         product=product,
                         color_variant=color_variant,
@@ -679,7 +648,7 @@ def product_list(request):
                         stock=stock
                     )
             return redirect('adminside:product_list')
-        # If invalid, pass forms back to template
+        
     else:
         product_form = ProductForm()
         variant_formset = ProductVariantFormSet(instance=None)
@@ -709,32 +678,16 @@ def product_list(request):
     return response
 
 
-
-
-
-
-
-logger = logging.getLogger(__name__)
-
 ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp']
-MAX_IMAGES_PER_VARIANT = 50  # Optional: Set a reasonable limit
+MAX_IMAGES_PER_VARIANT = 50  
 
 @login_required
 @never_cache
 @user_passes_test(is_admin)
 @require_http_methods(["GET", "POST"])
 def add_product(request):
-    logger.info("add_product view called with method: %s", request.method)
 
     if request.method == 'POST':
-        logger.debug("=== DEBUG: POST DATA ===")
-        for key, value in request.POST.items():
-            logger.debug("%s: %s", key, value)
-
-        logger.debug("=== DEBUG: FILES DATA ===")
-        for key, files in request.FILES.lists():
-            logger.debug("%s: %s", key, [f.name for f in files])
-
         product_form = ProductForm(request.POST)
         variant_formset = ProductVariantFormSet(request.POST, request.FILES)
 
@@ -744,14 +697,9 @@ def add_product(request):
             if key.startswith('variant-') and key.endswith('-images'):
                 index = key.split('-')[1]
                 variant_images[index] = request.FILES.getlist(key)
-                logger.debug("=== DEBUG: Variant %s Images received: %s ===", index, len(variant_images[index]))
-                for i, img in enumerate(variant_images[index]):
-                    logger.debug("Variant %s Image %s: %s, Size: %s, Type: %s", index, i+1, img.name, img.size, img.content_type)
-
         # Validate image count
         for index, images in variant_images.items():
             if len(images) > MAX_IMAGES_PER_VARIANT:
-                logger.warning("=== DEBUG: Variant %s has too many images: %s > %s ===", index, len(images), MAX_IMAGES_PER_VARIANT)
                 messages.error(request, f'Variant {int(index) + 1} has too many images. Maximum allowed is {MAX_IMAGES_PER_VARIANT}.')
                 return render(request, 'adminside/add_product.html', {
                     'product_form': product_form,
@@ -762,7 +710,6 @@ def add_product(request):
         for index, images in variant_images.items():
             for i, img in enumerate(images):
                 if img.content_type not in ALLOWED_IMAGE_TYPES:
-                    logger.warning("=== DEBUG: Variant %s Image %s type validation failed: %s ===", index, i+1, img.content_type)
                     messages.error(request, f'Invalid image format for variant {int(index) + 1} image {i+1} ({img.name}). Only PNG, JPEG, and WebP are allowed.')
                     return render(request, 'adminside/add_product.html', {
                         'product_form': product_form,
@@ -773,44 +720,21 @@ def add_product(request):
         product_valid = product_form.is_valid()
         variant_valid = variant_formset.is_valid()
 
-        logger.debug("=== DEBUG: Form Validity ===")
-        logger.debug("Product form valid: %s", product_valid)
-        logger.debug("Variant formset valid: %s", variant_valid)
-
-        if not product_valid:
-            logger.debug("=== DEBUG: Product Form Errors ===")
-            for field, errors in product_form.errors.items():
-                logger.debug("Field '%s': %s", field, errors)
-
-        if not variant_valid:
-            logger.debug("=== DEBUG: Variant Formset Errors ===")
-            logger.debug("Non-form errors: %s", variant_formset.non_form_errors())
-            for i, form in enumerate(variant_formset):
-                if form.errors:
-                    logger.debug("Variant form %s errors: %s", i, form.errors)
-                else:
-                    logger.debug("Variant form %s data: %s", i, form.cleaned_data)
-
         if product_valid and variant_valid:
             try:
                 with transaction.atomic():
                     # Save the product
                     product = product_form.save()
-                    logger.info("=== DEBUG: Product saved: %s (ID: %s) ===", product.name, product.id)
 
                     # Save variants and their images
                     variants_saved = 0
                     for i, form in enumerate(variant_formset):
-                        logger.debug("=== DEBUG: Processing variant form %s with data: %s ===", i, form.cleaned_data)
                         if form.cleaned_data and not form.cleaned_data.get('DELETE', False):
                             # Ensure the form has valid data
                             variant = form.save(commit=False, product=product)
                             variant.product = product
                             variant.save()
                             variants_saved += 1
-                            logger.info("=== DEBUG: Variant saved: %s - %s ===", 
-                                       variant.color_variant.color_name if variant.color_variant else 'No ColorVariant', 
-                                       variant.size.name if variant.size else 'No Size')
 
                             # Save variant images
                             if str(i) in variant_images:
@@ -820,33 +744,22 @@ def add_product(request):
                                         image=image,
                                         color_variant=variant.color_variant
                                     )
-                                    logger.info("=== DEBUG: Variant %s Image %s saved: %s ===", i, j+1, image.name)
-                        else:
-                            logger.debug("=== DEBUG: Variant form %s skipped (empty: %s, DELETE: %s) ===", 
-                                        i, 
-                                        not form.cleaned_data, 
-                                        form.cleaned_data.get('DELETE', False) if form.cleaned_data else 'N/A')
 
-                    logger.info("=== DEBUG: Total variants saved: %s ===", variants_saved)
                     if variants_saved == 0:
-                        logger.warning("=== DEBUG: No variants saved, possibly due to all being marked for deletion or empty ===")
                         messages.error(request, "At least one variant must be provided.")
-                        product.delete()  # Roll back product creation if no variants
+                        product.delete()  
                         return render(request, 'adminside/add_product.html', {
                             'product_form': product_form,
                             'variant_formset': variant_formset,
                         })
 
                     messages.success(request, 'Product and variants added successfully!')
-                    logger.info("=== DEBUG: Redirecting to product list ===")
                     return redirect('adminside:product_list')
 
             except Exception as e:
-                logger.error("=== DEBUG: Exception during save: %s ===", str(e), exc_info=True)
                 messages.error(request, f'Error creating product: {str(e)}')
 
         else:
-            logger.warning("=== DEBUG: Form validation failed, staying on same page ===")
             for field, errors in product_form.errors.items():
                 for error in errors:
                     messages.error(request, f'Product {field}: {error}')
@@ -861,7 +774,7 @@ def add_product(request):
 
     else:
         product_form = ProductForm()
-        # Initialize formset with one empty form
+        
         variant_formset = ProductVariantFormSet(queryset=ProductVariant.objects.none())
 
     context = {
@@ -869,13 +782,6 @@ def add_product(request):
         'variant_formset': variant_formset,
     }
     return render(request, 'adminside/add_product.html', context)
-
-
-
-
-
-
-logger = logging.getLogger(__name__)
 
 ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp']
 MAX_IMAGES_PER_VARIANT = 50  # Optional: Set a reasonable upper limit to prevent abuse
@@ -890,19 +796,10 @@ def get_variant_images_for_template(product):
 @user_passes_test(is_admin)
 @never_cache
 def edit_product(request, product_id):
-    logger.info("edit_product view called with method: %s, product_id: %s", request.method, product_id)
     
     product = get_object_or_404(Product, id=product_id)
     
     if request.method == 'POST':
-        logger.debug("=== DEBUG: POST DATA ===")
-        for key, value in request.POST.items():
-            logger.debug("%s: %s", key, value)
-        
-        logger.debug("=== DEBUG: FILES DATA ===")
-        for key, files in request.FILES.lists():
-            logger.debug("%s: %s", key, [f.name for f in files])
-        
         product_form = ProductForm(request.POST, request.FILES, instance=product)
         variant_formset = ProductVariantFormSet(request.POST, request.FILES, instance=product)
         
@@ -918,21 +815,16 @@ def edit_product(request, product_id):
                     index = parts[1]
                     image_id = key.split('_')[-1]
                     variant_image_deletions.setdefault(index, []).append(image_id)
-                    logger.debug(f"=== DEBUG: Marked image {image_id} for deletion in variant {index} ===")
         
         # Process new images
         for key in request.FILES:
             if key.startswith('variant-') and key.endswith('-images'):
                 index = key.split('-')[1]
                 variant_images[index] = request.FILES.getlist(key)
-                logger.debug(f"=== DEBUG: Variant {index} Images received: {len(variant_images[index])} ===")
-                for i, img in enumerate(variant_images[index]):
-                    logger.debug("Variant %s Image %s: %s, Size: %s, Type: %s", index, i+1, img.name, img.size, img.content_type)
         
         # Validate image count (optional upper limit)
         for index, images in variant_images.items():
             if len(images) > MAX_IMAGES_PER_VARIANT:
-                logger.warning("=== DEBUG: Variant %s has too many images: %s > %s ===", index, len(images), MAX_IMAGES_PER_VARIANT)
                 messages.error(request, f'Variant {int(index) + 1} has too many images. Maximum allowed is {MAX_IMAGES_PER_VARIANT}.')
                 return render(request, 'adminside/edit_product.html', {
                     'product_form': product_form,
@@ -947,7 +839,6 @@ def edit_product(request, product_id):
         for index, images in variant_images.items():
             for i, img in enumerate(images):
                 if img.content_type not in ALLOWED_IMAGE_TYPES:
-                    logger.warning("=== DEBUG: Variant %s Image %s type validation failed: %s ===", index, i+1, img.content_type)
                     messages.error(request, f'Invalid image format for variant {int(index) + 1} image {i+1} ({img.name}). Only PNG, JPEG, and WebP are allowed.')
                     return render(request, 'adminside/edit_product.html', {
                         'product_form': product_form,
@@ -962,35 +853,18 @@ def edit_product(request, product_id):
         product_valid = product_form.is_valid()
         variant_valid = variant_formset.is_valid()
         
-        logger.debug("=== DEBUG: Form Validity ===")
-        logger.debug(f"Product form valid: {product_valid}")
-        logger.debug(f"Variant formset valid: {variant_valid}")
-        
-        if not product_valid:
-            logger.debug("=== DEBUG: Product Form Errors ===")
-            for field, errors in product_form.errors.items():
-                logger.debug(f"Field '{field}': {errors}")
-        
-        if not variant_valid:
-            logger.debug("=== DEBUG: Variant Formset Errors ===")
-            logger.debug(f"Non-form errors: {variant_formset.non_form_errors()}")
-            for i, form in enumerate(variant_formset):
-                if form.errors:
-                    logger.debug(f"Variant form {i} errors: {form.errors}")
         
         if product_valid and variant_valid:
             try:
                 with transaction.atomic():
                     # Save the product
                     product = product_form.save()
-                    logger.info(f"=== DEBUG: Product updated: {product.name} (ID: {product.id}) ===")
 
                     # Handle variant image deletions first
                     for index, image_ids in variant_image_deletions.items():
                         for image_id in image_ids:
                             try:
                                 image = ProductImage.objects.get(id=image_id, product=product)
-                                logger.debug(f"=== DEBUG: Deleting image ID {image_id} ===")
                                 image.delete()
                             except ProductImage.DoesNotExist:
                                 logger.debug(f"=== DEBUG: Image ID {image_id} not found for deletion ===")
@@ -1001,7 +875,6 @@ def edit_product(request, product_id):
                         if form.cleaned_data:
                             if form.cleaned_data.get('DELETE'):
                                 if form.instance.pk:
-                                    logger.debug(f"=== DEBUG: Deleting variant {form.instance.pk} ===")
                                     ProductImage.objects.filter(
                                         product=product,
                                         color_variant=form.instance.color_variant
@@ -1009,14 +882,12 @@ def edit_product(request, product_id):
                                     form.instance.delete()
                                 continue
                             
-                            logger.debug(f"=== DEBUG: Processing variant {i} with data: {form.cleaned_data} ===")
-                            
                             # Save the variant
                             variant = form.save(commit=False, product=product)
                             variant.product = product
                             variant.save()
                             variants_saved += 1
-                            logger.info(f"=== DEBUG: Variant saved: {variant.color_variant.color_name} - {variant.size.name} (ID: {variant.id}) ===")
+                    
                             
                             # Handle new variant images
                             if str(i) in variant_images:
@@ -1026,23 +897,20 @@ def edit_product(request, product_id):
                                         image=image_file,
                                         color_variant=variant.color_variant
                                     )
-                                    logger.info(f"=== DEBUG: Created ProductImage ID {product_image.id} for variant {i}, image {j+1}: {image_file.name} ===")
+                    
                     
                     if variants_saved == 0:
                         existing_variants = product.variants.filter(is_listed=True).count()
                         if existing_variants == 0:
                             raise ValueError("At least one valid variant is required.")
                     
-                    logger.info(f"=== DEBUG: Total variants processed: {variants_saved} ===")
                     messages.success(request, 'Product and variants updated successfully!')
                     return redirect('adminside:product_list')
                     
             except Exception as e:
-                logger.error(f"=== DEBUG: Exception during save: {str(e)} ===", exc_info=True)
                 messages.error(request, f'Error updating product: {str(e)}')
                 
         else:
-            logger.warning("=== DEBUG: Form validation failed ===")
             for field, errors in product_form.errors.items():
                 for error in errors:
                     messages.error(request, f'Product {field}: {error}')
@@ -1126,7 +994,7 @@ def category_list(request):
         form = CategoryForm(request.POST)
         if form.is_valid():
             form.save()
-            return redirect(reverse('adminside:category_list') + '?success=true')  # Correctly append query parameter
+            return redirect(reverse('adminside:category_list') + '?success=true')  
     else:
         form = CategoryForm()
     search_query = request.GET.get('search', '')
@@ -1161,7 +1029,6 @@ def edit_category(request, category_id):
         form = CategoryForm(request.POST, instance=category)
         if form.is_valid():
             form.save()
-            # Redirect with a specific query parameter for a successful edit
             return redirect(reverse('adminside:category_list') + '?edit_success=true')
     else:
         form = CategoryForm(instance=category)
@@ -1213,13 +1080,10 @@ def admin_order_list(request):
 
 
 
-logger = logging.getLogger(__name__)
-
 @user_passes_test(is_admin)
 @never_cache
 @login_required(login_url='adminside:admin_login')
 def admin_order_detail(request, order_id):
-    # Use select_related and prefetch_related for efficient data retrieval
     order = get_object_or_404(
         Order.objects.select_related('user').prefetch_related(
             'items',
@@ -1281,10 +1145,8 @@ def admin_order_detail(request, order_id):
                                     source_order=order,
                                     description=f"Refund for cancelled order {order.order_id} (Wallet)"
                                 )
-                                logger.info(f"Refund transaction created for order {order.order_id}: ₹{refund_amount}")
                                 messages.success(request, f"Refunded ₹{refund_amount:.2f} to {order.user.email}'s wallet.")
                             except Exception as e:
-                                logger.error(f"Error creating refund transaction for order {order.order_id}: {e}", exc_info=True)
                                 messages.error(request, f"Error processing refund: {e}")
                                 request.session['toast_message'] = {
                                     'message': f"Error processing refund: {e}",
@@ -1293,7 +1155,6 @@ def admin_order_detail(request, order_id):
                                 }
                                 return redirect('adminside:admin_order_detail', order_id=order.order_id)
                     order.save()
-                    logger.info(f"Order {order.order_id} status updated to {new_status} with payment method {order.payment_method} and is_paid={order.is_paid}")
                     messages.success(request, f"Order status updated to {order.get_status_display()}!")
                     request.session['toast_message'] = {
                         'message': f"Order status updated to {order.get_status_display()} successfully!",
@@ -1380,12 +1241,8 @@ def admin_order_detail(request, order_id):
         adjusted_discount = Decimal('0.00')
         adjusted_total = Decimal('0.00')
 
-    logger.info(f"Order {order.order_id}: original_subtotal=₹{original_subtotal:.2f}, coupon_discount=₹{coupon_discount:.2f}, referral_discount=₹{referral_discount:.2f}, original_total=₹{original_total:.2f}")
-    logger.info(f"Order {order.order_id}: active_subtotal=₹{adjusted_subtotal:.2f}, active_items_count={active_items_count}, unique_products_count={unique_products_count}, adjusted_discount=₹{adjusted_discount:.2f}, adjusted_total=₹{adjusted_total:.2f}")
-    logger.info(f"Order {order.order_id}: coupon_discount_per_product=₹{coupon_discount_per_product:.2f}, referral_discount_per_product=₹{referral_discount_per_product:.2f}")
     for entry in items_with_discounts:
         item = entry['item']
-        logger.info(f"Item {item.id} (Product: {item.product.name}): adjusted_subtotal=₹{entry['adjusted_subtotal']:.2f}, coupon_discount=₹{entry['coupon_discount']:.2f}, referral_discount=₹{entry['referral_discount']:.2f}")
 
     # Get toast message from session and clear it
     toast_message = request.session.pop('toast_message', None)
@@ -1407,15 +1264,13 @@ def admin_order_detail(request, order_id):
     })
 
 
-logger = logging.getLogger(__name__)
-
 def confirm_return(request, order_id):
     if request.method != 'POST':
         return HttpResponseBadRequest("Invalid request method")
 
     # Retrieve item_id and action from POST data
     item_id = request.POST.get('item_id')
-    action = request.POST.get('action')  # 'confirm' or 'reject'
+    action = request.POST.get('action') 
     reject_reason = request.POST.get('reject_reason', '').strip()  # Reason for rejection
 
     if not item_id:
@@ -1445,22 +1300,18 @@ def confirm_return(request, order_id):
 
                 # Use the pre-calculated refund amount from return_order_item
                 refund_amount = item.refund_amount.quantize(Decimal('0.01'))
-                logger.info(f"Confirming return for item {item.id} in order {order.order_id}: Pre-calculated refund_amount=₹{refund_amount:.2f}")
 
                 # Log any additional discounts for debugging
                 coupon_discount = order.coupon_discount or Decimal('0.00')
                 referral_discount = order.referral_coupon_discount or Decimal('0.00')
-                logger.info(f"Order {order.order_id}: Coupon discount=₹{coupon_discount:.2f}, Referral discount=₹{referral_discount:.2f}")
 
                 # Ensure refund amount is not negative
                 if refund_amount < 0:
                     refund_amount = Decimal('0')
-                    logger.warning(f"Refund amount adjusted to ₹0 for item {item.id} due to negative value.")
-
+                    
                 # Credit wallet for the item
                 if refund_amount > 0 and order.is_paid:
                     wallet, _ = Wallet.objects.get_or_create(user=order.user)
-                    logger.info(f"Wallet balance before refund: ₹{wallet.balance:.2f}")
 
                     # Create transaction
                     Transaction.objects.create(
@@ -1477,11 +1328,8 @@ def confirm_return(request, order_id):
                     # Mark item as refunded
                     item.is_refunded_to_wallet = True
                     item.save()
-
-                    logger.info(f"Refund credited for item {item.id} in order {order.order_id}: New wallet balance=₹{wallet.balance:.2f}")
                     messages.success(request, f"Refunded ₹{refund_amount:.2f} to {order.user.email}'s wallet for item {item.product.name}.")
                 else:
-                    logger.warning(f"No refund processed for item {item.id} in order {order.order_id}: refund_amount=₹{refund_amount:.2f}, is_paid={order.is_paid}")
                     messages.info(request, "No refund issued (zero amount or unpaid order).")
 
                 # Send notification for confirmed return
@@ -1493,11 +1341,8 @@ def confirm_return(request, order_id):
                         [order.user.email],
                         fail_silently=True,
                     )
-                    logger.info(f"Refund notification sent to {order.user.email} for item {item.id} in order {order.order_id}")
                 except Exception as e:
-                    logger.error(f"Failed to send refund notification to {order.user.email}: {str(e)}")
-
-                messages.success(request, f"Return for item {item.product.name} in order {order.order_id} confirmed.")
+                    messages.success(request, f"Return for item {item.product.name} in order {order.order_id} confirmed.")
 
             elif action == 'reject':
                 # Validate reject reason
@@ -1510,7 +1355,7 @@ def confirm_return(request, order_id):
                 item.return_reason = f"Rejected: {reject_reason}"  # Store rejection reason
                 item.save()
 
-                # Send notification for rejected return
+                
                 try:
                     send_mail(
                         'Return Request Rejected',
@@ -1519,21 +1364,13 @@ def confirm_return(request, order_id):
                         [order.user.email],
                         fail_silently=True,
                     )
-                    logger.info(f"Return rejection notification sent to {order.user.email} for item {item.id} in order {order.order_id}")
+            
                 except Exception as e:
-                    logger.error(f"Failed to send rejection notification to {order.user.email}: {str(e)}")
-
-                messages.success(request, f"Return for item {item.product.name} in order {order.order_id} rejected.")
+                    messages.success(request, f"Return for item {item.product.name} in order {order.order_id} rejected.")
 
             else:
                 messages.error(request, "Invalid action specified.")
                 return redirect('adminside:admin_order_detail', order_id=order_id)
-
-            # Log item status
-            if not item.variant and not item.is_cancelled:
-                logger.warning(f"Admin processed return for OrderItem {item.id}, but no ProductVariant found. Product: {item.product.name}")
-            elif item.is_cancelled:
-                logger.info(f"OrderItem {item.id} was cancelled, not returned. Stock assumed to be restored during cancellation.")
 
             # Update order status based on item statuses
             all_items = order.items.all()
@@ -1545,16 +1382,12 @@ def confirm_return(request, order_id):
                 order.status = 'delivered'
                 order.return_requested = False
                 order.save()
-                logger.info(f"Order {order.order_id} status set to 'delivered' due to {'all items rejected' if all_rejected else 'at least one item rejected'}.")
             elif all_processed:
                 order.status = 'returned'
                 order.save()
-                logger.info(f"Order {order.order_id} status set to 'returned' as all items are either refunded, cancelled, or rejected.")
-
             return redirect('adminside:admin_order_detail', order_id=order_id)
 
         except Exception as e:
-            logger.error(f"Error processing return for item {item.id} in order {order_id}: {e}", exc_info=True)
             messages.error(request, f"An error occurred while processing the return for item {item.product.name}: {e}")
             return redirect('adminside:admin_order_detail', order_id=order_id)
 
@@ -1563,7 +1396,6 @@ def confirm_return(request, order_id):
 @never_cache
 @login_required
 def product_offers(request):
-    # Fetch only active listed products for the add/edit modal
     products = Product.objects.filter(is_deleted=False, is_listed=True)
     
     # Handle search query
@@ -1591,7 +1423,6 @@ def product_offers(request):
 @never_cache
 @login_required
 def category_offers(request):
-    # Fetch only active listed categories for the add/edit modal
     categories = Category.objects.filter(is_deleted=False, is_listed=True)
     
     # Handle search query
@@ -1615,10 +1446,6 @@ def category_offers(request):
     }
     return render(request, 'adminside/category_offers.html', context)
 
-
-
-logger = logging.getLogger(__name__)
-
 @csrf_exempt
 def manage_offer(request, offer_type):
     if request.method == 'GET':
@@ -1636,10 +1463,8 @@ def manage_offer(request, offer_type):
                     'is_active': offer.is_active
                 })
             except ProductOffer.DoesNotExist:
-                logger.error(f"ProductOffer not found: id={offer_id}")
                 return JsonResponse({'success': False, 'message': 'Offer not found.'}, status=404)
             except Exception as e:
-                logger.error(f"Error in manage_offer GET (product, id={offer_id}): {str(e)}")
                 return JsonResponse({'success': False, 'message': f'Unexpected error: {str(e)}'}, status=500)
         elif offer_type == 'category' and offer_id:
             try:
@@ -1654,18 +1479,14 @@ def manage_offer(request, offer_type):
                     'is_active': offer.is_active
                 })
             except CategoryOffer.DoesNotExist:
-                logger.error(f"CategoryOffer not found: id={offer_id}")
                 return JsonResponse({'success': False, 'message': 'Offer not found.'}, status=404)
             except Exception as e:
-                logger.error(f"Error in manage_offer GET (category, id={offer_id}): {str(e)}")
                 return JsonResponse({'success': False, 'message': f'Unexpected error: {str(e)}'}, status=500)
-        logger.warning(f"Invalid GET request: offer_type={offer_type}, id={offer_id}")
         return JsonResponse({'success': False, 'message': 'Invalid request.'}, status=400)
 
     if request.method == 'POST':
         try:
             data = json.loads(request.body)
-            logger.info(f"manage_offer POST received data: {data}")
             offer_id = data.get('id')
             name = data.get('name')
             discount_percentage = data.get('discount_percentage')
@@ -1676,22 +1497,18 @@ def manage_offer(request, offer_type):
             if offer_type == 'product':
                 product_id = data.get('product_id')
                 if not all([name, product_id, discount_percentage, start_date, end_date]):
-                    logger.warning(f"Missing fields in product offer: {data}")
                     return JsonResponse({'success': False, 'message': 'All fields are required.'}, status=400)
 
                 try:
                     discount_percentage = float(discount_percentage)
                     if not (0 <= discount_percentage <= 100):
-                        logger.warning(f"Invalid discount_percentage: {discount_percentage}")
                         return JsonResponse({'success': False, 'message': 'Discount percentage must be between 0 and 100.'}, status=400)
                 except (ValueError, TypeError):
-                    logger.warning(f"Invalid discount_percentage format: {discount_percentage}")
                     return JsonResponse({'success': False, 'message': 'Discount percentage must be a valid number.'}, status=400)
 
                 try:
                     product = Product.objects.get(id=product_id, is_deleted=False)
                 except Product.DoesNotExist:
-                    logger.warning(f"Product not found: {product_id}")
                     return JsonResponse({'success': False, 'message': 'Selected product does not exist.'}, status=404)
 
                 # Check for existing active offer for the product (only for new offers)
@@ -1702,7 +1519,6 @@ def manage_offer(request, offer_type):
                         is_active=True
                     ).exists()
                     if existing_offer:
-                        logger.warning(f"Active offer already exists for product: {product_id}")
                         return JsonResponse({
                             'success': False,
                             'message': 'The product already has an offer.'
@@ -1720,10 +1536,8 @@ def manage_offer(request, offer_type):
                         offer.save()
                         message = 'Product offer updated successfully.'
                     except ProductOffer.DoesNotExist:
-                        logger.warning(f"ProductOffer not found: {offer_id}")
                         return JsonResponse({'success': False, 'message': 'Offer not found.'}, status=404)
                     except IntegrityError:
-                        logger.warning(f"IntegrityError updating product offer: name={name}")
                         return JsonResponse({'success': False, 'message': 'An offer with this name already exists.'}, status=400)
                 else:
                     try:
@@ -1737,28 +1551,23 @@ def manage_offer(request, offer_type):
                         )
                         message = 'Product offer created successfully.'
                     except IntegrityError:
-                        logger.warning(f"IntegrityError creating product offer: name={name}")
                         return JsonResponse({'success': False, 'message': 'An offer with this name already exists.'}, status=400)
 
             elif offer_type == 'category':
                 category_id = data.get('category_id')
                 if not all([name, category_id, discount_percentage, start_date, end_date]):
-                    logger.warning(f"Missing fields in category offer: {data}")
                     return JsonResponse({'success': False, 'message': 'All fields are required.'}, status=400)
 
                 try:
                     discount_percentage = float(discount_percentage)
                     if not (0 <= discount_percentage <= 100):
-                        logger.warning(f"Invalid discount_percentage: {discount_percentage}")
                         return JsonResponse({'success': False, 'message': 'Discount percentage must be between 0 and 100.'}, status=400)
                 except (ValueError, TypeError):
-                    logger.warning(f"Invalid discount_percentage format: {discount_percentage}")
                     return JsonResponse({'success': False, 'message': 'Discount percentage must be a valid number.'}, status=400)
 
                 try:
                     category = Category.objects.get(id=category_id, is_deleted=False)
                 except Category.DoesNotExist:
-                    logger.warning(f"Category not found: {category_id}")
                     return JsonResponse({'success': False, 'message': 'Selected category does not exist.'}, status=404)
 
                 # Check for existing active offer for the category (only for new offers)
@@ -1769,7 +1578,6 @@ def manage_offer(request, offer_type):
                         is_active=True
                     ).exists()
                     if existing_offer:
-                        logger.warning(f"Active offer already exists for category: {category_id}")
                         return JsonResponse({
                             'success': False,
                             'message': 'The category already has an offer.'
@@ -1787,10 +1595,8 @@ def manage_offer(request, offer_type):
                         offer.save()
                         message = 'Category offer updated successfully.'
                     except CategoryOffer.DoesNotExist:
-                        logger.warning(f"CategoryOffer not found: {offer_id}")
                         return JsonResponse({'success': False, 'message': 'Offer not found.'}, status=404)
                     except IntegrityError:
-                        logger.warning(f"IntegrityError updating category offer: name={name}")
                         return JsonResponse({'success': False, 'message': 'An offer with this name already exists.'}, status=400)
                 else:
                     try:
@@ -1804,35 +1610,23 @@ def manage_offer(request, offer_type):
                         )
                         message = 'Category offer created successfully.'
                     except IntegrityError:
-                        logger.warning(f"IntegrityError creating category offer: name={name}")
                         return JsonResponse({'success': False, 'message': 'An offer with this name already exists.'}, status=400)
                     except ValueError as e:
-                        logger.warning(f"ValueError creating category offer: {str(e)}")
                         return JsonResponse({'success': False, 'message': f'Invalid data: {str(e)}'}, status=400)
 
             else:
-                logger.warning(f"Invalid offer type: {offer_type}")
                 return JsonResponse({'success': False, 'message': 'Invalid offer type.'}, status=400)
-
-            logger.info(f"Offer {offer_type} {offer_id or 'new'} saved successfully: {message}")
             return JsonResponse({'success': True, 'message': message})
 
         except json.JSONDecodeError as e:
-            logger.error(f"JSON decode error in manage_offer: {str(e)}")
             return JsonResponse({'success': False, 'message': f'Invalid JSON data: {str(e)}'}, status=400)
         except ObjectDoesNotExist:
-            logger.warning(f"Object not found: {data}")
             return JsonResponse({'success': False, 'message': 'Selected object does not exist.'}, status=404)
         except Exception as e:
-            logger.error(f"Unexpected error in manage_offer POST: {str(e)}")
             return JsonResponse({'success': False, 'message': f'Unexpected error: {str(e)}'}, status=500)
 
-    logger.warning(f"Invalid request method: {request.method}")
+   
     return JsonResponse({'success': False, 'message': 'Invalid request method.'}, status=400)
-
-
-
-logger = logging.getLogger(__name__)
 
 @login_required
 @csrf_protect
@@ -1842,30 +1636,27 @@ def delete_offer(request, offer_type, offer_id):
             if offer_type == 'product':
                 try:
                     offer = ProductOffer.objects.get(id=offer_id, is_deleted=False)
-                    offer.delete()  # Permanent deletion
-                    logger.info(f"ProductOffer permanently deleted: id={offer_id}")
+                    offer.delete()  
                     return JsonResponse({'success': True, 'message': 'Product offer deleted successfully.'})
                 except ProductOffer.DoesNotExist:
-                    logger.warning(f"ProductOffer not found: id={offer_id}")
                     return JsonResponse({'success': False, 'message': 'Offer not found.'}, status=404)
             elif offer_type == 'category':
                 try:
                     offer = CategoryOffer.objects.get(id=offer_id, is_deleted=False)
-                    offer.delete()  # Permanent deletion
-                    logger.info(f"CategoryOffer permanently deleted: id={offer_id}")
+                    offer.delete() 
+                   
                     return JsonResponse({'success': True, 'message': 'Category offer deleted successfully.'})
                 except CategoryOffer.DoesNotExist:
-                    logger.warning(f"CategoryOffer not found: id={offer_id}")
+                
                     return JsonResponse({'success': False, 'message': 'Offer not found.'}, status=404)
             else:
-                logger.warning(f"Invalid offer type: {offer_type}")
+                
                 return JsonResponse({'success': False, 'message': 'Invalid offer type.'}, status=400)
 
         except Exception as e:
-            logger.error(f"Error in delete_offer: offer_type={offer_type}, id={offer_id}, error={str(e)}")
+          
             return JsonResponse({'success': False, 'message': f'Unexpected error: {str(e)}'}, status=500)
 
-    logger.warning(f"Invalid request method: {request.method}")
     return JsonResponse({'success': False, 'message': 'Invalid request method.'}, status=400)
 @login_required
 @csrf_protect
@@ -1873,7 +1664,7 @@ def toggle_active_offer(request, offer_type, offer_id):
     if request.method == 'POST':
         try:
             data = json.loads(request.body)
-            logger.info(f"toggle_active_offer received data: {data}")
+            
             is_active = data.get('is_active', False)
             
             if offer_type == 'product':
@@ -1881,39 +1672,33 @@ def toggle_active_offer(request, offer_type, offer_id):
             elif offer_type == 'category':
                 offer = CategoryOffer.objects.get(id=offer_id, is_deleted=False)
             else:
-                logger.warning(f"Invalid offer type in toggle_active_offer: {offer_type}")
                 return JsonResponse({'success': False, 'message': 'Invalid offer type.'}, status=400)
             
             offer.is_active = is_active
             offer.save()
-            logger.info(f"Offer {offer_type} {offer_id} toggled to is_active={is_active}")
+  
             return JsonResponse({
                 'success': True,
                 'message': f'Offer {"activated" if is_active else "deactivated"} successfully.'
             })
         
         except json.JSONDecodeError as e:
-            logger.error(f"JSON decode error in toggle_active_offer: {str(e)}")
+
             return JsonResponse({'success': False, 'message': f'Invalid JSON data: {str(e)}'}, status=400)
         except (ProductOffer.DoesNotExist, CategoryOffer.DoesNotExist):
-            logger.warning(f"Offer not found in toggle_active_offer: {offer_type} {offer_id}")
+    
             return JsonResponse({'success': False, 'message': 'Offer not found.'}, status=404)
         except Exception as e:
-            logger.error(f"Error in toggle_active_offer: {str(e)}")
+           
             return JsonResponse({'success': False, 'message': f'Unexpected error: {str(e)}'}, status=500)
     
-    logger.warning(f"Invalid request method in toggle_active_offer: {request.method}")
     return JsonResponse({'success': False, 'message': 'Invalid request method.'}, status=400)
 
-
-
-logger = logging.getLogger(__name__)
 @user_passes_test(is_admin)
 @never_cache
 @csrf_protect
 def coupon_management(request):
     if not request.user.is_authenticated or not request.user.is_staff:
-        logger.warning(f"Unauthorized access attempt by user: {request.user}")
         return JsonResponse({
             'success': False,
             'message': 'Unauthorized access. Admin privileges required.'
@@ -1921,15 +1706,11 @@ def coupon_management(request):
 
     if request.method == 'POST':
         try:
-            logger.debug(f"Request headers: {dict(request.headers)}")
             content_type = request.headers.get('Content-Type', '')
-            logger.debug(f"Content-Type: {content_type}")
-
+            
             if 'application/json' in content_type.lower():
                 request_body = request.body.decode('utf-8', errors='ignore')
-                logger.debug(f"JSON Request body: {request_body}")
                 if not request_body:
-                    logger.error("Empty JSON request body")
                     return JsonResponse({
                         'success': False,
                         'message': 'Empty request body. Please check the form submission.'
@@ -1937,13 +1718,10 @@ def coupon_management(request):
                 data = json.loads(request_body)
             else:
                 data = request.POST
-                logger.debug(f"FormData POST data: {dict(data)}")
 
-            logger.debug(f"Parsed data: {dict(data)}")
             action = data.get('action')
 
             if not action:
-                logger.warning(f"Invalid action: {action}")
                 return JsonResponse({
                     'success': False,
                     'message': 'Invalid action.'
@@ -1956,21 +1734,18 @@ def coupon_management(request):
                 valid_until_str = data.get('valid_until')
 
                 if not code:
-                    logger.warning("Coupon code is missing")
                     return JsonResponse({
                         'success': False,
                         'message': 'Coupon code is required.'
                     }, status=400)
 
                 if len(code) > 10:
-                    logger.warning(f"Coupon code too long: {code}")
                     return JsonResponse({
                         'success': False,
                         'message': 'Coupon code must be 10 characters or less.'
                     }, status=400)
 
                 if Coupon.objects.filter(code=code).exists():
-                    logger.warning(f"Duplicate coupon code: {code}")
                     return JsonResponse({
                         'success': False,
                         'message': 'Coupon code already exists.'
@@ -1979,13 +1754,12 @@ def coupon_management(request):
                 try:
                     discount_percentage = float(discount_percentage)
                     if not (0 <= discount_percentage <= 100):
-                        logger.warning(f"Invalid discount percentage: {discount_percentage}")
                         return JsonResponse({
                             'success': False,
                             'message': 'Discount percentage must be between 0 and 100.'
                         }, status=400)
                 except (ValueError, TypeError):
-                    logger.warning(f"Invalid discount percentage format: {discount_percentage}")
+                    
                     return JsonResponse({
                         'success': False,
                         'message': 'Invalid discount percentage.'
@@ -1996,19 +1770,16 @@ def coupon_management(request):
                     valid_until = datetime.strptime(valid_until_str, '%Y-%m-%d').date()
                     today = date.today()
                     if valid_from < today:
-                        logger.warning(f"Valid from date in past: {valid_from}")
                         return JsonResponse({
                             'success': False,
                             'message': 'Valid from date cannot be in the past.'
                         }, status=400)
                     if valid_until < valid_from:
-                        logger.warning(f"Valid until date before valid from: {valid_until} < {valid_from}")
                         return JsonResponse({
                             'success': False,
                             'message': 'Valid until date must be after valid from date.'
                         }, status=400)
                 except ValueError as e:
-                    logger.warning(f"Invalid date format: {valid_from_str}, {valid_until_str}")
                     return JsonResponse({
                         'success': False,
                         'message': 'Invalid date format. Use YYYY-MM-DD.'
@@ -2021,7 +1792,6 @@ def coupon_management(request):
                     valid_until=valid_until
                 )
                 coupon.save()
-                logger.info(f"Coupon created: {coupon.code}")
 
                 return JsonResponse({
                     'success': True,
@@ -2039,7 +1809,6 @@ def coupon_management(request):
             elif action == 'delete':
                 coupon_id = data.get('coupon_id')
                 if not coupon_id:
-                    logger.warning("No coupon_id provided in delete request")
                     return JsonResponse({
                         'success': False,
                         'message': 'Coupon ID is required.'
@@ -2048,39 +1817,33 @@ def coupon_management(request):
                     coupon_id = int(coupon_id)  # Ensure coupon_id is an integer
                     coupon = Coupon.objects.get(id=coupon_id)
                     coupon.delete()
-                    logger.info(f"Coupon deleted: {coupon_id}")
                     return JsonResponse({
                         'success': True,
                         'message': 'Coupon deleted successfully.'
                     })
                 except ValueError:
-                    logger.warning(f"Invalid coupon_id format: {coupon_id}")
                     return JsonResponse({
                         'success': False,
                         'message': 'Invalid coupon ID format.'
                     }, status=400)
                 except Coupon.DoesNotExist:
-                    logger.warning(f"Coupon not found: {coupon_id}")
                     return JsonResponse({
                         'success': False,
                         'message': 'Coupon not found.'
                     }, status=404)
 
             else:
-                logger.warning(f"Invalid action: {action}")
                 return JsonResponse({
                     'success': False,
                     'message': 'Invalid action.'
                 }, status=400)
 
         except json.JSONDecodeError as e:
-            logger.error(f"JSON decode error: {str(e)}")
             return JsonResponse({
                 'success': False,
                 'message': 'Invalid JSON data. Please check the form submission.'
             }, status=400)
         except Exception as e:
-            logger.error(f"Unexpected error: {str(e)}")
             return JsonResponse({
                 'success': False,
                 'message': f'Error: {str(e)}'
@@ -2103,13 +1866,6 @@ def coupon_management(request):
         'search_query': search_query,
     }
     return render(request, 'adminside/coupon_management.html', context)
-
-
-
-logger = logging.getLogger(__name__)
-
-def is_admin(user):
-    return user.is_authenticated and (user.is_staff or user.is_superuser)
 
 @login_required
 @user_passes_test(is_admin)
