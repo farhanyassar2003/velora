@@ -1,59 +1,77 @@
-# ===========================# Django and Third-Party Imports# ===========================
-from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth import login, authenticate, logout, get_user_model, update_session_auth_hash
-from django.db import IntegrityError
+# ===========================
+# Django and Third-Party Imports
+# ===========================
+import json
+import logging
+import random
+import re
+import uuid
+import pytz
+
+from datetime import date, timedelta
+from decimal import Decimal
+
+import razorpay
+from weasyprint import HTML
+
+from django.conf import settings
+from django.contrib import messages
+from django.contrib.auth import (
+    login, logout, authenticate, get_user_model,
+    update_session_auth_hash
+)
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import AuthenticationForm
+from django.contrib.auth.models import User
+from django.core.exceptions import ObjectDoesNotExist
 from django.core.mail import send_mail
 from django.core.paginator import Paginator
-from django.db.models import Q, Avg, F
-from django.contrib import messages
-from django.views.decorators.cache import never_cache, patch_cache_control
-from django.http import HttpResponse, HttpResponseBadRequest, JsonResponse, HttpResponseRedirect
+from django.db import  transaction
+from django.db.models import Q, Avg
+from django.http import (
+    HttpResponse, JsonResponse, HttpResponseRedirect
+)
+from django.shortcuts import (
+    render, redirect, get_object_or_404
+)
+from django.template.loader import render_to_string
 from django.urls import reverse
-from django.views.decorators.http import require_POST
-import random
-from decimal import Decimal
-from django.shortcuts import render, redirect
-from django.http import JsonResponse
-from django.contrib import messages
-from django.views.decorators.cache import never_cache
-from django.contrib.auth import login
-from django.core.mail import send_mail
-from .forms import CustomUserCreationForm
-from adminside.models import UserProfile, Coupon
-from django.contrib.auth.models import User
-import uuid
-from datetime import datetime, timedelta
-import json
-from django.views.decorators.csrf import csrf_exempt
-
-# ===========================# App Imports# ===========================
-from .forms import CustomUserCreationForm, EditProfileForm, ChangePasswordForm
-from .models import EmailOTP, CustomUser
-from adminside.models import Product, Category, Order, Address, CartItem, Wishlist, OrderItem
-from .models import FeaturedSection
-from .utils import send_otp_email # Moved from inside edit_profile function
-
-# ===========================# Utility Functions# ===========================
-import json
-import random
-import logging
-import uuid
-from django.contrib.auth import get_user_model
-from django.shortcuts import render, redirect
-from django.contrib import messages
-from django.core.mail import send_mail
 from django.utils import timezone
-from django.http import JsonResponse
-from django.views.decorators.cache import never_cache
-from django.views.decorators.csrf import csrf_exempt
-from django.db import IntegrityError, transaction
-from adminside.models import UserProfile,ReferralCoupon
-from .models import  EmailOTP
-from .forms import CustomUserCreationForm
-from datetime import date, timedelta
+from django.views.decorators.cache import (
+    never_cache, cache_control, patch_cache_control
+)
+from django.views.decorators.csrf import (
+    csrf_protect, csrf_exempt
+)
+from django.views.decorators.http import (
+    require_POST, require_GET
+)
+from django.contrib.messages import get_messages
 
+# ===========================
+# App Imports
+# ===========================
+from .forms import (
+    CustomUserCreationForm, EditProfileForm,
+    ChangePasswordForm, ForgotPasswordForm,
+    ResetPasswordForm
+)
+from .models import (
+    EmailOTP, CustomUser, FeaturedSection
+)
+from .utils import send_otp_email, create_otp_for_user
+
+from adminside.models import (
+    Product, Category, Order, OrderItem, Address,
+    CartItem, Wishlist, ProductVariant, Size,
+    ColorVariant, Coupon, ReferralCoupon,
+    ProductOffer, CategoryOffer, Wallet, Transaction,
+    UserProfile
+)
+
+# ===========================
+# Logger
+# ===========================
 logger = logging.getLogger(__name__)
 
 def generate_otp():
@@ -65,7 +83,6 @@ def generate_referral_code():
 @never_cache
 @csrf_exempt
 def register(request):
-    # Clear all cached messages at the start
     storage = messages.get_messages(request)
     storage.used = True
 
@@ -87,7 +104,6 @@ def register(request):
                 }
                 form = CustomUserCreationForm(form_data)
             except json.JSONDecodeError:
-                logger.error("Invalid JSON data received")
                 return JsonResponse({'success': False, 'message': 'Invalid JSON data'}, status=400)
         else:
             form_data = request.POST.copy()
@@ -123,12 +139,10 @@ def register(request):
                         'message': 'An OTP has been sent to your email. Please verify to complete registration.',
                         'redirect_url': '/verify_otp/'
                     }
-                    logger.debug(f"Sending JsonResponse: {response}")
                     return JsonResponse(response)
                 messages.success(request, 'An OTP has been sent to your email. Please verify to complete registration.')
                 return redirect('userside:verify_otp')
             except Exception as e:
-                logger.error(f"Failed to send OTP: {str(e)}")
                 if 'application/json' in request.headers.get('Content-Type', ''):
                     return JsonResponse({'success': False, 'message': f'Failed to send OTP: {str(e)}'}, status=500)
                 messages.error(request, f'Failed to send OTP: {str(e)}')
@@ -143,7 +157,6 @@ def register(request):
                     'message': 'Please correct the errors.',
                     'errors': form.errors.as_json()
                 }
-                logger.debug(f"Sending JsonResponse with errors: {response}")
                 return JsonResponse(response, status=400)
             messages.error(request, 'Please correct the errors below.')
     else:
@@ -154,27 +167,6 @@ def register(request):
     response['Pragma'] = 'no-cache'
     response['Expires'] = '0'
     return response
-
-from django.shortcuts import render, redirect
-from django.contrib.auth import get_user_model
-from django.contrib import messages
-from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.cache import never_cache
-from django.db import transaction, IntegrityError
-from django.utils import timezone
-from .forms import OTPForm, ForgotPasswordForm, ResetPasswordForm
-from .utils import create_otp_for_user
-from .models import EmailOTP
-from adminside.models import ReferralCoupon
-from datetime import date, timedelta
-import json
-import logging
-
-logger = logging.getLogger(__name__)
-User = get_user_model()
-
-
 
 @never_cache
 @csrf_exempt
@@ -193,7 +185,6 @@ def otp_verify(request):
                 form = OTPVerificationForm(request.POST)
                 if not form.is_valid():
                     error_message = 'Invalid OTP format: ' + '; '.join([f"{field}: {', '.join(errors)}" for field, errors in form.errors.items()])
-                    logger.warning(f"Form validation failed: {error_message}")
                     if is_json:
                         return JsonResponse({'success': False, 'message': error_message}, status=400)
                     messages.error(request, error_message)
@@ -201,7 +192,6 @@ def otp_verify(request):
                 input_otp = form.cleaned_data['otp']
                 resend_otp = 'resend_otp' in request.POST
         except json.JSONDecodeError:
-            logger.error("Invalid JSON data received")
             if is_json:
                 return JsonResponse({'success': False, 'message': 'Invalid JSON data'}, status=400)
             messages.error(request, 'Invalid JSON data')
@@ -212,7 +202,6 @@ def otp_verify(request):
             last_sent = request.session.get('otp_last_sent')
             if last_sent and now - last_sent < 60:
                 wait = int(60 - (now - last_sent))
-                logger.info(f"Resend OTP blocked: Wait {wait} seconds")
                 if is_json:
                     return JsonResponse({'success': False, 'message': f'Please wait {wait} seconds before resending OTP.'}, status=400)
                 messages.error(request, f'Please wait {wait} seconds before resending OTP.')
@@ -246,7 +235,6 @@ def otp_verify(request):
                     messages.success(request, 'A new OTP has been sent to your email.')
                     return redirect('userside:verify_otp')
                 except Exception as e:
-                    logger.error(f"Failed to send OTP to {registration_data['email']}: {str(e)}")
                     if is_json:
                         return JsonResponse({'success': False, 'message': f'Failed to send OTP: {str(e)}'}, status=500)
                     messages.error(request, f'Failed to send OTP: {str(e)}')
@@ -347,7 +335,6 @@ def otp_verify(request):
                             user=user,
                             defaults={'mobile': registration_data['phone_number'], 'status': 'active'}
                         )
-                        logger.info(f"User created: {user.email}")
 
                         request.session.pop('registration_data', None)
                         request.session.pop('registration_otp', None)
@@ -485,20 +472,6 @@ def forgot_password(request):
         form = ForgotPasswordForm()
     return render(request, 'userside/forgot_password.html', {'form': form})
 
-from django.shortcuts import render, redirect
-from django.contrib import messages
-from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.cache import never_cache
-from django.contrib.auth import get_user_model
-from django.urls import reverse
-from .forms import ResetPasswordForm
-import json
-import logging
-
-logger = logging.getLogger(__name__)
-User = get_user_model()
-
 @never_cache
 @csrf_exempt
 def reset_password(request):
@@ -599,10 +572,7 @@ def user_login(request):
     response['Expires'] = '0'
     return response
 
-from django.contrib.auth import logout
-from django.views.decorators.cache import never_cache
-from django.shortcuts import redirect
-from django.http import HttpResponse
+
 
 @never_cache
 def logout_view(request):
@@ -622,7 +592,7 @@ def login_redirect(request):
         return redirect('userside:login')
 
 # ===========================# Landing Page and Category Views# ===========================
-from django.views.decorators.cache import cache_control
+
 @never_cache
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
 def landing_page(request):
@@ -766,23 +736,6 @@ def product_list(request):
     response['Expires'] = '0'
     return response
 
-from django.shortcuts import render, get_object_or_404, redirect
-from django.http import JsonResponse
-from django.contrib.auth.decorators import login_required
-from django.views.decorators.http import require_POST
-from django.db.models import Avg, Sum
-from collections import defaultdict
-from adminside.models import Product, ColorVariant, Size, ProductVariant, Wishlist, ProductOffer, CategoryOffer
-import logging
-from datetime import date
-from decimal import Decimal
-from django.views.decorators.csrf import csrf_protect
-from django.contrib import messages
-import traceback
-from django.views.decorators.cache import cache_control
-
-logger = logging.getLogger(__name__)
-
 @never_cache
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
 def product_detail_view(request, id):
@@ -903,13 +856,6 @@ def clear_filters(request):
     return redirect('userside:product_list')
 
 # ===========================# User Profile and Address Management# ===========================
-from django.contrib.auth.decorators import login_required
-from django.shortcuts import render, redirect
-from django.contrib import messages
-from django.contrib.messages import get_messages
-from adminside.models import Order, Address
-from django.contrib.auth import get_user_model
-import random
 
 @login_required(login_url='userside:login')
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
@@ -936,13 +882,6 @@ def user_profile(request):
     }
     return render(request, 'userside/profile.html', context)
 
-from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth.decorators import login_required
-from django.contrib import messages
-from adminside.models import Address
-import logging
-
-logger = logging.getLogger(__name__)
 @login_required(login_url='userside:login')
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
 def my_addresses(request):
@@ -1134,21 +1073,6 @@ def order_list(request):
     
     return render(request, 'userside/order_list.html', {'orders': page_obj})
 
-import logging
-from django.shortcuts import render, get_object_or_404, redirect, HttpResponseRedirect
-from django.contrib.auth.decorators import login_required
-from django.views.decorators.http import require_POST
-from django.contrib import messages
-from django.conf import settings
-from django.http import JsonResponse
-from django.db import transaction
-from django.urls import reverse
-from datetime import date
-from decimal import Decimal
-import json
-from adminside.models import Coupon, Address, CartItem, ProductOffer, CategoryOffer, Order, OrderItem, ReferralCoupon, Wallet, Transaction, ProductVariant
-
-logger = logging.getLogger(__name__)
 
 @login_required(login_url='userside:login')
 @require_POST
@@ -1375,23 +1299,6 @@ def cancel_entire_order(request, order_id):
     return redirect('userside:order_list')
 # ===========================# Cart Views# ==========================
 
-from django.views.decorators.csrf import csrf_protect
-from django.http import JsonResponse
-from django.contrib.auth.decorators import login_required
-from django.views.decorators.http import require_POST
-from django.shortcuts import get_object_or_404, render
-from django.contrib import messages
-from django.core.exceptions import ObjectDoesNotExist
-from django.db.models import Avg, Sum
-from collections import defaultdict
-from adminside.models import Product, ColorVariant, Size, ProductVariant, Wishlist, ProductOffer, CategoryOffer
-import logging
-import traceback
-from datetime import date
-from decimal import Decimal
-
-logger = logging.getLogger(__name__)
-
 @csrf_protect
 def add_to_cart(request, product_id):
     if request.method == 'POST':
@@ -1473,7 +1380,7 @@ def add_to_cart(request, product_id):
                 'message': 'please login to continue.'
             }, status=500)
 
-from django.views.decorators.cache import cache_control
+
 @login_required(login_url='/login')
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
 def view_cart(request):
@@ -1643,20 +1550,6 @@ def remove_from_cart(request, cart_item_id):
     return redirect('userside:view_cart')
 
 # ===========================# Checkout and Order Placement Views# ===========================
-import logging
-from django.shortcuts import render, redirect
-from django.contrib.auth.decorators import login_required
-from django.http import JsonResponse
-from django.contrib import messages
-from django.conf import settings
-from datetime import date
-from decimal import Decimal
-import json
-from django.views.decorators.cache import cache_control
-from django.db import transaction
-from adminside.models import Coupon, Address, CartItem, ProductOffer, CategoryOffer, Order, OrderItem, ReferralCoupon, Wallet, Transaction
-
-logger = logging.getLogger(__name__)
 
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
 @login_required(login_url='userside:login')
@@ -1866,15 +1759,7 @@ def checkout_view(request):
     response = render(request, 'userside/checkout.html', context)
     response['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
     return response
-from django.shortcuts import render, redirect
-from django.contrib.auth.decorators import login_required
-from django.http import JsonResponse
-from django.contrib import messages
-from django.conf import settings
-from datetime import date
-from decimal import Decimal
-import json
-from adminside.models import Coupon,ReferralCoupon
+
 
 @login_required(login_url='userside:login')
 def apply_coupon(request):
@@ -1912,13 +1797,7 @@ def apply_coupon(request):
             return JsonResponse({'success': False, 'message': 'Invalid request.'})
     return JsonResponse({'success': False, 'message': 'Invalid request method.'})
 
-import json
-from datetime import date
-from django.http import JsonResponse
-from django.contrib.auth.decorators import login_required
-import logging
 
-logger = logging.getLogger(__name__)
 
 @login_required
 def apply_referral_coupon(request):
@@ -2042,21 +1921,7 @@ def remove_coupon(request):
         except json.JSONDecodeError:
             return JsonResponse({'success': False, 'message': 'Invalid request.'})
     return JsonResponse({'success': False, 'message': 'Invalid request method.'})
-from django.shortcuts import render, get_object_or_404, redirect
-from django.conf import settings
-import razorpay
-from django.contrib.auth.decorators import login_required
-from django.contrib import messages
-from django.db import transaction
-from django.http import HttpResponseBadRequest, JsonResponse
-from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.http import require_POST
-from django.utils import timezone
-import json
-import logging
-from decimal import Decimal
-from datetime import date
-from adminside.models import Order, OrderItem, CartItem, Address, Coupon, ReferralCoupon, ProductOffer, CategoryOffer, ProductVariant
+
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -2074,31 +1939,6 @@ def log_payment_event(event, order_id, data=None, error=None):
     else:
         logger.info(log_entry)
 
-import logging
-from django.shortcuts import render, redirect
-from django.contrib.auth.decorators import login_required
-from django.http import JsonResponse
-from django.contrib import messages
-from django.conf import settings
-from datetime import date
-from decimal import Decimal
-import json
-from django.db import transaction
-from adminside.models import Coupon, Address, CartItem, ProductOffer, CategoryOffer, Order, OrderItem, ReferralCoupon, Wallet, Transaction, ProductVariant
-
-logger = logging.getLogger(__name__)
-
-from django.contrib.auth.decorators import login_required
-from django.contrib import messages
-from django.db import transaction
-from decimal import Decimal
-from datetime import date
-from adminside.models import Address, Order, OrderItem, Coupon, ReferralCoupon, ProductOffer, CategoryOffer, CartItem, Wallet, Transaction, ProductVariant
-from django.http import JsonResponse
-import json
-import logging
-
-logger = logging.getLogger(__name__)
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
 @login_required(login_url='userside:login')
 @transaction.atomic
@@ -2549,14 +2389,6 @@ def place_order(request):
             return JsonResponse({'success': False, 'message': error_message, 'error_code': 'unexpected_error'}, status=500)
         messages.error(request, error_message)
         return redirect('userside:checkout')
-    
-from django.shortcuts import render, get_object_or_404, HttpResponseRedirect
-from django.contrib.auth.decorators import login_required
-from django.views.decorators.http import require_POST
-from django.urls import reverse
-from django.contrib import messages
-from pytz import timezone as pytz_timezone
-from adminside.models import Order, OrderItem
 
 @login_required
 @login_required(login_url='userside:login')
@@ -3070,11 +2902,6 @@ def order_failure(request, order_id):
         messages.error(request, "Error loading order details.")
         return redirect('userside:checkout')
     
-from django.http import JsonResponse, HttpResponseBadRequest
-from django.contrib.auth.decorators import login_required
-from django.http import JsonResponse
-from adminside.models import Address
-import re
 
 @login_required
 def save_address_checkout(request):
@@ -3152,12 +2979,6 @@ def address_list(request):
     return render(request, 'userside/my_addresses.html', {'addresses': addresses})
 
 # ===========================# Wishlist Views# ===========================
-from django.contrib.auth.decorators import login_required
-from django.http import JsonResponse
-from django.views.decorators.http import require_POST
-from adminside.models import Product, Wishlist
-from django.shortcuts import get_object_or_404
-
 @require_POST
 @login_required
 def add_to_wishlist(request, product_id):
@@ -3196,16 +3017,6 @@ def wishlist_page(request):
     wishlist_items = Wishlist.objects.filter(user=request.user).select_related('product')
     return render(request, 'userside/wishlist.html', {'wishlist_items': wishlist_items})
 
-from django.shortcuts import get_object_or_404, HttpResponseRedirect
-from django.contrib.auth.decorators import login_required
-from django.views.decorators.http import require_POST
-from django.urls import reverse
-from django.contrib import messages
-from django.db import transaction
-from adminside.models import OrderItem, ProductVariant, Order
-import logging
-
-logger = logging.getLogger(__name__)
 
 @login_required(login_url='userside:login')
 @require_POST
@@ -3301,12 +3112,6 @@ def return_order_item(request, item_id):
 
     return HttpResponseRedirect(reverse('userside:order_detail', args=[item.order.order_id]))
 
-from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
-from adminside.models import ProductVariant
-from django.http import JsonResponse
-from adminside.models import ProductVariant, Size
-
 def get_variant_stock(request, color_id, size):
     try:
         # Get size object based on size name (e.g., "M", "L")
@@ -3327,12 +3132,6 @@ def get_variant_stock(request, color_id, size):
     except Exception as e:
         return JsonResponse({'stock': -1, 'message': 'Server error.'}, status=500)
     
-# views.py
-from django.http import JsonResponse
-from django.views.decorators.http import require_GET
-from django.contrib.auth.decorators import login_required
-from django.shortcuts import get_object_or_404
-from adminside.models import Product, ProductVariant, Size, ColorVariant
 
 @require_GET
 @login_required
@@ -3366,19 +3165,6 @@ def product_variants_api(request, product_id):
         'variants': variant_data
     })
 
-from django.shortcuts import get_object_or_404, redirect
-from django.http import HttpResponse
-from django.template.loader import render_to_string
-from django.contrib import messages
-from django.utils import timezone
-import pytz
-from decimal import Decimal
-from datetime import date
-from weasyprint import HTML
-from adminside.models import Order, OrderItem, ProductOffer, CategoryOffer
-import logging
-
-logger = logging.getLogger(__name__)
 
 def download_invoice(request, order_id):
     order = get_object_or_404(Order, id=order_id, user=request.user)
@@ -3537,16 +3323,8 @@ def download_invoice(request, order_id):
         logger.error(f"Error generating invoice for order {order.order_id}: {e}", exc_info=True)
         messages.error(request, "Error generating invoice.")
         return redirect('userside:order_detail', order_id=order.order_id)
-import logging
-from django.shortcuts import render, redirect
-from django.contrib.auth.decorators import login_required
-from django.contrib import messages
-from django.core.paginator import Paginator
-from django.db.models import Q
-from decimal import Decimal
-from adminside.models import Wallet, Transaction
 
-logger = logging.getLogger(__name__)
+
 
 @login_required(login_url='userside:login')
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
