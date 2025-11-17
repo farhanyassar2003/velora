@@ -378,7 +378,7 @@
         <div class="container">
             <div class="d-flex justify-content-between align-items-center">
                 <div class="welcome-text">
-                    Welcome, {% if user.is_authenticated %}{{ user.first_name|default:user.email|default:"User" }}{% else %}Guest{% endif %}!!
+                    Welcome, {% if user.is_authenticated %}{{ user.first_name|default:user.email|default:"User" }}{% else %}Guest{% endif %}!!,my name is farhan
                 </div>
             </div>
         </div>
