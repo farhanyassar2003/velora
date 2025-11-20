@@ -17,12 +17,13 @@ from weasyprint import HTML
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import (
-    login, logout, authenticate, get_user_model,
+    login, logout, authenticate,
     update_session_auth_hash
 )
+from django.contrib.auth import get_user_model
+User = get_user_model()
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import AuthenticationForm
-from django.contrib.auth.models import User
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.mail import send_mail
 from django.core.paginator import Paginator
@@ -651,7 +652,8 @@ def product_list(request):
 
     categories = Category.objects.filter(is_listed=True, is_deleted=False)
     search_query = request.GET.get('search', '').strip()
-    
+
+    # ---------------- SEARCH FILTER ----------------
     if search_query:
         products = products.filter(
             Q(name__icontains=search_query) |
@@ -659,24 +661,57 @@ def product_list(request):
             Q(category__name__icontains=search_query)
         )
 
+    # ---------------- CATEGORY FILTER ----------------
     category_filter = request.GET.get('category', '').strip()
     if category_filter and category_filter != 'all':
         products = products.filter(category__name__iexact=category_filter)
 
+    # ---------------- PRICE FILTER (manual inputs) ----------------
+    min_amount = request.GET.get('min_amount')
+    max_amount = request.GET.get('max_amount')
+
+    min_price = None
+    max_price = None
+
+    if min_amount:
+        products = products.filter(price__gte=min_amount)
+        min_price = min_amount
+
+    if max_amount:
+        products = products.filter(price__lte=max_amount)
+        max_price = max_amount
+
+    # ---------------- SORTING + PRICE RANGE FILTERS ----------------
     sort_by = request.GET.get('sort', 'name_asc')
+
     sort_mapping = {
-        'name_asc': 'name',
-        'name_desc': '-name',
-        'price_asc': 'price',
-        'price_desc': '-price',
+        "name_asc": "name",
+        "name_desc": "-name",
+        "price_asc": "price",
+        "price_desc": "-price",
     }
+
+    # Apply sorting (for name & price sorting)
     products = products.order_by(sort_mapping.get(sort_by, 'name'))
 
-    # Calculate offer percentage for each product
+    # Apply PRICE RANGE based on sort option
+    if sort_by == "price_upto_500":
+        products = products.filter(price__lte=500)
+
+    elif sort_by == "price_500_1000":
+        products = products.filter(price__gte=500, price__lte=1000)
+
+    elif sort_by == "price_1000_2000":
+        products = products.filter(price__gte=1000, price__lte=2000)
+
+    elif sort_by == "price_above_2000":
+        products = products.filter(price__gte=2000)
+
+    # ---------------- OFFERS ----------------
     product_list_with_offers = []
     for product in products:
         offer_percentage = None
-        # Check for ProductOffer
+
         product_offer = ProductOffer.objects.filter(
             product=product,
             is_active=True,
@@ -685,7 +720,6 @@ def product_list(request):
             end_date__gte=date.today()
         ).first()
 
-        # Check for CategoryOffer
         category_offer = CategoryOffer.objects.filter(
             category=product.category,
             is_active=True,
@@ -694,17 +728,9 @@ def product_list(request):
             end_date__gte=date.today()
         ).first()
 
-        # Determine the highest discount
-        product_discount = Decimal('0')
-        category_discount = Decimal('0')
+        product_discount = Decimal(product_offer.discount_percentage) if product_offer else Decimal('0')
+        category_discount = Decimal(category_offer.discount_percentage) if category_offer else Decimal('0')
 
-        if product_offer:
-            product_discount = Decimal(product_offer.discount_percentage)
-        
-        if category_offer:
-            category_discount = Decimal(category_offer.discount_percentage)
-
-        # Use the higher discount
         if product_discount or category_discount:
             offer_percentage = max(product_discount, category_discount)
 
@@ -713,7 +739,7 @@ def product_list(request):
             'offer_percentage': offer_percentage
         })
 
-    # Pagination
+    # ---------------- PAGINATION ----------------
     page_number = request.GET.get('page', 1)
     paginator = Paginator(product_list_with_offers, 8)
     page_obj = paginator.get_page(page_number)
@@ -726,8 +752,19 @@ def product_list(request):
         'selected_category': category_filter,
         'selected_sort': sort_by,
         'total_products': paginator.count,
-        'has_filters': bool(search_query or (category_filter and category_filter != 'all')),
-        'products_with_offers': page_obj.object_list,  # Pass the list with offer percentages
+        'has_filters': bool(
+            search_query or 
+            (category_filter and category_filter != 'all') or 
+            min_amount or 
+            max_amount
+        ),
+        'products_with_offers': page_obj.object_list,
+
+        # PRICE FILTER VALUES (manual range)
+        'min_price': min_price,
+        'max_price': max_price,
+        'min_amount': min_amount,
+        'max_amount': max_amount,
     }
 
     response = render(request, 'userside/product_list.html', context)
@@ -735,6 +772,8 @@ def product_list(request):
     response['Pragma'] = 'no-cache'
     response['Expires'] = '0'
     return response
+
+
 
 @never_cache
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
@@ -1737,7 +1776,8 @@ def checkout_view(request):
     tax = Decimal('0.00')  # Update with your tax logic
     shipping = Decimal('0.00')  # Update with your shipping logic
     total = subtotal - total_discount - regular_coupon_discount - referral_coupon_discount + tax + shipping
-    wallet_balance_deficit = total - wallet.balance if wallet.balance < total else Decimal('0.00')
+    wallet_balance = Decimal(str(wallet.balance))
+    wallet_balance_deficit = total - wallet_balance if wallet_balance < total else Decimal('0.00')
 
     context = {
         'cart_items_with_discounts': cart_items_with_discounts,

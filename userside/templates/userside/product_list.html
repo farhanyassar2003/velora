@@ -845,27 +845,55 @@
                 <div class="filter-controls">
                     <div class="sort-container">
                         <form method="GET" class="d-flex align-items-center gap-3">
+
                             {% if search_query %}
                                 <input type="hidden" name="search" value="{{ search_query }}">
                             {% endif %}
+
                             {% if selected_category and selected_category != 'all' %}
                                 <input type="hidden" name="category" value="{{ selected_category }}">
                             {% endif %}
+
                             <label for="sort" class="fw-semibold text-nowrap">Sort by:</label>
+
                             <select name="sort" class="sort-select" onchange="this.form.submit()">
-                                <option value="name_asc" {% if selected_sort == 'name_asc' %}selected{% endif %}>A - Z</option>
-                                <option value="name_desc" {% if selected_sort == 'name_desc' %}selected{% endif %}>Z - A</option>
-                                <option value="price_asc" {% if selected_sort == 'price_asc' %}selected{% endif %}>Price: Low to High</option>
-                                <option value="price_desc" {% if selected_sort == 'price_desc' %}selected{% endif %}>Price: High to Low</option>
+
+                                <option value="name_asc" {% if selected_sort == 'name_asc' %}selected{% endif %}>
+                                    A - Z
+                                </option>
+
+                                <option value="name_desc" {% if selected_sort == 'name_desc' %}selected{% endif %}>
+                                    Z - A
+                                </option>
+
+                                <option value="price_asc" {% if selected_sort == 'price_asc' %}selected{% endif %}>
+                                    Price: Low to High
+                                </option>
+
+                                <option value="price_desc" {% if selected_sort == 'price_desc' %}selected{% endif %}>
+                                    Price: High to Low
+                                </option>
+
+                                <!-- PRICE FILTER OPTIONS -->
+                                <option value="price_upto_500" {% if selected_sort == 'price_upto_500' %}selected{% endif %}>
+                                    Price: Under ₹500
+                                </option>
+
+                                <option value="price_500_1000" {% if selected_sort == 'price_500_1000' %}selected{% endif %}>
+                                    Price: ₹500 - ₹1000
+                                </option>
+
+                                <option value="price_1000_2000" {% if selected_sort == 'price_1000_2000' %}selected{% endif %}>
+                                    Price: ₹1000 - ₹2000
+                                </option>
+
+                                <option value="price_above_2000" {% if selected_sort == 'price_above_2000' %}selected{% endif %}>
+                                    Price: Above ₹2000
+                                </option>
+
                             </select>
                         </form>
                     </div>
-                    {% if has_filters %}
-                        <a href="{% url 'userside:clear_filters' %}" class="clear-filters-btn">
-                            <i class="bi bi-x-circle"></i>
-                            Clear All Filters
-                        </a>
-                    {% endif %}
                 </div>
             </div>
         </section>
