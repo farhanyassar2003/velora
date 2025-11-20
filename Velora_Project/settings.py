@@ -25,7 +25,7 @@ RAZORPAY_KEY_SECRET = config('RAZORPAY_KEY_SECRET')
 
 # Debug and Allowed Hosts
 DEBUG = config('DEBUG', default=True, cast=bool)
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ALLOWED_HOSTS = ['56.228.11.45','farhanyassar.shop','www.farhanyassar.shop']
 
 # Application definition
 INSTALLED_APPS = [
@@ -76,7 +76,6 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'Velora_Project.wsgi.application'
 
-# Database
 from dotenv import load_dotenv
 import os
 
@@ -85,11 +84,11 @@ load_dotenv()
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.getenv('DB_NAME'),
-        'USER': os.getenv('DB_USER'),
-        'PASSWORD': os.getenv('DB_PASSWORD'),
-        'HOST': os.getenv('DB_HOST'),
-        'PORT': os.getenv('DB_PORT'),
+        'NAME': 'mydb',
+        'USER': 'myuser',
+        'PASSWORD': 'farhan123',  
+        'HOST': 'localhost',
+        'PORT': '5432',
     }
 }
 
