@@ -741,7 +741,7 @@ def product_list(request):
 
     # ---------------- PAGINATION ----------------
     page_number = request.GET.get('page', 1)
-    paginator = Paginator(product_list_with_offers, 3)
+    paginator = Paginator(product_list_with_offers, 8)
     page_obj = paginator.get_page(page_number)
 
     context = {
